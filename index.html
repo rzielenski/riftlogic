@@ -6,6 +6,20 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
 :root{
+  color-scheme:dark;
+  --bg:#07080A; --surface:#0E1014; --surface-2:#13161B; --inset:#1A1E24; --code-bg:#0B0D10;
+  --ink:#E6E9ED; --ink-2:#B3BAC3; --muted:#7E8792; --faint:#4E5660; --line:#1F242B; --line-strong:#2C323B;
+  --accent:#3FB7B4; --accent-ink:#04201F; --accent-soft:#123135;
+  --gold:#D4AF63; --ok:#4CC287; --ok-soft:#12301F; --no:#F07580; --no-soft:#3A1A20; --warn:#E5AE5A; --warn-soft:#33260F;
+  --phys:#D6772F; --magic:#7482EC; --true:#C3CBD3; --heal:#42A95A; --shield:#7C8A98;
+  --phys-t:#F0A060; --magic-t:#A4ADFF; --true-t:#EEF1F4; --heal-t:#72D08B; --shield-t:#B4C0CB;
+  --side1:#5B93E8; --side2:#E26B5F;
+  --kw:#C49DF2; --ty:#4FC1BD; --ch:#D4AF63; --num:#F28DA8; --str:#8FCB80; --cmt:#65717F;
+  --shadow:0 16px 40px rgba(0,0,0,.65);
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+:root[data-theme="light"]{
   color-scheme:light;
   --bg:#EFF2F5; --surface:#FFFFFF; --surface-2:#F6F8FA; --inset:#E9EDF1; --code-bg:#FBFCFD;
   --ink:#121A23; --ink-2:#36424F; --muted:#677483; --faint:#9AA5B1; --line:#DCE2E8; --line-strong:#C4CCD5;
@@ -18,32 +32,6 @@
   --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --shadow:0 12px 32px rgba(18,26,35,.16);
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    color-scheme:dark;
-    --bg:#0D1218; --surface:#131A22; --surface-2:#171F29; --inset:#1C2530; --code-bg:#10161D;
-    --ink:#E2E8EE; --ink-2:#B8C2CC; --muted:#84919F; --faint:#566270; --line:#242E39; --line-strong:#323E4B;
-    --accent:#3FB7B4; --accent-ink:#04201F; --accent-soft:#123135;
-    --gold:#D4AF63; --ok:#4CC287; --ok-soft:#12301F; --no:#F07580; --no-soft:#3A1A20; --warn:#E5AE5A; --warn-soft:#33260F;
-    --phys:#D6772F; --magic:#7482EC; --true:#C3CBD3; --heal:#42A95A; --shield:#7C8A98;
-    --phys-t:#F0A060; --magic-t:#A4ADFF; --true-t:#EEF1F4; --heal-t:#72D08B; --shield-t:#B4C0CB;
-    --side1:#5B93E8; --side2:#E26B5F;
-    --kw:#C49DF2; --ty:#4FC1BD; --ch:#D4AF63; --num:#F28DA8; --str:#8FCB80; --cmt:#65717F;
-    --shadow:0 12px 32px rgba(0,0,0,.5);
-  }
-}
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --bg:#0D1218; --surface:#131A22; --surface-2:#171F29; --inset:#1C2530; --code-bg:#10161D;
-  --ink:#E2E8EE; --ink-2:#B8C2CC; --muted:#84919F; --faint:#566270; --line:#242E39; --line-strong:#323E4B;
-  --accent:#3FB7B4; --accent-ink:#04201F; --accent-soft:#123135;
-  --gold:#D4AF63; --ok:#4CC287; --ok-soft:#12301F; --no:#F07580; --no-soft:#3A1A20; --warn:#E5AE5A; --warn-soft:#33260F;
-  --phys:#D6772F; --magic:#7482EC; --true:#C3CBD3; --heal:#42A95A; --shield:#7C8A98;
-  --phys-t:#F0A060; --magic-t:#A4ADFF; --true-t:#EEF1F4; --heal-t:#72D08B; --shield-t:#B4C0CB;
-  --side1:#5B93E8; --side2:#E26B5F;
-  --kw:#C49DF2; --ty:#4FC1BD; --ch:#D4AF63; --num:#F28DA8; --str:#8FCB80; --cmt:#65717F;
-  --shadow:0 12px 32px rgba(0,0,0,.5);
 }
 [hidden]{display:none!important}
 *{box-sizing:border-box}
@@ -321,7 +309,7 @@ ul.conds li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px;font-s
 .fields{font:11px/1.6 var(--mono);color:var(--muted);overflow-wrap:anywhere}
 .evbox{font-size:12.5px;color:var(--ink-2);min-height:1.4em}
 .why{color:var(--muted)}
-.exdraft{display:flex;align-items:stretch;gap:2px}.exdraft>button:first-child{flex:1;min-width:0}.exdel{flex:none;opacity:.55;padding-inline:8px!important;font-size:12px}.exdel:hover,.exdel:focus-visible{opacity:1}
+.exdraft{display:flex;align-items:stretch;gap:2px}.exdraft>button:first-child{flex:1;min-width:0}.exdel{flex:none;width:auto!important;min-width:28px;text-align:center!important;opacity:.55;padding-inline:8px!important;font-size:12px}.exdel:hover,.exdel:focus-visible{opacity:1}
 </style>
 
 <div class="app">
@@ -350,7 +338,7 @@ ul.conds li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px;font-s
   </header>
   <dialog class="dlg" id="unsaved" aria-labelledby="unsavedT">
     <p id="unsavedT"></p>
-    <div class="dlgbtns"><button type="button" class="btn ghost" id="uCancel">Cancel</button><button type="button" class="btn" id="uDiscard">Don't save</button><button type="button" class="btn primary" id="uSave">Save file</button></div>
+    <div class="dlgbtns"><button type="button" class="btn ghost" id="uCancel">Cancel</button><button type="button" class="btn" id="uDiscard">Don't save</button><button type="button" class="btn primary" id="uSave">Save</button></div>
   </dialog>
 
   <dialog class="dlg" id="vimdlg" aria-labelledby="vimT">
@@ -8576,7 +8564,7 @@ function toggleAll(){
   const ds = [...$("out").querySelectorAll("details.rd")]; const open = !ds.every(d => d.open);
   for (const d of ds){ d.open = open; d.dispatchEvent(new Event("toggle")); }
 }
-src.addEventListener("input", e => { paint(); clearTimeout(timer); timer = setTimeout(() => run("typing"), 400); AC.onInput(e); saveDraft(); });
+src.addEventListener("input", e => { paint(); clearTimeout(timer); timer = setTimeout(() => run("typing"), 400); AC.onInput(e); });
 src.addEventListener("keydown", e => { AC.key(e); }, true);
 src.addEventListener("keydown", e => {
   if (e.defaultPrevented) return;
@@ -8621,7 +8609,7 @@ let drafts = {}; try { drafts = JSON.parse(localStorage.getItem("riftlogic.draft
   if (old && !Object.values(EXAMPLES).includes(old) && !Object.values(drafts).includes(old)) drafts["My code"] = old; }
 let curDraft = null;                                                                      // name of the draft in the editor, if any
 const persistDrafts = () => { try { localStorage.setItem("riftlogic.drafts", JSON.stringify(drafts)); localStorage.setItem("riftlogic.current", JSON.stringify(curDraft ? {draft: curDraft} : {example: curEx})); } catch (_) {} };
-function saveDraft(){
+function saveDraft(){                 // Ctrl/⌘+S and :w — saves under "Your code" in this browser
   const isNew = !curDraft;
   if (isNew){ curDraft = "Edited: " + curEx; let i = 2; while (drafts[curDraft] !== undefined && i < 50) curDraft = `Edited: ${curEx} (${i++})`; $("excur").textContent = curDraft; }
   drafts[curDraft] = src.value; persistDrafts();
@@ -8663,8 +8651,8 @@ $("excur").textContent = curEx;
 $("reset").addEventListener("click", () => loadExample(curEx, "reset to the example as written"));   // back to the example as written; your edits stay under "Your code"
 
 /* ================= files: save / open / recent, and a reminder before unsaved changes are left ================= */
-// "unsaved" = edited since the last save to a file, open, or load. Your code is also kept in this browser (Your code in
-// the Examples menu), but a file is what survives clearing the browser or moving machines.
+// Ctrl/⌘+S (and vim :w) saves under "Your code" in this browser; File → Save to file… writes a .rl file where you choose.
+// "unsaved" = edited since the last save of either kind, or since the program was opened.
 const RECENT_KEY = "riftlogic.recent", RECENT_MAX = 10, RECENT_CHARS = 200000, baseTitle = document.title;
 let fileName = null, fileHandle = null, savedText = "";
 let recent = []; try { recent = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]") || []; } catch (_) {}
@@ -8675,7 +8663,7 @@ function updateFileState(){
   const d = isDirty(), st = $("filestate");
   st.hidden = !(d || fileName);
   st.textContent = fileName ? fileName + (d ? " · unsaved" : " · saved") : "unsaved changes";
-  st.title = d ? "Changed since the last save to a file (Ctrl/⌘ + S to save)" : "Saved to a file";
+  st.title = d ? "Changed since the last save (Ctrl/⌘ + S saves in this browser)" : "Saved";
   st.classList.toggle("dirty", d);
   document.title = (d ? "● " : "") + (fileName ? `${fileName} — ` : "") + baseTitle;
 }
@@ -8696,17 +8684,17 @@ function download(name, text){
   const a = h("a", {href: URL.createObjectURL(new Blob([text], {type: "text/plain"})), download: name});
   document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
-async function saveFile(as = false){
+function saveBrowser(){                // Ctrl/⌘+S, vim :w — keeps it under "Your code" in this browser
+  saveDraft(); markCurrent(); savedText = src.value; flash(`Saved in this browser · ${curDraft}`); return true;
+}
+async function saveFile(){                // File → Save to file…: always asks where
   const text = src.value; let name = fileName || safeName(curDraft || curEx);
   if (canPick){
     try {
-      if (!fileHandle || as) fileHandle = await window.showSaveFilePicker({suggestedName: name, types: [{description: "Rift Logic program", accept: {"text/plain": [".rl"]}}]});
+      fileHandle = await window.showSaveFilePicker({suggestedName: name, types: [{description: "Rift Logic program", accept: {"text/plain": [".rl"]}}]});
       const w = await fileHandle.createWritable(); await w.write(text); await w.close(); name = fileHandle.name;
-    } catch (e) { if (e && e.name === "AbortError") return false; fileHandle = null; download(name, text); }
-  } else {
-    if (as){ const n = prompt("Save as", name); if (n === null) return false; name = safeName(n); }
-    download(name, text);
-  }
+    } catch (e) { if (e && e.name === "AbortError") return false; fileHandle = null; const n = prompt("Save as", name); if (n === null) return false; name = safeName(n); download(name, text); }
+  } else { const n = prompt("Save as", name); if (n === null) return false; name = safeName(n); download(name, text); }
   fileName = name; savedText = text; adopt(name, text); remember(name, text); flash(`Saved ${name}`); return true;
 }
 function loadText(name, text, handle){
@@ -8738,10 +8726,10 @@ async function openRecent(r){
 function guard(action){
   if (!isDirty()) return Promise.resolve(true);
   const d = $("unsaved"), what = fileName || curDraft || "Your program";
-  $("unsavedT").textContent = `“${what}” has changes you haven't saved to a file (they're kept in this browser under Your code). Save a file before you ${action}?`;
+  $("unsavedT").textContent = `“${what}” has unsaved changes. Save them before you ${action}?`;
   return new Promise(res => {
     const done = v => { if (d.open) d.close(); res(v); };
-    $("uSave").onclick = async () => { d.close(); res(await saveFile()); };
+    $("uSave").onclick = () => { d.close(); res(saveBrowser()); };
     $("uDiscard").onclick = () => done(true);
     $("uCancel").onclick = () => done(false);
     d.oncancel = e => { e.preventDefault(); done(false); };
@@ -8756,14 +8744,14 @@ function buildFileMenu(){
   fileMenu.replaceChildren(
     item("New program", null, newFile),
     item("Open file…", `${mod}O`, openFile),
-    item("Save", `${mod}S`, () => saveFile()),
-    item("Save as…", `${mod}⇧S`, () => saveFile(true)),
+    item("Save", `${mod}S`, saveBrowser),
+    item("Save to file…", null, () => saveFile()),
     h("div", {class: "sep"}), h("h4", {}, "Recent files"),
     ...(recent.length ? recent.map(r => h("button", {type: "button", role: "menuitem", class: "mi", "data-f": "1", title: r.text == null ? "Too big to keep in the browser — reopen from disk" : `Reopen ${r.name}`,
           onclick: () => { setFileMenu(false); openRecent(r); }}, h("span", {}, r.name), h("small", {}, ago(r.t))))
       : [h("div", {class: "none"}, "Files you open or save appear here.")]),
     recent.length ? h("button", {type: "button", role: "menuitem", class: "mi", "data-f": "1", onclick: () => { recent = []; try { localStorage.removeItem(RECENT_KEY); } catch (_) {} buildFileMenu(); fileMenu.querySelector("button").focus(); }}, h("span", {}, "Clear recent list")) : null,
-    canPick ? null : h("div", {class: "none"}, "This browser downloads saved files; Chrome and Edge can write back to the same file."));
+    h("div", {class: "none"}, "Save keeps it in this browser under Your code. Save to file… writes a .rl file where you choose."));
 }
 function setFileMenu(open){ if (open) buildFileMenu(); fileMenu.hidden = !open; fileBtn.setAttribute("aria-expanded", String(open)); if (open){ const b = fileMenu.querySelector("button"); b && b.focus(); } }
 fileBtn.addEventListener("click", () => setFileMenu(fileMenu.hidden));
@@ -8777,7 +8765,7 @@ document.addEventListener("click", e => { if (!fileMenu.hidden && !e.target.clos
 document.addEventListener("keydown", e => {
   if (!(e.ctrlKey || e.metaKey)) return;
   const k = e.key.toLowerCase();
-  if (k === "s"){ e.preventDefault(); saveFile(e.shiftKey); }
+  if (k === "s"){ e.preventDefault(); saveBrowser(); }
   else if (k === "o"){ e.preventDefault(); openFile(); }
 });
 // drop a .rl file on the editor to open it
@@ -8810,7 +8798,7 @@ const VIM = (() => {
   let cur = 0;
   const pos = () => mode.startsWith("vis") || mode === "vline" ? cur : P();
   function snap(){ undo.push({v: V(), p: pos()}); if (undo.length > 200) undo.shift(); redo = []; }
-  function changed(){ paint(); clearTimeout(timer); timer = setTimeout(() => run("typing"), 400); saveDraft(); updateFileState(); }
+  function changed(){ paint(); clearTimeout(timer); timer = setTimeout(() => run("typing"), 400); updateFileState(); }
   function setText(v, p){ src.value = v; changed(); place(p); }
   function setMode(m){ mode = m; count = ""; pend = ""; if (m === "insert"){ const p = P(); src.setSelectionRange(p, p); } badgeText(); }
   // motions: return the new position (and whether the range is linewise / inclusive for operators)
@@ -8850,8 +8838,8 @@ const VIM = (() => {
   function exCommand(c){
     c = c.trim();
     if (/^\d+$/.test(c)){ place(lineN(+c).p); return; }
-    if (c === "w"){ saveFile(); return; }
-    if (c === "wq" || c === "x"){ saveFile().then(ok => { if (ok) disable(); }); return; }
+    if (c === "w"){ saveBrowser(); return; }
+    if (c === "wq" || c === "x"){ saveBrowser(); disable(); return; }
     if (c === "q" || c === "q!" || c === "qa"){ disable(); return; }
     flashBadge(`Not an editor command: ${c}`);
   }
