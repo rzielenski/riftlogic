@@ -132,6 +132,7 @@ td:only-child{color:var(--ink)}
       <li><a href="#summoner">Summoner spells</a></li>
       <li><a href="#teamcomp">TeamComp and lists</a></li>
       <li><a href="#fight">Fight</a></li>
+      <li><a href="#fights">Fight sweeps</a></li>
       <li><a href="#combo">Combo</a></li>
       <li><a href="#dummy">Practice-tool dummy</a></li>
       <li><a href="#builtins">Built-in functions</a></li>
@@ -219,6 +220,7 @@ assert(canKill(a, tank, 5), "Syndra kills Garen in 5 seconds");</pre>
         <tr><td>Summoner</td><td>A summoner spell: <code>Flash</code>, <code>Ghost</code>, <code>Heal</code>, <code>Barrier</code>, <code>Ignite</code>, <code>Exhaust</code>, <code>Cleanse</code> (<a href="#summoner">Summoner spells</a>).</td></tr>
         <tr><td>TeamComp</td><td>A list of champions.</td></tr>
         <tr><td>Fight</td><td>The result of <code>fight(…)</code>.</td></tr>
+        <tr><td>Fights</td><td>The result of <code>fights(…)</code>, a sweep of fights (<a href="#fights">Fight sweeps</a>).</td></tr>
         <tr><td>Dummy</td><td>The practice-tool target dummy, <code>Dummy(hp: 3000, resists: 50)</code>. It is also a Champion, so it goes anywhere a target does (<a href="#dummy">Practice-tool dummy</a>).</td></tr>
         <tr><td>auto</td><td>Whatever the value is.</td></tr>
       </tbody></table></div>
@@ -255,7 +257,8 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
         <li>A list, TeamComp or Combo holds at most 100,000 values (“a list can hold at most 100,000 values …”); that statement fails.</li>
         <li>2,000,000 values created in one run: list and TeamComp elements (copies included; assigning a list copies it), champion copies and combo steps. A list that copies itself into itself doubles every round and hits this after about twenty rounds; the program stops.</li>
         <li>10,000 results (<code>print</code>, <code>assert</code>, <code>prove</code>); the program stops.</li>
-        <li><code>perform</code> plays combos of up to 10,000 steps; a fight lasts at most 120 seconds.</li>
+        <li><code>perform</code> plays combos of up to 10,000 steps; a fight lasts at most 120 seconds; <code>fights(…)</code> runs at most 5,000 fights.</li>
+        <li>Steps count your program’s own work, not the simulation: a <code>fight()</code> call costs a few steps however long the fight is, and the fights inside a <code>fights(…)</code> sweep cost none (only its role functions do, once per level and team). The same sweep written as a loop also pays for the loop and for re-running the role functions before every fight (about 20 times the steps), so use <code>fights(…)</code> for sweeps.</li>
         <li>Strings up to 1,000,000 characters.</li>
         <li>The working under one result is cut after 5,000 lines, and after 200,000 lines in the whole program (a note marks the cut); the values are unaffected.</li>
         <li>Time (for example a loop of fights): in the editor 3 seconds while you type and 10 seconds for Run or <code>Ctrl/⌘ + Enter</code>; none on the command line unless <code>--max-ms=</code> is given.</li>
@@ -303,7 +306,7 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
       <div class="tscroll"><table><tbody>
         <tr><td>a.combo(Q, E, R, vs: t)</td><td>Each listed ability's damage once; after t's resistances with <code>vs</code>. Abilities without a damage formula count 0 (noted).</td></tr>
         <tr><td>a.proc(Ludens, vs: t)</td><td>An item's main damage formula with a's stats, in its own damage type (Luden's at all six echoes, Terminus on-hit, Kraken's third hit before the missing-health bonus…).</td></tr>
-        <tr><td>a.stacks = 225;  a.stacks</td><td>The champion's own permanent stacks: Syndra's Splinters of Wrath (default: 5 per skill point after level 1, up to 85, as leveling in the practice tool gives; 40 = two Dark Sphere charges, 60 = Force of Will true damage, 100 = Unleashed Power execute, 120 = +15% AP), Smolder's Dragon Practice (default 0; tier 1/2/3 at 25/125/225, bonus magic damage on Q, W and E). Reading it gives the count in use.</td></tr>
+        <tr><td>a.stacks = 225;  a.stacks</td><td>The champion's own permanent stacks: Syndra's Splinters of Wrath (default: 5 per skill point after level 1, up to 85, as leveling in the practice tool gives; 40 = two Dark Sphere charges, 60 = Force of Will true damage, 100 = Unleashed Power execute, 120 = +15% AP), Smolder's Dragon Practice (default 0; tier 1/2/3 at 25/125/225, bonus magic damage on Q, W and E). In-fight stacks to <i>start</i> a fight or <code>perform</code> with (default 0, as in a fresh trade; they last 6 s): Yasuo's and Yone's Gathering Storm (2 = the first Q is Q3 and knocks up), Samira's Style (6 = Inferno Trigger ready). Reading it gives the count in use.</td></tr>
         <tr><td>a.evolved = {Q, E};  a.evolved</td><td>Evolved or augmented abilities: Kai'Sa's Second Skin (default from her stats: Q at 100 AD from items and growth, W at 100 AP, E at 100% attack speed from items and growth), Viktor's Hex Core augments (default none: they cost Hex Fragments from kills). Reading it gives the abilities in use, e.g. "QE".</td></tr>
         <tr><td>a.stacks(Heartsteel, 400)</td><td>A copy of a with stacks earned before the fight: Heartsteel health, Mejai's / Dark Seal Glory, Hubris, Yun Tal, Rod of Ages, Gluttonous Greaves / Immortal Path, Manaflow mana. Runes too: <code>a.stacks(LegendAlacrity, 10)</code>, Legend: Haste / Bloodline, Ultimate Hunter, Overgrowth, <code>DarkHarvest</code> (souls), <code>ManaflowBand</code> (bonus mana). Without it an item counts as freshly bought and a rune as a fresh game (0 stacks), as in the practice tool; the assumptions say which.</td></tr>
         <tr><td>a.is(Mage)  a.has(stun)</td><td>Class and ability-tag checks.</td></tr>
@@ -316,6 +319,7 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
       <h3>Fight settings</h3>
       <div class="tscroll"><table><tbody>
         <tr><td>a.target = b;</td><td>Focus b in fights. Otherwise attacks go to the lowest-health enemy.</td></tr>
+        <tr><td>a.stasis = "pop";</td><td>When a holds Zhonya's Hourglass / Seeker's Armguard, when it presses it (in fights and as a combo target): <code>"low"</code> (below 30% health, the default), <code>"dash"</code> (as an enemy Zed's Death Mark dash ends, so the mark isn't applied), <code>"pop"</code> (just before a Death Mark on it pops), <code>"cover"</code> (as early as the 2.5 s stasis still covers the pop), <code>"never"</code>, or a time in seconds after the start.</td></tr>
         <tr><td>a.healPolicy = "save";</td><td>Who a heals and shields: <code>"lowest"</code> (default), <code>"save"</code> (whoever dies soonest at the current damage rate), <code>"self"</code>, or a Champion.</td></tr>
         <tr><td>a.passive = true;</td><td>Only heals and shields; never attacks.</td></tr>
         <tr><td>a.rotation = "QEWR";</td><td>Ability priority (default R, Q, E, W).</td></tr>
@@ -331,7 +335,7 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
         <tr><td>a.Q.damage  a.Q.damage(vs: t)</td><td>The tooltip's damage. Values the tooltip joins with “plus” are summed, each reduced by its own damage type. Percent-of-health formulas use the target's max health with <code>vs</code>. When the tooltip deals one formula twice as different damage types, both passes count (Ahri Q: magic out, true back; Yone W and R: physical and magic).</td></tr>
         <tr><td>a.Q.damage(passes: 1)</td><td>Only the first pass of those abilities (Ahri Q's orb misses on the way back).</td></tr>
         <tr><td>a.R.damage(spheres: 5)</td><td>For abilities whose damage is per unit with a guaranteed minimum count, <code>.damage</code> is that minimum (Syndra R: 3 spheres); name the count to use more (Syndra R: 3–7 spheres; <code>count:</code> also works).</td></tr>
-        <tr><td>a.Q.damage(snips: 3)  a.R.damage(needles: 5)</td><td>Champion kits (champion audit): hits, recasts and empowered parts the tooltip gives in words. <code>.damage</code> is what perfect play lands, and the working says so: Gwen Q 5 snips in the centre (<code>snips:</code> 1–5, <code>center:</code>), R 9 needles (<code>needles:</code>); Viktor Q with Discharge (<code>discharge:</code>), R 6 storm ticks (<code>ticks:</code>); Dr. Mundo W 12 ticks + recast (<code>ticks:</code>, <code>recast:</code>), Q never below its minimum; Kai'Sa Q all missiles on one target (<code>missiles:</code>); Smolder E all bolts (<code>bolts:</code>), R in the centre (<code>sweetspot:</code>); Samira W 2 slashes (<code>slashes:</code>), R 10 shots (<code>shots:</code>), Q as the blade slash (<code>melee:</code>); Zed Q <code>shurikens:</code> 1–3; Akali E and R with the recast (<code>recast:</code>); Yasuo E <code>stacks:</code> 0–4. Yasuo and Yone Q (and Yone W) cooldowns come from bonus attack speed; Yasuo and Yone crit chance is doubled. <code>perform()</code> and <code>fight()</code> use what actually happens instead: Snippy stacks from attacks, live shadows and Dark Spheres, Plasma, Headshot counts, Style, Gathering Storm, marks (Zed R, Yone E, Ezreal W) and missing health.</td></tr>
+        <tr><td>a.Q.damage(snips: 3)  a.R.damage(needles: 5)</td><td>Champion kits (champion audit): hits, recasts and empowered parts the tooltip gives in words. <code>.damage</code> is what perfect play lands, and the working says so: Gwen Q 5 snips in the centre (<code>snips:</code> 1–5, <code>center:</code>), R 9 needles (<code>needles:</code>); Viktor Q with Discharge (<code>discharge:</code>), R 6 storm ticks (<code>ticks:</code>); Dr. Mundo W 12 ticks + recast (<code>ticks:</code>, <code>recast:</code>), Q never below its minimum; Kai'Sa Q all missiles on one target (<code>missiles:</code>); Smolder E all bolts (<code>bolts:</code>), R in the centre (<code>sweetspot:</code>); Samira W 2 slashes (<code>slashes:</code>), R 10 shots (<code>shots:</code>), Q as the blade slash (<code>melee:</code>); Zed Q <code>shurikens:</code> 1–3; Akali E and R with the recast (<code>recast:</code>); Yasuo E <code>stacks:</code> 0–4. Yasuo and Yone Q (and Yone W) cooldowns come from bonus attack speed; Yasuo and Yone crit chance is doubled. <code>perform()</code> and <code>fight()</code> use what actually happens instead: Snippy stacks from attacks, live shadows and Dark Spheres, Plasma, Headshot counts, Style, Gathering Storm, marks (Zed R, Yone E, Ezreal W) and missing health. Zed R: untargetable and unable to act for 0.95 s from the cast (0.6 s delay + 0.35 s dash); the mark lands when the dash ends (not on an untargetable target) and pops 3 s later. <code>fight()</code> throws Zed's W at the target, mimics Q/E from the shadows and swaps to it. Syndra E stuns only through a pushed Dark Sphere (otherwise a 400-unit knockback); Zed W/E and Syndra Q/W have no cast time.</td></tr>
         <tr><td>a.Q.value("name", vs: t)  a.Q.name_of_formula</td><td>Any named formula or value of the ability (the Inspect tab lists them).</td></tr>
         <tr><td>a.W.heal  a.W.heal(target: x)</td><td>Heal amount with heal &amp; shield power, and what x receives. Targets the tooltip can't reach are an error.</td></tr>
         <tr><td>a.E.shield(target: x)</td><td>The same for shields.</td></tr>
@@ -339,6 +343,7 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
         <tr><td>a.Q.cd  a.Q.cdbase  a.Q.cost  a.Q.range  a.Q.rank  a.Q.name</td><td>Cooldown after haste; before haste; mana; cast range; rank; ability name.</td></tr>
         <tr><td>a.Q.speed  a.Q.width  a.Q.radius  a.Q.castTime  a.Q.delay  a.Q.kind  a.Q.reach  a.Q.delivery  a.Q.length  a.Q.origin</td><td>Physics: projectile speed, full width, area radius, cast time, appear delay, kind (line, area, cone, targeted, self), how far it can hit, where it comes from (skillshot, lobbed, placed, vector, remote, unit, self, cone; see <a href="#physics">Physics</a>), a vector's length, and a remote ability's distance from its object to the target.</td></tr>
         <tr><td>a.Q.arrival(distance: d)</td><td>Seconds until the ability lands at d units.</td></tr>
+        <tr><td>a.Q.reachTo(b)</td><td>The greatest centre-to-centre distance at which a.Q hits b (<a href="#reach-rule">the reach rule</a>): centred range for point-and-click spells, range + both radii for edge-range ones, reach + b's radius otherwise.</td></tr>
         <tr><td>a.E.ccDuration("root")  a.E.ccDuration("root", vs: t)</td><td>The crowd control's duration at the ability's rank; with <code>vs</code>, after t's tenacity (floor 0.3 s; airborne, suppression and drowsy are unaffected). 0 if the ability doesn't apply that type. The working says where the number comes from (game data value or the wiki).</td></tr>
         <tr><td>a.R.ccTypes  a.R.knockback  a.W.slowAmount</td><td>The crowd control types the ability applies in fights; its knockback or pull distance (Janna R knocks back <i>to</i> 875 units from her); its slow (0.8 = 80%).</td></tr>
         <tr><td>a.E.has(untargetable)</td><td>Tag check on this ability.</td></tr>
@@ -385,7 +390,7 @@ print(Annie(11).perform(c, vs: Dummy(hp: 3000)).damage);</pre>
       <ul>
         <li><b>Dodging</b>: <code>using: Flash</code>, <code>using: Ghost</code>, <code>using: Heal</code> (its speed), or combined with abilities: <code>using: {o.W, Flash}</code>. See <a href="#physics">Physics and dodging</a>.</li>
         <li><b>Combos</b>: <code>Combo c = {Flash, R, Ignite};</code>. Ignite adds its true damage (5 ticks, one every 1.056 s) and grievous wounds; Exhaust cuts the target's damage by 35% for 3 s; Heal and Barrier heal and shield the user. A summoner the champion didn't take is skipped; one on cooldown is waited for, like abilities.</li>
-        <li><b>Fights</b>: a champion with <code>.summoners</code> set uses Ignite and Exhaust as soon as it fights (Exhaust on the enemy with the most AD + AP), and Heal and Barrier below 30% health. Flash, Ghost and Cleanse don't change fight numbers.</li>
+        <li><b>Fights</b>: a champion with <code>.summoners</code> set uses Ignite and Exhaust as soon as the target is within cast range (Exhaust 650, Ignite 600, centre to centre; Exhaust on the enemy with the most AD + AP), and Heal and Barrier below 30% health. Flash, Ghost and Cleanse don't change fight numbers.</li>
       </ul>
     </section>
 
@@ -413,6 +418,31 @@ print(Annie(11).perform(c, vs: Dummy(hp: 3000)).damage);</pre>
         <tr><td>canKill(a, t, 5, healers: soraka)</td><td>Healers join t's side and only heal and shield.</td></tr>
         <tr><td>timeToKill(a, t, healers: …, fightBack: …, within: 60)</td><td>Seconds until t dies, or infinity if it survives <code>within</code> seconds.</td></tr>
       </tbody></table></div>
+    </section>
+
+    <section id="fights">
+      <h2>Fight sweeps</h2>
+      <p>One <code>fight()</code> is one cell, and its winner can flip when the start distance moves by 100 units or a role changes. <code>fights(…)</code> runs <code>fight()</code> over every start × level × role set and gives the share with an interval, so a claim can rest on the sweep instead of one cell. Example: <i>Fight sweeps</i> in the editor.</p>
+<pre>TeamComp engage(TeamComp t, int level) {   <span class="c">// a role set: gets each team at each level, returns it ready to fight</span>
+    for (Champion&amp; c : t) if (c.name == "Renekton" || c.name == "Jarvan IV" || c.name == "Rakan") c.role = "engage";
+    return t;
+}
+Fights s = fights(poke, red, 40, starts: range(0, 1200, 100), levels: {9, 13, 16}, roles: engage, bothSides: true);
+print(s);   <span class="c">// … 50-0-28 of 78, share 64.1% (95% CI 53.0%–73.9%), decided in 12.96s on average, 0 side-swap mismatches</span>
+print(s.byLevel(9).share, s.byLevel(16).share, s.byStart(400).wins);   <span class="c">// 0.77  0.54  0</span></pre>
+      <div class="tscroll"><table><tbody>
+        <tr><td>fights(a, b, 40)</td><td>fight(a, b, 40, start: s) for s = 0, 50, …, 1200 (25 fights) at the champions' own levels. Teams and seconds as in <code>fight</code>.</td></tr>
+        <tr><td>starts: range(0, 1200, 50)</td><td>Start distances (a number or a list). <code>range(from, to, step)</code> is a list from <code>from</code> to <code>to</code>, <b>both included</b> (step default 1).</td></tr>
+        <tr><td>levels: {9, 13, 16}</td><td>Every champion is set to each level in turn (default: as built).</td></tr>
+        <tr><td>roles: f  roles: {setA, setB}</td><td>Role sets: functions you write, <code>TeamComp f(TeamComp t)</code>, <code>f(TeamComp t, int level)</code> or <code>f(TeamComp t, int level, int team)</code> (team 1 or 2, whichever side it stands on). Each gets a copy of each team already at the level and returns the team to fight with (roles, rotations, ranks, items…). It runs once per level and team, not once per fight.</td></tr>
+        <tr><td>bothSides: true</td><td>Also runs every fight with the teams on swapped sides, counted from team 1's view: twice the fights, and <code>s.sideMismatches</code> counts the cells whose result changed. The simulation is side-symmetric, so it should be 0.</td></tr>
+        <tr><td>kite:  room:  formation:</td><td>Passed to every fight, as in <code>fight</code>.</td></tr>
+        <tr><td>s.wins  s.draws  s.losses  s.total</td><td>From team 1's side. A draw: neither team wiped within the seconds, or both in the same step.</td></tr>
+        <tr><td>s.share  s.low  s.high</td><td><b>share = (wins + draws / 2) / total</b>: a mirror is 0.5, and the shares of <code>fights(a, b)</code> and <code>fights(b, a)</code> add up to 1. <code>low</code>–<code>high</code> is the Wilson 95% score interval on the share. Fights are deterministic: the interval says how much the answer depends on where in the sweep you look, not luck.</td></tr>
+        <tr><td>s.meanTime  s.margin</td><td>Average end time of the decided fights (infinity if none); average of (team 1 alive − team 2 alive) at the end.</td></tr>
+        <tr><td>s.byStart(600)  s.byLevel(13)  s.byRoles(2)  s.bySide(2)</td><td>The same numbers for part of the sweep (another Fights value): one start, one level, one role set (counting from 1), the fights as given (1) or swapped (2).</td></tr>
+      </tbody></table></div>
+      <p>Printed, a sweep is one line; its detail (and the working of any <code>s.…</code> value) is a grid with one square per start for each role set, level and side order, so you can see where the result flips. At most 5,000 fights per sweep. The fights inside a sweep cost no <a href="#limits">steps</a> (only the role functions do, once per level and team); they count against the time limit, about 15–25 ms per 5-v-5 fight of 40 s.</p>
     </section>
 
     <section id="combo">
@@ -450,7 +480,8 @@ print(Akali(11).perform(c + AA, vs: Dummy(hp: 3000)).damage);</pre>
       <div class="tscroll"><table><tbody>
         <tr><td>x.combos</td><td>The names of x's library combos (the working lists each one's steps and when to use it).</td></tr>
         <tr><td>x.combo("name")</td><td>That combo as a Combo, for <code>perform</code>, <code>+</code> and <code>add</code>. Case and spaces don't matter.</td></tr>
-        <tr><td>E recast</td><td>A step marked as a recast (Akali E and R, Zed W, Lee Sin Q, Yone E…). Where the engine already counts the recast in the first cast (Akali E/R, Dr. Mundo W, Gwen R) or has a step for it (Yone E returns early), that's used; otherwise the recast adds no damage and the working says so.</td></tr>
+        <tr><td>E recast</td><td>A step marked as a recast (Akali E and R, Zed W, Lee Sin Q, Yone E…). Where the engine already counts the recast in the first cast (Akali E/R, Dr. Mundo W, Gwen R) or has a step for it (Yone E returns early), that's used. Riven Q (Q2, Q3: the third knocks back, radius 250), Riven R (the recast is Wind Slash; Blade of the Exile itself deals nothing), Ahri R (R2, R3, 1 s apart) and Camille Q (Q2, then the attack it empowers) play the recast as a real cast of the ability, with its own damage. Otherwise the recast adds no damage and the working says so.</td></tr>
+        <tr><td>Q3 openers</td><td>Library combos the guides open with a stacked Q3 (Yasuo Beyblade, Airblade, Keyblade, Delayed ult; Yone Q3 all-in, Flash Q3 ult) start with 2 Gathering Storm stacks (<code>start.stacks</code> in data/combos.json), unless you set <code>x.stacks</code> yourself. For your own combos set <code>x.stacks = 2</code> first.</td></tr>
         <tr><td>What's approximated</td><td>Animation cancels, ward hops, Flash positioning, walls and terrain, form swaps: the ability stays in the sequence, the positioning is dropped. Each combo's notes say what was approximated.</td></tr>
       </tbody></table></div>
       <p><b>Rounding.</b> The game shows whole numbers in floating combat text and on the dummy. Whether it rounds or truncates damage numbers is not documented: the wiki only says the health bar rounds <i>up</i> and the C panel rounds armor, MR, AD and AP to the nearest whole number (wiki “Health”). <code>floatingText</code> shows both until measurements settle it; the practice tests allow ±1 per displayed number.</p>
@@ -484,6 +515,7 @@ print(r.floatingText);</pre>
         <tr><td>min max abs floor ceil round sqrt pow</td><td>Maths.</td></tr>
         <tr><td>champions(Class?)  items()  runes()</td><td>Lists for loops.</td></tr>
         <tr><td>fight  canKill  timeToKill</td><td>See <a href="#fight">Fight</a>.</td></tr>
+        <tr><td>fights  range(0, 1200, 50)</td><td>See <a href="#fights">Fight sweeps</a>; <code>range(from, to, step)</code> is a list of numbers, both ends included.</td></tr>
         <tr><td>canDodge(b, a.Q, distance: d, using: b.E, reaction: 0.25)</td><td>See <a href="#physics">Physics and dodging</a>.</td></tr>
         <tr><td>Champion(Syndra, 11)  ItemSet(…)  TeamComp(…)</td><td>Constructors.</td></tr>
       </tbody></table></div>
@@ -531,7 +563,7 @@ prove beats(Fizz, Syndra);</pre>
         <tr><td>placed</td><td>Appears at a chosen point within range (Syndra Q, Xerath W, Karthus Q, Veigar W). Distance doesn't matter.</td><td>cast + delay</td><td>range + radius</td></tr>
         <tr><td>vector</td><td>The caster picks a start point anywhere within range, then it runs its length in a chosen direction (Viktor E, Rumble R). Aimed perfectly the start sits on the target.</td><td>cast + delay + (d − range, if beyond range) ÷ speed</td><td>range + length</td></tr>
         <tr><td>remote</td><td>Comes from another object: Orianna's ball, Azir's soldiers, Ornn's elemental, Xayah's feathers. The object starts on the target (perfect play) unless you say otherwise with <code>setPhysics(origin: units)</code>.</td><td>cast + origin ÷ speed + delay</td><td>the object's range + radius</td></tr>
-        <tr><td>unit</td><td>Point-and-click, including homing bolts and empowered attacks.</td><td>cast + d ÷ speed</td><td>range</td></tr>
+        <tr><td>unit</td><td>Point-and-click, including homing bolts and empowered attacks.</td><td>cast + d ÷ speed</td><td>range, centre to centre (see <a href="#reach-rule">the reach rule</a>)</td></tr>
         <tr><td>self</td><td>Centred on the caster (Amumu R, Alistar Q).</td><td>cast (+ d ÷ speed if it expands)</td><td>radius</td></tr>
         <tr><td>cone</td><td>A cone from the caster.</td><td>cast + d ÷ speed</td><td>cone length</td></tr>
       </tbody></table></div>
@@ -539,7 +571,13 @@ prove beats(Fizz, Syndra);</pre>
         <li><b>Arrival time</b> (<code>a.Q.arrival(distance: d)</code>) is measured from the start of the cast, by the delivery's formula above.</li>
         <li><b>Time to respond</b> = arrival time − the moment it becomes visible − reaction time (default 0, perfect play). It becomes visible when the cast ends (the missile or ground marker appears then; during the cast time the target point can't be seen), unless its data says it shows later (Rumble R: nothing is on the ground until the first rockets land). So Syndra Q gives 0.6 s to respond at any distance.</li>
         <li><b>Hitbox</b>: the defender's gameplay radius (<code>b.hitbox</code>: 65 for most champions, 80 for large ones, 55 for small ones). Test a grown champion with <code>hitbox: 100</code>.</li>
-        <li><b>Out of reach</b>: beyond the reach above plus the defender's hitbox, the defender is safe standing still.</li>
+        <li id="reach-rule"><b>Out of reach — the reach rule</b> (one rule for <code>canDodge</code>, <code>fight()</code> and combos; <code>a.Q.reachTo(b)</code> prints it): the greatest centre-to-centre distance at which something hits b. From the wiki's <a href="https://wiki.leagueoflegends.com/en-us/Range">Range</a> page (Calculations, Targeted abilities), each ability page's range icon (centred <i>cr</i> or edge <i>er</i>), and the game files' <code>castRangeUseBoundingBoxes</code> flag on the spell record — the three agree on every point-and-click damage ability but Twitch R (whose bolts are his attacks) and Bel'Veth R (a Void Coral, not a champion):
+          <ul><li><b>Basic attacks</b>: edge range, always: attack range + the attacker's radius + the target's. Annie (radius 55) attacks Syndra (65) from 625 + 55 + 65 = 745.</li>
+          <li><b>Point-and-click spells</b>: centred range: the cast range, whatever either champion's size. Annie Q (625) reaches Syndra at 625 but not at 626.</li>
+          <li><b>…except edge-range spells</b> (<code>castRangeUseBoundingBoxes</code>: Tristana E/R, Vayne E, Viktor Q, Ryze W/E, Anivia E, Lucian Q, Jhin Q, Quinn E, Poppy E, Senna Q, Zilean E, Janna W, Evelynn E, Singed E, Smolder Q, Cho'Gath R, Nunu Q, Rek'Sai E, Elise Q, Jayce E, Miss Fortune Q, Bel'Veth R): range + both radii. The flag also sits on two self-centred searches (Kennen W, Kai'Sa Q); what it means there isn't verified (the wiki gives Kennen W 775 centred, "pending for test"), so they stay centred. Vayne E reaches Syndra at 550 + 65 + 65 = 680.</li>
+          <li><b>Everything else</b> (skillshots, areas, cones): centre to edge: its reach (<code>.reach</code>) + the target's radius.</li>
+          <li>A point-and-click ability without a cast range of its own (an empowered attack) uses the attack reach.</li></ul>
+          Beyond that distance the defender is safe standing still.</li>
         <li><b>Walking</b>: the defender must move half the width (lines), the radius (areas) or the cone's half-width at that distance, plus their hitbox, before it lands. Move speed includes boots and other items, runes and League's soft caps (<code>b.ms</code>). For an area centred on the caster, they walk out of it instead. The line prints the move speed that would be needed.</li>
         <li><b>Point-and-click</b> abilities can't be walked out of.</li>
         <li><b>using:</b> an ability that makes the defender untargetable or invulnerable dodges anything if its cast time is shorter than the time to respond. A dash or blink adds its distance (after its cast and travel time), then the defender keeps walking. A move-speed boost (Orianna W, Hecarim E, Singed R, Ghost, Heal, …) starts after its cast: the defender stands still while casting, then walks at the boosted speed (with its decay, ramp or field, and League's soft caps above 415). Perfect play: the defender uses whatever moves it farthest, so a boost whose cast costs more than it gains is skipped and plain walking counts.</li>
@@ -557,8 +595,8 @@ prove beats(Fizz, Syndra);</pre>
         <li>Each champion, when free, first uses a heal or shield if an ally needs one (healing ultimates are saved for allies below 40% health), then peels (below), then the first ability in its rotation that is off cooldown and in reach, otherwise an auto attack if the target is in attack range, otherwise it moves. Casting locks the champion for 0.25 seconds. See <a href="#cc">Crowd control and positions</a>.</li>
         <li>Damage goes through amplifiers, resistances after penetration, Bone Plating and shields, then health. Lifesteal (attacks), omnivamp and Conqueror heal the attacker; grievous wounds cut healing received by 40%.</li>
         <li>Heals go to whoever the healer's policy picks; team heals reach everyone; Moonstone chains 30% to a second ally.</li>
-        <li>Zhonya's (below 30% health) puts a champion in 2.5 seconds of stasis; Guardian Angel revives once after 4 seconds.</li>
-        <li>Summoner spells (only for champions with <code>.summoners</code> set, or as combo steps): Ignite and Exhaust on first contact, Heal and Barrier below 30% health.</li>
+        <li>Zhonya's (below 30% health, or when <code>x.stasis</code> says) puts a champion in 2.5 seconds of stasis; Guardian Angel revives once after 4 seconds.</li>
+        <li>Summoner spells (only for champions with <code>.summoners</code> set, or as combo steps): Ignite and Exhaust once the target is within cast range (650 / 600), Heal and Barrier below 30% health.</li>
         <li>The fight ends when one side has nobody left, or at the time limit.</li>
       </ul>
       <div class="note">Positions are on one line; every ability in reach hits (perfect aim; no dodging inside fights), abilities land when cast (dashes when they arrive), mana is ignored, and special mechanics beyond an ability's tooltip formula aren't simulated. Use <code>canDodge</code> and your own rules to reason about the rest.</div>
@@ -569,7 +607,7 @@ prove beats(Fizz, Syndra);</pre>
       <h3>Positions</h3>
       <ul>
         <li>One line, centred on 0. Side 1's front is at −start/2 and faces +; side 2's front is at +start/2 and faces − (<code>start:</code> default 0). Each champion stands max(0, attack range − 175) behind its front, so ranged champions start at their attack range from where the enemy front will be (<code>formation: false</code>: everyone on the front line).</li>
-        <li>Reach (wiki "Range"): basic attacks use edge range (attack range + both gameplay radii); point-and-click abilities centred range; other abilities their reach (<code>.reach</code>) + the target's radius. Placed and lobbed areas hit every enemy within their radius of the target; self-centred areas every enemy within the radius of the caster; lines and cones every enemy within reach (on one line everything is in the path).</li>
+        <li>Reach (wiki "Range"): basic attacks use edge range (attack range + both gameplay radii); point-and-click abilities centred range (edge range, + both radii, for the <a href="#reach-rule">castRangeUseBoundingBoxes spells</a>); other abilities their reach (<code>.reach</code>) + the target's radius. Placed and lobbed areas hit every enemy within their radius of the target; self-centred areas every enemy within the radius of the caster; lines and cones every enemy within reach (on one line everything is in the path).</li>
         <li>Walking uses the current move speed: (base + flat) × (1 + % bonuses) × (1 − the strongest slow × (1 − slow resist)), then the soft caps (wiki "Movement speed": only the strongest slow counts).</li>
         <li>Dashes and blinks (abilities tagged dash or blink) use the dash range and speed from the game data (<code>dashInfo</code>; 1200 units/s when the data has none). A dash ends touching its target or at its range; its hits land when it arrives. A blink moves at once.</li>
         <li>Knockbacks move the target away from the caster by the data distance over the airborne time (Janna R: <i>to</i> 875 units from her; Gragas R 900; Alistar W 700; Vayne E 475); pulls move it toward the caster. A placed knockback (Gragas R) is aimed away from the caster's team, or toward it for role <code>"engage"</code>. Knockbacks whose distance neither source gives (Gragas E, Draven E, Ornn Q) only make the target airborne.</li>
