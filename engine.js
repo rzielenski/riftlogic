@@ -22,6 +22,9 @@ KB = {...KB, champs:{...KB.champs, [DUMMY_ID]:{name:"Target Dummy", classes:[], 
   stats:{range:175, ms:370, melee:1, attack:0, defense:0, magic:0, difficulty:0, hp:1000, armor:0, mr:0, ad:0}}}};
 CALC = {...CALC, champs:{...CALC.champs, [DUMMY_ID]:{base:{hp:1000,hpg:0,mp:0,mpg:0,ad:0,adg:0,armor:0,armorg:0,mr:0,mrg:0,as:0.658,asg:0,asr:0.658,ms:370,range:175,critmult:2,adaptive:"physical"}}}};
 const dummyKey = c => c.dummy ? `{${c.dummy.hp},${c.dummy.armor},${c.dummy.mr}}` : "";
+/* Combo library: data/combos.json (sequences from champion guides, with source links), put into KB.combos by src/kb_export.py.
+   KB.combos = {ChampId: [{name, steps, recasts?, use, notes, src}]}; x.combos lists the names, x.combo("name") gives the Combo. */
+const COMBO_LIB = KB.combos || {};
 /* practice-tool gameplay radius: 65, up to +100% size from bonus health, capped at 10,000 health = 130 (wiki). Linear growth is an assumption. */
 const dummyRadius = c => 65*(1 + Math.min(1, Math.max(0, c.dummy.hp-1000)/9000));
 const fmt = x => typeof x!=="number" ? String(x) : !Number.isFinite(x) ? "n/a" : Math.abs(x) >= 100 ? (Math.round(x*10)/10).toString() : (Math.round(x*100)/100).toString();
@@ -782,7 +785,9 @@ const MIKAEL_CLEANSES = t => ["stun","root","silence","polymorph","charm","fear"
 function ccList(c, slot, rank){
   const S=CALC.champs[c.champ][slot]; const out=[], skipped=[];
   const ov = WORLD.champ(c.champ).ccOver && WORLD.champ(c.champ).ccOver[slot];
-  const list = ov ? ov.v : (S && S.cc) || [];
+  // champion kits (audit): crowd control the data export misses or gets wrong, from the wiki (KIT[champ].cc[slot], same format)
+  const kc = !ov && KIT[c.champ] && KIT[c.champ].cc && KIT[c.champ].cc[slot];
+  const list = ov ? ov.v : kc ? (typeof kc==="function" ? kc(S, rank) : kc) : (S && S.cc) || [];
   const at = v => v==null ? null : Array.isArray(v) ? (v[rank] ?? v[v.length-1]) : v;
   for (const e of list){
     if (e.cond){ skipped.push(`${e.type} (only when it hits terrain)`); continue; }
@@ -829,7 +834,7 @@ function simulate(sidesIn, T, simNotes, fo){
     const st=u.st, amp = a.slot==="R" ? 1+(st.ramp && a.aoe ? 0.08 : st.ramp) : 1, hamp = a.slot==="R" ? 1+st.ramp : 1, S=a.S;
     const kp=kitSimParts(u, a, u.flags);   // champion kits: parts with live options; a.later = parts dealt by CHAMP_MECH later
     if (kp && a.later) a.later=a.later.map(p=>({...p, v:p.v*amp, per:p.per!=null?p.per*amp:undefined}));
-    a.parts = kp ? kp.map(p=>({v:p.v*amp, type:p.type, pct:!!p.pctOf, pctOf:p.pctOf, floor:p.floor, ampMissing:p.ampMissing, ampCap:p.ampCap}))
+    a.parts = kp ? kp.map(p=>({v:p.v*amp, type:p.type, pct:!!p.pctOf, pctOf:p.pctOf, floor:p.floor, ampMissing:p.ampMissing, ampCap:p.ampCap, ampBelow:p.ampBelow}))
                  : a.keys.map(k=>{ const r=partRaw(S,k,a.rank,st,u.flags); return {v:r.v*amp, type:a.types[k], pct:!!r.pctOf, pctOf:r.pctOf}; });
     if (S.heal) a.heal=evalCalc({S,rank:a.rank,st,flags:u.flags},S.heal).v*hamp;
     if (S.shield) a.shield=evalCalc({S,rank:a.rank,st,flags:u.flags},S.shield).v*hamp;
@@ -911,6 +916,7 @@ function simulate(sidesIn, T, simNotes, fo){
   const partDmg = (p, x) => { const hp = x.hpS ?? x.hp; let v = !p.pct ? p.v : p.v*(p.pctOf==="current" ? Math.max(0,hp) : p.pctOf==="missing" ? Math.max(0,x.max-hp) : x.max);
     if (p.floor && v<p.floor) v=p.floor;                                                              // champion kits: Dr. Mundo Q minimum
     if (p.ampMissing) v*=1+Math.min(p.ampCap??1, p.ampMissing*Math.max(0,1-x.hp/x.max));             // Akali R recast, Samira passive
+    if (p.ampBelow && hp < p.ampBelow.pct*x.max) v*=1+p.ampBelow.amp;                                   // Qiyana Q (Terrain): +60% below 50% health
     return v; };
   const alliesOf = (u) => U.filter(x=>x.alive && x.side===u.side);
   const pct = x => (x.hpS ?? x.hp)/x.max;     // hpS: health at the start of the tick (decisions are simultaneous)
@@ -1549,6 +1555,7 @@ function simulate(sidesIn, T, simNotes, fo){
     if (am && am.replace) deal(u,tgt,am.replace.v,am.replace.type,t,"aa",am.replace.what); else deal(u,tgt,u.st.ad*mult,"physical",t,"aa",what);
     if (am && am.bonus) for (const b of am.bonus) deal(u,tgt,b.v,b.type,t,"aa",b.what);
     if (tgt.alive) kitBrushBolts(u, tgt, t);
+    if (tgt.alive) kitSoulMark(u, tgt, t);   // Kalista W passive: her and her Oathsworn's attacks
     if (trueX>0) deal(u,tgt,trueX,"true",t,"proc","Fiendhunter Bolts");
     if (what==="attack, Sundered Sky crit"){ const hv=idv("sunderedsky","HealBaseADRatio",0.9)*u.st.basead*(u.ranged?idv("sunderedsky","RangedHealMod",0.5):1)+idv("sunderedsky","MissingHealthHeal",0.04)*(u.max-u.hp);
       const room=u.max-u.hp, full=hv*(1+u.st.healpower)*(1+u.st.healIn)*(t<u.grievUntil?1-u.grievBy:1); heal(u,u,hv,t,"Sundered Sky");
@@ -1696,7 +1703,18 @@ function simulate(sidesIn, T, simNotes, fo){
       case "hextechgunblade": { if (!tgt) return false; go(cdOf(60)); deal(u,tgt,itemCalc(u.st,k,"activedamage"),"magic",t,"proc",I.name); onHit(u,tgt,t,"item"); return true; }
       case "hextechrocketbelt": { if (!tgt) return false; go(cdOf(50)); u.mobileUntil=t+4; for (const x of foes) deal(u,x,itemCalc(u.st,k,"fireboltdamage"),"magic",t,"proc",I.name); return true; }
       case "zhonyashourglass": case "seekersarmguard": { if (k==="seekersarmguard" && u.seekerUsed) return false; if (k==="seekersarmguard") u.seekerUsed=true; go(k==="seekersarmguard"?1e9:cdOf(120)); u.stasisUntil=t+idv(k,"Duration",2.5); return true; }
-      case "redemption": { go(cdOf(90)); const h=itemCalc(u.st,k,"healamount"); events.push({at:t+2.5, fn:(tt)=>{ for (const x of alliesOf(u)) heal(u,x,h,tt,"Redemption"); for (const x of enemiesOf(u,tt)) deal(u,x,idv("redemption","DamageToChampions",0.1)*x.max,"true",tt,"proc","Redemption"); }}); return true; }
+      case "redemption": { go(cdOf(90)); const h=itemCalc(u.st,k,"healamount"), R=idv("redemption","AOESize",550);
+        // wiki Redemption: a 550-radius beam at the target location, 2.5 s later: heals allies and deals 10% max health true damage to
+        // enemy champions inside it. Centre: the unit position (at cast) covering the most hurt allies + enemies (perfect aim), then
+        // only units within 550 (+ hitbox) of it when it lands are affected.
+        const inR = (x, cx) => Math.abs((x.xS ?? x.x)-cx) <= R+RAD(x), cands=U.filter(x=>x.alive).map(x=>x.xS ?? x.x);
+        const score = cx => alliesOf(u).filter(x=>(x.hpS ?? x.hp)<x.max && inR(x,cx)).length + enemiesOf(u,t).filter(x=>inR(x,cx)).length;
+        // ties: the spot nearest the caster, then the one further toward the enemy (mirror-symmetric, not U order)
+        const better = (c, b) => { const sc=score(c), sb=score(b), ux=u.xS ?? u.x; if (sc!==sb) return sc>sb; const dc=Math.abs(c-ux), db=Math.abs(b-ux);
+          if (Math.abs(dc-db)>1e-6) return dc<db; return face(u)*(c-ux) > face(u)*(b-ux); };
+        const cx = cands.length ? cands.reduce((b,c)=>better(c,b)?c:b) : (u.xS ?? u.x);
+        simNotes.add(`${u.name}: Redemption lands 2.5 s after the cast on a 550-radius area (wiki), aimed at the position covering the most hurt allies and enemies; only units inside it then are healed or damaged`);
+        events.push({at:t+2.5, fn:(tt)=>{ for (const x of alliesOf(u)) if (inR(x,cx)) heal(u,x,h,tt,"Redemption"); for (const x of enemiesOf(u,tt)) if (inR(x,cx)) deal(u,x,idv("redemption","DamageToChampions",0.1)*x.max,"true",tt,"proc","Redemption"); }}); return true; }
       case "locketoftheironsolari": { go(cdOf(90)); const v=itemCalc(u.st,k,"shieldamount"); for (const x of alliesOf(u)) shield(u,x,v,idv(k,"ShieldDuration",2.5),t,"Locket"); return true; }
       case "mikaelsblessing": { const x=forced ? (alliesOf(u).filter(y=>y!==u).sort((a,b)=>pct(a)-pct(b))[0]||u) : tgt; if (!x) return false; go(cdOf(120)); heal(u,x,itemCalc(u.st,k,"amounttoheal"),t,"Mikael's Blessing");
         const gone=x.ccs.filter(c=>c.until>t && MIKAEL_CLEANSES(c.type)).map(c=>c.type); if (gone.length){ x.ccs=x.ccs.filter(c=>!MIKAEL_CLEANSES(c.type)); x.slows=[]; say(t, `  Mikael's Blessing cleanses ${[...new Set(gone)].join(", ")} from ${x.name}`); } return true; }
@@ -1708,11 +1726,51 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   function order(u){ const r=u.rotation ? u.rotation.split("").filter(s=>"QWER".includes(s)) : ["R","Q","E","W"]; return r.filter(s=>u.ab[s]); }
   /* ---- champion audit helpers (CHAMP_MECH) ---- */
-  const kitOathsworn = u => alliesOf(u).find(x=>x!==u && x.alive) || null;
+  // Kalista's Oathsworn (bound for the whole game with the Black Spear): kalista.oathsworn = ally, else the ally with the Support
+  // class (kb classes), else the ally with the least AD + AP; chosen once from the whole team, so a dead Oathsworn isn't replaced
+  function kitOathsworn(u){ const K=u.kit;
+    if (K.oath===undefined){ const team=U.filter(x=>x.side===u.side && x!==u), want=u.c.opts && u.c.opts.oathsworn;
+      if (want) K.oath=team.find(x=>sameChamp(x,want)) || null;
+      else { const sup=team.filter(x=>WORLD.champ(x.c.champ).classes.includes("Support")), pool=sup.length ? sup : team;
+        K.oath=pool.slice().sort((a,b)=>(a.st.ad+a.st.ap)-(b.st.ad+b.st.ap))[0] || null; }
+      if (K.oath) simNotes.add(`${u.name}: the Oathsworn is ${K.oath.name} (${want ? "set with .oathsworn" : "default: the Support-class ally, else the ally with the least AD + AP; set kalista.oathsworn = ally"})`);
+      else if (want) simNotes.add(`${u.name}: the Oathsworn set with .oathsworn is not in her team`); }
+    return K.oath && K.oath.alive ? K.oath : null; }
+  // Kalista W passive, Soul-Marked (wiki Sentinel): while tethered, Kalista's and the Oathsworn's attacks (and Pierce) mark the
+  // target for 4 s; when both marks are on one enemy they are consumed for 10–18% of its maximum health as magic damage (dealt by
+  // Kalista), at most once per target every 10 s (PerTargetCooldown). Assumed tethered (within range) all fight.
+  function kitSoulMark(u, x, t){ if (!x || !x.alive) return;
+    for (const k of U){ if (k.side!==u.side || !k.alive || k.c.champ!=="Kalista" || !k.abAll.W) continue;
+      const mine = k===u; if (!mine && kitOathsworn(k)!==u) continue;
+      const A=k.abAll.W, M=(x.soulMark ||= {}), m=(M[k.name] ||= {k:-9, o:-9, cd:-1}), dur=dvOf(A.S,"markduration",A.rank)||4;
+      if (t < m.cd) continue;
+      if (mine) m.k=t; else m.o=t;
+      if (t-m.k<=dur && t-m.o<=dur){ m.k=m.o=-9; m.cd=t+(dvOf(A.S,"pertargetcooldown",A.rank)||10);
+        deal(k,x,(dvOf(A.S,"maxhealthdamage",A.rank)||0)*x.max,"magic",t,"proc","Soul-Marked");
+        simNotes.add(`${k.name} W: Soul-Marked — when Kalista and her Oathsworn both hit the same enemy within 4 s, ${fmt((dvOf(A.S,"maxhealthdamage",A.rank)||0)*100)}% of its maximum health as magic damage, once per target every 10 s (tether assumed); the Sentinel itself deals no damage and isn't cast`); } } }
   // Brushmaker: Ivern's brush empowers his and his allies' attacks (wiki Ivern_W; allies need Ivern within 1000, assumed)
   function kitBrushBolts(u, tgt, t){ for (const iv of U) if (iv.side===u.side && iv.alive && iv.c.champ==="Ivern" && iv.kit.brushUntil>t){
       const A=iv.abAll.W; if (!A) continue; const v=evalCalc({S:A.S, rank:A.rank, st:iv.st, flags:iv.flags}, iv===u ? "totaldamage" : "totalallydamage").v;
       deal(u,tgt,v,"magic",t,"proc",iv===u?"Brushmaker":"Brushmaker (ally)"); } }
+  // Ivern R, Daisy (wiki Ivern Pets): attack damage 70/100/130 (+15% AP) physical, attack speed 0.75 × (1 + 30/45/60%) =
+  // 0.975/1.0875/1.2; she lands 350 units from Ivern, so her first attack is assumed 0.5 s after the cast. Daisy Smash!: her 3rd
+  // consecutive attack on one target (2 stacks) is instead a shockwave in a line (800 × 200): magic damage and stun + knock-up 1 s,
+  // then 3 s before the next. Assumptions: she attacks Ivern's target (the nearest enemy when it dies), isn't targeted by enemies
+  // (2400+ health at 13, 25% less area damage; she can be killed live, so this is an upper bound), and leaves when Ivern dies.
+  function kitDaisy(u, a, tgt, t){ const S=a.S, r=a.rank, ev=k=>evalCalc({S, rank:r, st:u.st, flags:u.flags}, k).v;
+    const ad=ev("totaldaisyad"), as=0.75*(1+(dvOf(S,"daisyas",r)||45)/100), until=t+(dvOf(S,"daisyduration",r)||45), D={n:0, on:null, smashAt:-9};
+    simNotes.add(`${u.name} R: Daisy attacks ${u.name}'s target for up to 45 s (${fmt(ad)} physical, ${fmt(as)} attacks/s, Brushmaker bolts); every third attack on one target is Daisy Smash! (${fmt(ev("totalshockwavedamage"))} magic, stun + knock-up 1 s, 3 s lockout). Not targeted by enemies in fight() (upper bound); she leaves when Ivern dies`);
+    say(t, `  ${u.name}: Daisy! lands beside ${u.name}`);
+    const hit=(tt)=>{ if (!u.alive || tt>until) return; const foes=enemiesOf(u,tt); if (!foes.length) return;
+      let x = D.on && D.on.alive && foes.includes(D.on) ? D.on : (tgt && tgt.alive && foes.includes(tgt) ? tgt : foes.slice().sort((p,q)=>gap(p,u)-gap(q,u))[0]);
+      if (x!==D.on){ D.on=x; D.n=0; }
+      const prev=u.curStep; u.curStep=null;
+      if (D.n>=2 && tt>=D.smashAt){ D.n=0; D.smashAt=tt+(dvOf(S,"shockwavecd",r)||3); const cx=x.xS ?? x.x, v=ev("totalshockwavedamage");
+        for (const y of foes) if (y===x || Math.abs((y.xS ?? y.x)-cx) <= 100+RAD(y)){ deal(u,y,v,"magic",tt,"ability","Daisy Smash!"); applyCC(u, {slot:"R", S, p:{}, cc:[{type:"stun", dur:1}, {type:"knockup", dur:1}], hard:true}, y, tt, 0); } }
+      else { deal(u,x,ad,"physical",tt,"proc","Daisy"); if (x.alive) kitBrushBolts(u, x, tt); D.n=Math.min(2, D.n+1); }
+      u.curStep=prev;
+      events.push({at:tt+1/as, fn:hit}); };
+    events.push({at:t+0.5, fn:hit}); }
   // Yasuo / Yone Steel Tempest / Mortal Steel: a hit gives a Gathering Storm stack (6 s, max 2); the cast at 2 stacks is the
   // empowered third cast, the only one that knocks up (wiki). onCast: before the hit (choose the crowd control); after: stack.
   function kitGatheringStorm(u, a, t, after){ const K=u.kit, G=K.storm && K.storm.until>t ? K.storm : {n:0};
@@ -1757,7 +1815,10 @@ function simulate(sidesIn, T, simNotes, fo){
     } },
     /* ---- range-disengage debate fixes (2026-09-23) ---- */
     Ivern: {
-      onCast(u, a, tgt, t){ if (a.slot!=="W") return; u.kit.brushUntil=t+(dvOf(a.S,"maxbrushduration",a.rank)||45);
+      // Ivern himself never dashes on Q or R (wiki): Q1 is a root skillshot (the optional recast leaps to the rooted enemy, not
+      // modelled), R summons Daisy; the generic "dash" tags come from the tooltips' text about the recast and Daisy
+      init(u){ for (const s of ["Q","R"]){ const A=u.abAll[s]; if (A){ A.dash=false; A.blink=false; } } },
+      onCast(u, a, tgt, t){ if (a.slot==="R") return kitDaisy(u, a, tgt, t); if (a.slot!=="W") return; u.kit.brushUntil=t+(dvOf(a.S,"maxbrushduration",a.rank)||45);
         simNotes.add(`${u.name} W: grows a brush where the fight is; Ivern and his allies are assumed to fight inside it for its 45 s, so their attacks fire Brushmaker bolts (Ivern ${fmt(evalCalc({S:a.S,rank:a.rank,st:u.st,flags:u.flags},"totaldamage").v)}, allies ${fmt(evalCalc({S:a.S,rank:a.rank,st:u.st,flags:u.flags},"totalallydamage").v)} magic); fight() recasts it only every 20 s (one charge)`); },
     },
     Annie: {
@@ -1779,21 +1840,25 @@ function simulate(sidesIn, T, simNotes, fo){
         simNotes.add(`${u.name} R: Cataclysm's terrain ring (wiki: 350 creation radius, pathing inside 255 of the centre, 3.5 s) keeps everyone caught inside from walking or dashing out (1-D: within 255 of the target's spot); blinks and Flash still cross it; the recast that breaks the walls is not used`); },
     },
     Kalista: {
-      castable:(u, a, tgt, t)=>a.slot!=="R" || kitOathsworn(u) ? true : "Fate's Call needs an Oathsworn ally",
+      castable:(u, a, tgt, t)=>a.slot==="W" ? "the Sentinel deals no damage (Soul-Marked is passive)" : a.slot!=="R" || kitOathsworn(u) ? true : "Fate's Call needs an Oathsworn ally",
+      step(u, step, tgt, t, log){ if (step!=="W") return false; log({skipped:"the Sentinel deals no damage; Soul-Marked is her passive with the Oathsworn"}); return "logged"; },
       init(u){ const R=u.abAll.R; if (R){ R.dash=null; R.blink=false; R.knock=null; R.hard=false; } },   // Kalista doesn't move or knock anyone herself: the Oathsworn does
       onCast(u, a, tgt, t){ if (a.slot!=="R") return; a.ccAll ??= a.cc||[]; a.cc=[];   // the crowd control is the Oathsworn's landing, below
         const o=kitOathsworn(u); if (!o) return; const dur=dvOf(a.S,"knockupduration",a.rank)||1;
         o.stasisUntil=Math.max(o.stasisUntil, t+1); displace(o, u.x, 1e-3, t, true);   /* lands at the start of the next tick */   // held and pulled to Kalista over 1 s: untargetable and invulnerable (wiki)
         say(t, `  ${u.name}: Fate's Call pulls ${o.name} in`);
-        events.push({at:t+1, fn:(tt)=>{ if (!o.alive) return; o.x=u.x; const foes=enemiesOf(u,tt); if (!foes.length) return;
-          const e=foes.slice().sort((p,q)=>gap(p,u)-gap(q,u))[0], dist=gap(e,u);   // start-of-tick positions (order-independent) if (dist>1200+RAD(e)) return;
+        // positions change only through displace() (applied at the start of the next tick), never directly inside an event: another
+        // side's event in the same tick must see the same positions (mirror symmetry; tests/fight_symmetry.rl)
+        events.push({at:t+1, fn:(tt)=>{ if (!o.alive) return; displace(o, u.x, 1e-3, tt, true); const foes=enemiesOf(u,tt); if (!foes.length) return;
+          const e=foes.slice().sort((p,q)=>gap(p,u)-gap(q,u))[0], dist=gap(e,u);
+          if (dist>1200+RAD(e)) return;   // wiki: the Oathsworn dashes only toward an enemy within 1200
           o.stasisUntil=Math.max(o.stasisUntil, tt+dist/1500);   // silenced and unable to act until the dash lands (wiki); modelled as held
-          events.push({at:tt+dist/1500, fn:(t2)=>{ if (!o.alive || !e.alive) return; const ex=e.xS ?? e.x, dir=Math.sign(ex-o.x)||1;
-            o.x = ex - dir*Math.min(dist, (CALC.champs[o.c.champ].base.range||125)+RAD(o)+RAD(e));
+          events.push({at:tt+dist/1500, fn:(t2)=>{ if (!o.alive || !e.alive) return; const ex=e.x, dir=Math.sign(ex-u.x)||1;
+            displace(o, ex - dir*Math.min(dist, (CALC.champs[o.c.champ].base.range||125)+RAD(o)+RAD(e)), 1e-3, t2, true);
             say(t2, `  ${o.name} lands from Fate's Call`);
             for (const x of enemiesOf(u,t2)) if (gap(x,e)<=300) applyCC(o, {slot:"R", S:a.S, p:{}, cc:[{type:"knockup", dur}], hard:true}, x, t2, 0); }}); }});
-        simNotes.add(`${u.name} R: the Oathsworn (the first other ally in her team) is held 1 s (untargetable), then dashes at 1500/s to the nearest enemy within 1200, lands at its own attack range and knocks up enemies within 300 of that enemy for ${fmt(dur)}s (wiki: 1/1.5/2 s; landing radius not given, 300 assumed)`); },
-      afterCast(u, a, tgt, t){ if (a.slot==="R" && a.ccAll) a.cc=a.ccAll; },
+        simNotes.add(`${u.name} R: the Oathsworn (${o.name}) is held 1 s (untargetable), then dashes at 1500/s to the nearest enemy within 1200, lands at its own attack range and knocks up enemies within 300 of that enemy for ${fmt(dur)}s (wiki: 1/1.5/2 s; landing radius not given, 300 assumed)`); },
+      afterCast(u, a, tgt, t){ if (a.slot==="R" && a.ccAll) a.cc=a.ccAll; if (a.slot==="Q" && tgt) kitSoulMark(u, tgt, t); },   // Pierce applies Kalista's Soul-Mark
     },
     /* ---- champion audit (backlog 10): own-ability mechanics in fights; static numbers live in KIT ---- */
     Syndra: {
@@ -1937,10 +2002,12 @@ function simulate(sidesIn, T, simNotes, fo){
       onDealt(att, tgt, v, pre, type, t){ const M=tgt.zedMark; if (M && M.u===att && t<M.until && (type==="physical"||type==="magic")) M.stored+=pre; },
     },
     Akali: {
-      afterCast(u, a, tgt, t){ if (!tgt || !a.parts.length) return; const P=u.kit.akaliP; if (P && P.until>t) return;
-        u.kit.akaliP={until:t+4}; simNotes.add(`${u.name}: an ability hit creates the ring; the next attack is Swinging Kama (assumed: she steps out of the ring at once)`);
+      afterCast(u, a, tgt, t){ if (!tgt || !a.parts.length) return;
+        // the R recast is scheduled whether or not a ring is already up (it used to be lost when R followed another ability)
         if (a.slot==="R"){ const r=(a.later||[]).find(p=>p.later==="recast"); if (r) kitLater(u, tgt, t+(dvOf(a.S,"cooldownbetweencasts",a.rank)||2.5), r, "R recast");
-          simNotes.add(`${u.name} R: recast after the 2.5 s lockout, its damage raised by the target's missing health then`); } },
+          simNotes.add(`${u.name} R: recast after the 2.5 s lockout, its damage raised by the target's missing health then`); }
+        const P=u.kit.akaliP; if (P && P.until>t) return;
+        u.kit.akaliP={until:t+4}; simNotes.add(`${u.name}: an ability hit creates the ring; the next attack is Swinging Kama (assumed: she steps out of the ring at once)`); },
       attack(u, tgt, t){ const P=u.kit.akaliP; if (!P || !(P.until>t)) return null; u.kit.akaliP={until:t+0.01, used:true};
         const v=evalCalc({S:CALC.champs.Akali.P, rank:1, st:u.st, flags:u.flags},"damage").v; return {bonus:[{v, type:"magic", what:"Swinging Kama"}]}; },
     },
@@ -1977,6 +2044,12 @@ function simulate(sidesIn, T, simNotes, fo){
       if (!has(u,k)){ log({skipped:`${step} is not in the build`}); u.si++; return; }
       if (!ready(u,"active:"+k,t)){ if (u.scriptWait) return; log({skipped:"on cooldown"}); u.si++; return; }
       useActive(u,k,tgt,t,true); log({}); u.si++; return; }
+    { const rm=/^([QWER]) recast$/.exec(step); if (rm){ const s=rm[1], km=CHAMP_MECH[u.c.champ];   // library combos: a recast of the ability just cast
+      const h=km && km.step ? km.step(u, s, tgt, t, log) : false; if (h){ if (h!=="logged") log({}); u.si++; return; }
+      const ks=kitSpec(u.c, s), folded=!!(ks && ks.opts && ks.opts.recast) || (u.c.champ==="Gwen" && s==="R");
+      if (folded) log({note:`counted in the first ${s} step`});
+      else { log({note:"no damage modelled"}); simNotes.add(`${u.name} ${s} recast: the engine has no model of this recast (it deals no damage in the combo; any reposition is ignored)`); }
+      u.si++; return; } }
     { const km=CHAMP_MECH[u.c.champ], h=km && km.step ? km.step(u, step, tgt, t, log) : false; if (h){ if (h!=="logged") log({}); u.si++; return; } }   // champion kits: recasts, gates
     const a=u.abAll[step];
     if (!a){ log({skipped: step==="P" ? "this passive has no damage formula in the game data" : "not learned or no data"}); u.si++; return; }
@@ -2431,6 +2504,9 @@ const KIT = {
     W: {parts(x){ return [{...x.part("headshotbonusdamage","physical"), label:"added to the Headshot on a trapped champion", later:"headshot"}]; }},
   },
   Kalista: {
+    // Sentinel (wiki Kalista_W): the active is a vision ghost with no damage; the damage is the passive Soul-Marked: 10–18% of the
+    // target's maximum health (magic) when Kalista's and her Oathsworn's marks meet, once per target every 10 s (fight() tracks it)
+    W: {parts(x){ return [{...x.part("maxhealthdamage","magic"), pctOf:"max", label:"Soul-Marked (Kalista and her Oathsworn both hit the target; the Sentinel itself deals no damage)", later:"soulmark"}]; }},
     R: {parts(x){ x.note("Fate's Call deals no damage: the Oathsworn is pulled in, then dashes out and knocks up enemies where it lands (fight()/perform())");
       return [{label:"Fate's Call (no damage; the Oathsworn's knock-up)", v:0, s:"0", type:"magic", later:"oath"}]; }},
   },
@@ -2439,6 +2515,9 @@ const KIT = {
     // one every 20 s, 0.5 s between casts. One brush (45 s) covers a fight, so fight() casts it once per charge time.
     W: {simCd:(x)=>dvOf(x.S,"recharge",x.rank) || (x.S.recharge||[])[x.rank] || 20,
       parts(x){ return [{...x.part("totaldamage","magic"), label:"Brushmaker bolt on each of Ivern's attacks while in brush", later:"brush"}]; }},
+    // Daisy! (wiki Ivern_R, Pets): R summons Daisy, who attacks; her third attack on one target (2 Daisy Smash! stacks) is a
+    // shockwave (90/140/190 + 50% AP magic, stun + knock-up 1 s), at most every 3 s. .damage = one shockwave; fight() runs Daisy.
+    R: {parts(x){ return [{...x.part("totalshockwavedamage","magic"), label:"Daisy Smash! shockwave (Daisy's third attack on a target, at most every 3 s)", later:"daisy"}]; }},
   },
   Akali: {
     E: {opts:{recast:{bool:true, dflt:true, what:"the recast dash (70% of the total)"}},
@@ -3082,6 +3161,18 @@ function comboOf(v, where){
     else throw new Error(`${where}: a combo holds abilities, AA and item actives, not ${typeName(x)}`); };
   add(v); return {t:"combo", steps};
 }
+// a library combo (KB.combos) as a Combo: guide steps → engine steps (item identifiers → item names, recast indices → "E recast")
+function libCombo(champ, name){
+  const lib=COMBO_LIB[champ]||[], who=(KB.champs[champ]||{}).name||champ;
+  if (!lib.length) throw new Error(`the combo library has no combos for ${who} yet (champions with combos: ${Object.keys(COMBO_LIB).map(k=>KB.champs[k]?KB.champs[k].name:k).join(", ")})`);
+  const e=lib.find(x=>norm(x.name)===norm(name));
+  if (!e) throw new Error(`${who} has no library combo “${name}”. Library combos: ${lib.map(x=>`"${x.name}"`).join(", ")}`);
+  const rc=new Set(e.recasts||[]);
+  const steps=e.steps.map((s,i)=>{ if (rc.has(i)) return `${s} recast`; if (s==="AA" || SLOTS.includes(s) || SUMM_NAMES[s]) return s;
+    const k=norm(s); if (ITEM_ACTIVE_CD[k]) return ITEMS[k] ? ITEMS[k].name : k;
+    throw new Error(`combo library: ${who} “${e.name}” step ${i+1} “${s}” is not an ability, AA, summoner spell or item active`); });
+  return {t:"combo", steps, lib:e};
+}
 function coerce(type, v, line){
   if (type==="Combo"){ try { return comboOf(v, "Combo"); } catch(e){ throw new LangError(e.message, line); } }
   if (type==="auto" && v && v.t==="list" && v.items.length && v.items.every(x=>x&&x.t==="slot")) return comboOf(v, "Combo");
@@ -3173,11 +3264,15 @@ function Interpreter(ast, emitRaw){
         if (name==="hitbox"){ if (c.dummy){ const v=dummyRadius(c); line(`Target Dummy gameplay radius = 65 × (1 + min(1, bonus health ${fmt(c.dummy.hp-1000)} / 9000)) = ${fmt(v)}`); if (TR) TR.notes.add("Target Dummy radius: the wiki gives 65 at base and 130 at 10,000 health; linear growth in between is an assumption"); return v; } const v=hitboxOf(c), n=(CALC.champs[c.champ].base||{}).radiusNote; line(`${label(c)} gameplay radius = ${fmt(v)} (${n||"character record overrideGameplayCollisionRadius, default 65"})`); if (TR && SIZE_NOTES[c.champ]) TR.notes.add(`${label(c)}: size modifiers scale the hitbox (wiki "Size"): ${SIZE_NOTES[c.champ]}`); return v; }
         if (SUMM_NAMES[name]) return {t:"summoner", key:SUMM_NAMES[name], owner:c};
         if (name==="summoners") return {t:"list", items:(c.summoners||[]).map(k=>({t:"summoner", key:k, owner:c}))};
+        if (name==="combos"){ const lib=COMBO_LIB[c.champ]||[]; for (const e of lib) line(`${champName(c)} “${e.name}”: ${e.steps.join(" → ")}${e.use?` (${e.use})`:""}`);
+          if (!lib.length) line(`${champName(c)}: no library combos yet`); return {t:"list", items:lib.map(e=>e.name)}; }
         if (name==="summonerHaste"){ const v=summonerHaste(c); line(`${label(c)}.summonerHaste = ${fmt(v)} (items' SummonerHaste data value; Cosmic Insight 18)`); return v; }
         if (c.dummy && ["with","stacks","perform","combo","proc","closeGap","addClass","removeClass","is","has","cdOf","cdmaxOf","rangeOf","threatRange","gapClose"].includes(name))
           throw new LangError(`the Target Dummy can't use .${name}: it has no items, runes or abilities and never attacks or moves. Use it as the target: x.Q.damage(vs: d), x.proc(Item, vs: d), x.perform(combo, vs: d)`, ln);
         if (c.dummy && name==="resists"){ line(`Target Dummy armor ${fmt(c.dummy.armor)}, MR ${fmt(c.dummy.mr)}`); if (c.dummy.armor!==c.dummy.mr) throw new LangError(`this dummy's armor (${fmt(c.dummy.armor)}) and MR (${fmt(c.dummy.mr)}) differ; read .armor and .mr`, ln); return c.dummy.armor; }
         if (["target","healPolicy","passive","rotation","souls","skillOrder","role"].includes(name)){ const o=c.opts||{}; const d={target:null, healPolicy:"lowest", passive:false, rotation:"RQEW", souls:0, skillOrder:"QEW", role:stats(c).ranged?"kite":"dive"}; return o[name] ?? d[name]; }
+        if (name==="oathsworn"){ if (c.champ!=="Kalista") throw new LangError(`only Kalista has an Oathsworn`, ln); const o=(c.opts||{}).oathsworn||null;
+          line(`${label(c)}.oathsworn = ${o ? label(o) : "not set (fight() default: the Support-class ally, else the ally with the least AD + AP)"}`); return o; }
         if (name==="evolved"){ const k=KIT[c.champ]; if (!k || !k.evolved) throw new LangError(`${champName(c)} has no evolved or augmented abilities`, ln);
           const v=kitEvolved(c); line(`${label(c)}.evolved = ${v?v.split("").join(", "):"none"} (${k.evolved.name}${kitOptsOf(c)["@evolved"]!=null?"":`; default: ${k.evolved.why}`})`); return v; }
         const methods = {
@@ -3188,7 +3283,11 @@ function Interpreter(ast, emitRaw){
           has: (args)=>{ const tg=args[0]; if(!tg||tg.t!=="tag") throw new Error(`has() takes a tag, e.g. has(stun)`); return hasTag(c, tg.name); },
           cdOf: (args)=>byTag(c, tagArg(args[0]), "cd"), cdmaxOf: (args)=>byTag(c, tagArg(args[0]), "cdmax"), rangeOf: (args)=>byTag(c, tagArg(args[0]), "range"),
           perform: (args, named)=>perform(c, args[0], named),
-          combo: (args, named)=>{ if (args[0] && (args[0].t==="combo" || (args[0].t==="list" && args.length===1))) return perform(c, args[0], named).damage;
+          combo: (args, named)=>{ if (typeof args[0]==="string"){ const cb=libCombo(c.champ, args[0]), e=cb.lib;
+                     line(`${label(c)}.combo("${e.name}") = ${cb.steps.join(" → ")}${e.use?` (${e.use})`:""}`);
+                     if (TR){ TR.notes.add(`combo library, ${champName(c)} “${e.name}”: ${(e.src||[]).join(", ")}${e.notes?` (${e.notes})`:""}`); }
+                     return cb; }
+                   if (args[0] && (args[0].t==="combo" || (args[0].t==="list" && args.length===1))) return perform(c, args[0], named).damage;
                    const vs=vsArg(named); let total=0; const vals=[]; const sl=args.map(a=>{ if(!a||a.t!=="slot") throw new Error("combo() takes abilities: Q, W, E, R, P"); return a.name; });
                    for (const s of sl){ let v; try { v=abilityValue(c, s, "damage", vs); } catch(err){ if(!/no damage formula|no data/.test(err.message)) throw err; v=0; if(TR) TR.notes.add(`${label(c)} ${s}: no damage formula, counted as 0 in combo()`); } total+=v; vals.push(fmt(v)); }
                    line(`${label(c)}.combo(${sl.join(",")})${vs?" vs "+label(vs):""} = ${vals.join(" + ")} = ${fmt(total)}`); return total; },
@@ -3223,7 +3322,7 @@ function Interpreter(ast, emitRaw){
         const w=WORLD.champ(c.champ);
         if (name==="melee"){ const v=w.stats.melee===1; line(`${label(c)} attack range ${w.stats.range} → melee ${v}`); return v; }
         if (name in w.stats){ line(`${label(c)}.${name} = ${w.stats[name]}`); return w.stats[name]; }
-        throw new LangError(`a Champion has no “${name}”.${hint(name, [...STATKEYS, ...Object.keys(methods), "Q","W","E","R","P","name","level","items","runes","classes","stacks","melee","threatRange","gapClose","hitbox","target","healPolicy","passive","rotation","souls","skillOrder","attack","defense","magic","difficulty"])} See “What a Champion can tell you” in the cheatsheet.`, ln);
+        throw new LangError(`a Champion has no “${name}”.${hint(name, [...STATKEYS, ...Object.keys(methods), "Q","W","E","R","P","name","level","items","runes","classes","stacks","combos","melee","threatRange","gapClose","hitbox","target","healPolicy","passive","rotation","souls","skillOrder","attack","defense","magic","difficulty"])} See “What a Champion can tell you” in the cheatsheet.`, ln);
       }
       case "ability": {
         const c=obj.owner, s=obj.slot, S=CALC.champs[c.champ][s];
@@ -3418,7 +3517,7 @@ function Interpreter(ast, emitRaw){
     if (TR){
       (TR.seenFights ||= new Set()).add(r);
       TR.lines.push(`${r.who} performs ${combo.steps.join(" → ")} on ${r.target}${named.wait===false?" (skipping abilities on cooldown)":""}`);
-      for (const x of steps) TR.lines.push(`  ${x.t.toFixed(2)}s  ${x.step}${x.skipped?`: skipped (${x.skipped})`:`: ${fmt(x.dmg)}${x.spread?` (over ${fmt(x.spread)}s)`:""}`}`);
+      for (const x of steps) TR.lines.push(`  ${x.t.toFixed(2)}s  ${x.step}${x.skipped?`: skipped (${x.skipped})`:`: ${fmt(x.dmg)}${x.spread?` (over ${fmt(x.spread)}s)`:""}${x.note?` (${x.note})`:""}`}`);
       if (r.lingering>0.5) TR.lines.push(`  after the last step (burns, delayed procs): ${fmt(r.lingering)}`);
       TR.lines.push(`  total ${fmt(r.damage)} in ${fmt(r.time)}s → ${r.target} ${r.killed?`dies at ${fmt(r.killTime)}s`:`left on ${fmt(r.hpLeft)}/${fmt(r.hpMax)}`}`);
       TR.notes.add(`perform(): ${r.target} ${named.fightBack?"fights back":"doesn't fight back (add fightBack: true)"}; abilities on cooldown are ${named.wait===false?"skipped":"waited for"}; every step hits`);
@@ -3512,6 +3611,10 @@ function Interpreter(ast, emitRaw){
         if (target.name==="healPolicy" && !(v&&v.t==="champ") && !["lowest","save","self"].includes(v)) throw new LangError(`healPolicy is "lowest", "save", "self" or a Champion`, ln);
         if (target.name==="target" && !(v&&v.t==="champ")) throw new LangError(`target must be a Champion`, ln);
         obj.opts = {...(obj.opts||{}), [target.name]: target.name==="passive" ? truthy(v) : v}; return; }
+      if (obj&&obj.t==="champ" && target.name==="oathsworn"){   // Kalista's Oathsworn (wiki The Black Spear): an ally in her fight() team
+        if (obj.champ!=="Kalista") throw new LangError(`only Kalista has an Oathsworn`, ln);
+        if (!(v&&v.t==="champ") || v.dummy) throw new LangError(`oathsworn must be an allied Champion, e.g. kalista.oathsworn = rakan;`, ln);
+        obj.opts = {...(obj.opts||{}), oathsworn: v}; return; }
       if (obj&&obj.t==="champ" && target.name==="summoners"){ const arr=v&&v.t==="list"?v.items:v&&v.t==="summoner"?[v]:null; if (!arr || arr.some(x=>!x||x.t!=="summoner")) throw new LangError(`summoners is a list of summoner spells, e.g. ${label(obj)}.summoners = {Flash, Ignite}`, ln);
         try { obj.summoners=setSummoners(obj, arr.map(x=>x.key)); } catch(e){ throw new LangError(e.message, ln); } return; }
       if (obj&&obj.t==="champ" && (target.name==="stacks" || target.name==="evolved")){   // champion kits: own stacks, evolved abilities

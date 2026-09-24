@@ -57,6 +57,8 @@ header.top{grid-column:1/-1;position:sticky;top:env(safe-area-inset-top,0px);z-i
 .brand span{color:var(--muted);font-weight:500}
 .btn{display:inline-flex;align-items:center;min-height:32px;padding:6px 11px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font:600 13px/1 var(--sans);text-decoration:none}
 .btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500}
+.btn.ghost:hover{background:var(--inset);filter:none}
 nav{position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;font-size:13.5px;padding-right:4px}
 nav summary{display:none}
 nav ol{list-style:none;margin:0;padding:0;display:grid;gap:1px}
@@ -107,6 +109,7 @@ td:only-child{color:var(--ink)}
 <div class="wrap">
   <header class="top">
     <div class="brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg>Rift Logic <span>Reference</span></div>
+    <a class="btn ghost" id="draftlink" href="draft.html">Draft</a>
     <a class="btn" id="applink" href="index.html">Open the editor</a>
   </header>
 
@@ -429,6 +432,17 @@ print(r.damage, r.time, r.killed, r.steps);</pre>
         <tr><td>print(r.floatingText);</td><td>Every damage instance in order: time, step, source (ability, attack, Luden's, Electrocute…), type, exact value, and the value floored and rounded, then the per-step totals. For comparing with the practice tool line by line.</td></tr>
         <tr><td>r.stepDamage(i)  r.hit(i)  r.hitCount</td><td>Damage of step i and of damage instance i (both count from 1); the number of instances. Burn ticks after their step are instances with step “tick”.</td></tr>
       </tbody></table></div>
+      <h3>Combo library</h3>
+      <p>Commonly cited combos from champion guides (Mobalytics, the League wiki and other guide sites), stored as step sequences with their source links in <code>data/combos.json</code>. Only the sequence is kept; when a combo is used, the working names its sources.</p>
+<pre>print(Syndra(11).combos);                  <span class="c">// the library combo names</span>
+Combo c = Akali(11).combo("Full combo");   <span class="c">// a library combo as a Combo</span>
+print(Akali(11).perform(c + AA, vs: Dummy(hp: 3000)).damage);</pre>
+      <div class="tscroll"><table><tbody>
+        <tr><td>x.combos</td><td>The names of x's library combos (the working lists each one's steps and when to use it).</td></tr>
+        <tr><td>x.combo("name")</td><td>That combo as a Combo, for <code>perform</code>, <code>+</code> and <code>add</code>. Case and spaces don't matter.</td></tr>
+        <tr><td>E recast</td><td>A step marked as a recast (Akali E and R, Zed W, Lee Sin Q, Yone E…). Where the engine already counts the recast in the first cast (Akali E/R, Dr. Mundo W, Gwen R) or has a step for it (Yone E returns early), that's used; otherwise the recast adds no damage and the working says so.</td></tr>
+        <tr><td>What's approximated</td><td>Animation cancels, ward hops, Flash positioning, walls and terrain, form swaps: the ability stays in the sequence, the positioning is dropped. Each combo's notes say what was approximated.</td></tr>
+      </tbody></table></div>
       <p><b>Rounding.</b> The game shows whole numbers in floating combat text and on the dummy. Whether it rounds or truncates damage numbers is not documented: the wiki only says the health bar rounds <i>up</i> and the C panel rounds armor, MR, AD and AP to the nearest whole number (wiki “Health”). <code>floatingText</code> shows both until measurements settle it; the practice tests allow ±1 per displayed number.</p>
     </section>
 
@@ -651,6 +665,7 @@ prove beats(Fizz, Syndra);</pre>
   put("taglist", "", D.tags);
   const p = document.getElementById("patch"); if (p && D.patch) p.textContent = D.patch;
   if (D.appUrl) document.getElementById("applink").href = D.appUrl;
+  if ("draftUrl" in D){ const dl = document.getElementById("draftlink"); if (D.draftUrl) dl.href = D.draftUrl; else dl.hidden = true; }
 })();
 </script>
 
