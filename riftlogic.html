@@ -1069,10 +1069,10 @@ function kitRankKey(c){ const k=KIT[c.champ]; return k && (k.stats || k.statsFin
 /* ================= fight simulator ================= */
 const SIM_ASSUMPTIONS = [
   "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range (range + both radii for the game files' castRangeUseBoundingBoxes spells: Tristana E/R, Vayne E, Viktor Q, …), other abilities their reach + the target's hitbox, except skillshots the wiki marks centred ({{tip|cr}}: the reach itself) or edge ({{tip|er}}: + both hitboxes) (wiki Range; one rule shared with canDodge)",
-  "fight(): every ability and attack in range hits (perfect aim, no dodging in fight(); use canDodge for that), except the kit mechanics that say otherwise (Viktor's Gravity Field stuns only a unit still inside on its 5th stack, Aftershock can be sidestepped, his storm moves, Akali's shroud hides her from attacks and point-and-click spells); an ability's effects land after its cast time, flight and appear-delay (the same timing as .arrival and canDodge: Lux Q 0.67 s at 500, Lux R 1 s, Karthus Q 0.75 s); cooldown, cost and cast lock start at the press; a stun, silence or death before the cast time ends cancels it; dashes start when the cast time ends and hit on arrival; self-casts, heals and shields apply when the cast time ends",
+  "fight(): every ability and attack in range hits (perfect aim, no dodging in fight(); use canDodge for that), except the kit mechanics that say otherwise (Viktor's Gravity Field stuns only a unit still inside on its 5th stack, Aftershock can be sidestepped, his storm moves, Akali's shroud hides her from attacks and point-and-click spells); an ability's effects land after its cast time, flight and appear-delay (the same timing as .arrival and canDodge: Lux Q 0.67 s at 500, Lux R 1 s, Karthus Q 0.75 s); cooldown, cost and cast lock start at the press; crowd control never cancels a cast time (wiki Cast time: only death does), it cancels channels (Karthus R) and charges (Vi Q, Sion Q); dashes start when the cast time ends and hit on arrival if the target is in reach there (or was at the press); a displacement or knockdown stops a dash under way, a stun or root doesn't (wiki Dash; Akshan E, Camille E, Rakan W/E, Yasuo E, Yuumi W are also stopped by immobilizing CC); unstoppable abilities (Malphite R, Vi R, Hecarim R, Jarvan IV R, …) are immune to displacements and can't be stopped (wiki Crowd control § Displacement Immunity), spell shields still block them; self-casts, heals and shields apply when the cast time ends",
   "fight(): basic attacks start when the attack timer allows (timer, on-attack effects) and land at the end of their windup (wiki Attack speed: attack time × windup %, scaled by the champion's windup modifier; .windup), a ranged one after its missile's flight too (.missileSpeed; 0 = instant); the attacker can't act during the windup; a stun, knock-up or death during it cancels the attack (the timer resets), a silence doesn't; a target dead or in stasis when it lands isn't hit; empowered-attack abilities (Nasus Q, Garen Q, Darius W, Jax W, Leona Q…) resolve with the next attack, and attack resets reset the timer at the press",
   "fight(): abilities are cast as soon as they're off cooldown (each ability locks its caster for its cast time: game data checked against the wiki's cast time field, calc.json phys.castTime; an ability with none frees the caster on the next step); mana is ignored, energy is not (Zed, Akali, Lee Sin, Kennen, Shen: abilities wait until it covers their cost); a champion whose ability makes it untargetable from the cast (Zed R, Fizz E, Vladimir W, Master Yi Q, Kayn R, Pantheon E) is untargetable for that whole step",
-  "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground stops dashes, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
+  "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground and root prevent starting a dash, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
   "fight(): default roles: ranged = kite (keep max attack range from shorter-ranged enemies, peel them with hard CC, knockbacks held for peel, dashes/blinks used to escape), melee = dive (walk or dash to the lowest-health enemy, use everything on it but knockbacks); knockbacks are held to peel an enemy that dives an ally (except role engage); a stacking-stun field (Viktor W) is held until the enemy commits (moving in within the field's radius + both hitboxes, in its attack reach, unable to move, or diving an ally), not cast on cooldown at range; set x.role = \"kite\" | \"dive\" | \"peel\" | \"engage\" | \"fight\"",
   "fight(): area abilities hit every enemy within their radius on the line (lines and cones: every enemy within reach); ability damage over time lands up front",
   "fight(): attacks without a set target go to the enemy with the lowest health",
@@ -1309,7 +1309,9 @@ function simulate(sidesIn, T, simNotes, fo){
   const canAttack = (u,t) => !locked(u,t) && !ccOn(u,t,"disarm") && !ccOn(u,t,"polymorph");
   const canMove = (u,t) => !locked(u,t) && !ccOn(u,t,"root") && !(u.move && u.move.t1>t && u.move.t0<t);   // a displacement started this tick counts from the next
   const canDash = (u,t) => canMove(u,t) && !ccOn(u,t,"ground");
-  const ccImmune = (u,t) => u.ccImmuneUntil>t || u.shields.some(s=>s.ccImmune && s.until>=t && shieldLeft(s,t)>0.01);   // ccImmuneUntil: kits (Olaf R)
+  // unstoppable (UNSTOPPABLE, item 28): u.unstop = {imm, slot, from, until, why} while an unstoppable ability is cast / dashing
+  const unstopOn = (u,t) => { const s=u.unstop; return s && t>=s.from-1e-9 && t<=s.until+1e-9 ? s : null; };
+  const ccImmune = (u,t) => u.ccImmuneUntil>t || u.shields.some(s=>s.ccImmune && s.until>=t && shieldLeft(s,t)>0.01) || (unstopOn(u,t)||{}).imm==="cc";   // ccImmuneUntil: kits (Olaf R)
   // wiki Movement speed: only the strongest slow counts; slow resist scales it; soft caps after
   function slowNow(u,t){ let best=0; for (const s of u.slows){ if (s.until<=t || s.t0>=t) continue;   // takes effect from the next tick
       const v = s.decay ? s.pct*(s.until-t)/Math.max(1e-9,s.until-s.t0) : s.pct; if (v>best) best=v; } return best*(1-(u.st.slowresist||0)); }
@@ -1362,19 +1364,25 @@ function simulate(sidesIn, T, simNotes, fo){
   // soft: a silence (it stops casts, not a basic attack's windup)
   function interrupt(x,t,soft){ if (inTick){ if (x.interruptAt!==t) x.intSoft=true; x.interruptAt=t; x.intSoft = x.intSoft && !!soft; return; } doInterrupt(x,t,soft); }
   function doInterrupt(x,t,soft){
-    if (x.chan && x.chan.until>t){ for (const y of U) y.dots=y.dots.filter(d=>!(d.u===x && d.ability && d.ability.channel)); say(t, `  ${x.name}'s ${x.chan.slot} channel is interrupted`); x.chan=null; }
-    x.nextAct=Math.min(x.nextAct, t+dt);   // free again from the next tick (not later in this one: order-independence)
-    cancelCasts(x, t, "is interrupted", soft);
+    let freed=false;
+    if (x.chan && x.chan.until>t){ for (const y of U) y.dots=y.dots.filter(d=>!(d.u===x && d.ability && d.ability.channel)); say(t, `  ${x.name}'s ${x.chan.slot} channel is interrupted`); x.chan=null; freed=true; }
+    if (cancelCasts(x, t, "is interrupted", soft)) freed=true;
+    if (freed) x.nextAct=Math.min(x.nextAct, t+dt);   // free again from the next tick (not later in this one: order-independence)
   }
-  // backlog 25: a cast whose cast time hasn't ended when the caster is stunned, silenced or killed never fires; once the cast
-  // time is over the missile or zone is out and lands anyway (wiki "Cast time"; interruption)
-  // an attack's windup (P.slot "attack", backlog 25 step 7): cancelled by the same crowd control but not by a silence; the attack
-  // timer resets (wiki "Attack speed": an interrupted windup resets the timer, a new windup may begin whenever possible)
-  function cancelCasts(x, t, why, soft){ if (!x.pend || !x.pend.length) return;
+  /* item 28 (wiki "Cast time" § Interrupting cast times: "Cast times cannot be interrupted by any means ... except by death";
+     Template:Channel type: a cast time's default interrupts = none, a channel's = silence, death): crowd control never cancels a
+     cast time — the ability fires when it ends, whatever happened to the caster meanwhile — but it does cancel a channel
+     (P.chanFrom: Karthus R, Galio R) once the channel has started; death cancels both. (Backlog 25 had a stun or silence cancel
+     cast times, which the wiki contradicts.)
+     an attack's windup (P.slot "attack", backlog 25 step 7): cancelled by crowd control but not by a silence; the attack
+     timer resets (wiki "Attack speed": an interrupted windup resets the timer, a new windup may begin whenever possible) */
+  function cancelCasts(x, t, why, soft){ if (!x.pend || !x.pend.length) return 0; let n=0;
     for (const P of x.pend) if (!P.done && !P.cancelled && P.end > t+1e-9){
-      if (P.slot==="attack"){ if (soft) continue; P.cancelled=true; x.nextAA=Math.min(x.nextAA, t); say(t, `  ${x.name}'s attack ${why==="dies"?"is lost (the attacker dies during its windup)":"is interrupted during its windup: it doesn't land"}`); continue; }
-      P.cancelled=true; say(t, `  ${x.name}'s ${P.slot} cast ${why==="dies"?"is lost (the caster dies before its cast time ends)":"is interrupted before its cast time (or channel) ends: it doesn't land"}`); }
-    x.pend=x.pend.filter(P=>!P.done && !P.cancelled); }
+      if (P.slot==="attack"){ if (soft) continue; P.cancelled=true; n++; x.nextAA=Math.min(x.nextAA, t); say(t, `  ${x.name}'s attack ${why==="dies"?"is lost (the attacker dies during its windup)":"is interrupted during its windup: it doesn't land"}`); continue; }
+      if (why==="is interrupted"){ if (P.chanFrom==null || t < P.chanFrom-1e-9) continue;   // a cast time: not interrupted (wiki Cast time)
+        const s=unstopOn(x,t); if (s && s.slot===P.slot) continue; }                        // unstoppable (Galio R after 1.25 s)
+      P.cancelled=true; n++; say(t, `  ${x.name}'s ${P.slot} ${why==="dies"?"cast is lost (the caster dies before its cast time (or channel) ends)":why==="is interrupted"?`${P.charge?"charge":"channel"} is interrupted: it doesn't land`:`cast is lost (the caster ${why})`}`); }
+    x.pend=x.pend.filter(P=>!P.done && !P.cancelled); return n; }
   // spell shields: items (Banshee's, Edge of Night, Verdant Barrier) and abilities (Sivir E, Nocturne W: cast as the ability lands, perfect play)
   function blocked(u,a,x,t){
     const ss=["bansheesveil","edgeofnight","verdantbarrier"].find(k=>has(x,k));
@@ -1402,6 +1410,23 @@ function simulate(sidesIn, T, simNotes, fo){
     if (a.slot==="R"){ const r=(a.p&&a.p.radius)||550; for (const dd of [0.5, 1]) events.push({at:t+dd, fn:(tt)=>{ if (gap(u,x)<=r+RAD(x)) add(tt); }}); }
     simNotes.add(`${u.name} P: Mark of the Storm — every ability hit marks the target; 3 marks stun it (1.25 s, 0.5 s again within 6 s; game data); R marks each target up to 3 times (0, 0.5, 1 s)`);
   }
+  /* a crowd control that stops dashes lands on x (wiki Dash): a dash in progress (x.dashNow, from its start to its arrival) is
+     stopped and its hits don't land; x halts where it is unless the effect displaces it (displaced: the knockback/pull moves it).
+     x.dashStopAt records it for a dash starting in the same step (order-independence: the displacement wins, as before). */
+  function dashStop(x, t, why, displaced){ x.dashStopAt=t; x.dashStopWhy=why; const D=x.dashNow;
+    if (!D || D.stopped || t<D.t0-1e-9 || t>D.t1+1e-9) return false;
+    D.stopped=true; if (!displaced && x.move && !x.move.forced) x.move=null;
+    say(t, `  ${x.name}'s ${D.slot} dash is stopped (${why}; wiki Dash): it doesn't land`); return true; }
+  // an unstoppable window starting at t: crowd control it resists that landed earlier in the same step doesn't apply either
+  // (everything in a step is simultaneous), and a same-step displacement doesn't beat its dash
+  function unstopClean(u, t){ const s=unstopOn(u,t); if (!s) return;
+    const res = c => c.at>=t-1e-9 && (s.imm==="cc" || AIRBORNE.has(c.type) || c.type==="sleep");
+    const mv = u.move && u.move.forced && u.move.t0>=t-1e-9;
+    if (!u.ccs.some(res) && !mv && !(u.dashStopAt>=t-1e-9)) return;
+    const gone=u.ccs.filter(res).map(c=>c.type); u.ccs=u.ccs.filter(c=>!res(c)); if (s.imm==="cc") u.slows=u.slows.filter(x=>!(x.t0>=t-1e-9));
+    if (mv) u.move=null; u.dashStopAt=null; u.immobAt=null;
+    if (u.interruptAt===t && !u.ccs.some(c=>c.at>=t-1e-9 && (LOCKS.includes(c.type) || c.type==="silence" || c.type==="polymorph"))) u.interruptAt=null;
+    say(t, `  ${u.name} is ${s.imm==="cc"?"immune to crowd control":"displacement immune"} from this step (${s.slot}): ${gone.length?`the ${[...new Set(gone)].join(", ")} landing on it this step doesn't apply`:"the displacement landing on it this step doesn't apply"}`); }
   function applyCC(u, a, x, t, d0){
     if (!a.cc || !a.cc.length || !x.alive || inStasis(x,t)) return;
     // a crowd-control-immunity shield (Morgana E) is cast on the ally just as the hard CC lands (perfect play)
@@ -1412,9 +1437,17 @@ function simulate(sidesIn, T, simNotes, fo){
         simNotes.add(`${y.name} ${s}: the crowd-control-immunity shield is cast just as enemy hard CC lands on an ally in range (perfect reaction)`); break; }
       if (ccImmune(x,t)) break; }
     if (x.kit && x.kit.parry && x.kit.parry.until>t && a.cc.some(e=>["stun","root","knockup","knockback","pull","suppress","sleep","charm","fear","taunt","berserk"].includes(e.type))) x.kit.parry.hit=true;   // Fiora W parries an immobilizing effect
-    if (ccImmune(x,t)){ say(t, `  ${x.name} ignores ${u.name}'s ${a.slot} crowd control (crowd control immunity)`); return; }
-    const ten=x.st.tenacity||0;
+    if (ccImmune(x,t)){ say(t, `  ${x.name} ignores ${u.name}'s ${a.slot} crowd control (crowd control immunity${(unstopOn(x,t)||{}).imm==="cc"?`: ${x.name}'s ${x.unstop.slot}`:""})`); return; }
+    const ten=x.st.tenacity||0, srcChamp=(u.pet && u.pet.owner ? u.pet.owner : u).c.champ, US=unstopOn(x,t);
+    const knockdown = inTable(KNOCKDOWN, srcChamp, a.slot);
     for (const e of a.cc){
+      // displacement immunity (UNSTOPPABLE; wiki Crowd control § Displacement Immunity): airborne, sleep, the special-cased
+      // suppressions and the stun of the listed knock-up + stun abilities don't apply; other crowd control does, but can't stop the dash
+      if (US && (AIRBORNE.has(e.type) || e.type==="sleep" || (e.type==="suppress" && inTable(DISP_SUPPRESS, srcChamp, a.slot)) || (e.type==="stun" && inTable(DISP_STUN, srcChamp, a.slot)))){
+        say(t, `  ${x.name} ignores ${u.name}'s ${a.slot} ${e.type} (displacement immunity: ${x.name}'s ${US.slot})`); continue; }
+      // a dash in progress (wiki Dash): stopped by a displacement or a knockdown; the dashes in DASH_CC_STOPS also by immobilizing CC
+      if (!US && (AIRBORNE.has(e.type) || (knockdown && HARD_CC.has(e.type)))) dashStop(x, t, AIRBORNE.has(e.type) ? `${e.type==="knockup"?"knocked up":e.type==="pull"?"pulled":"knocked back"} by ${u.name}'s ${a.slot}` : `knocked down by ${u.name}'s ${a.slot}`, e.type==="knockback" || e.type==="pull");
+      else if (!US && (LOCKS.includes(e.type) || e.type==="polymorph")){ x.immobAt=t; if (x.dashNow && x.dashNow.ccStops) dashStop(x, t, `${CC_VERB[e.type]||e.type} by ${u.name}'s ${a.slot}`, false); }
       let dur=e.dur;
       if (e.durMin!=null){ const r=Math.min(abReach(u,a,x), 5000)||1; dur=e.durMin+(e.dur-e.durMin)*Math.min(1, d0/r);
         simNotes.add(`${u.name} ${a.slot}: ${e.type} lasts ${fmt(e.durMin)}–${fmt(e.dur)}s growing with distance (wiki); assumed linear from 0 to the ability's reach`); }
@@ -2107,12 +2140,21 @@ function simulate(sidesIn, T, simNotes, fo){
     /* backlog 25: WHEN the effects land. At the press: cooldown, cost, cast lock, untargetability, the "casts" line and the on-cast
        item effects (castStart: Spellblade, Rod of Ages, Hexplate…). The hits, crowd control, marks, on-hit effects and the kit's
        onCast/afterCast land at press + landOf(): the cast time, then the flight to the target and any appear-delay (landTime, the
-       rule .arrival and canDodge use); self-casts and dashes after the cast time. The landing is lost if the caster dies or is
-       stunned/silenced before the cast time ends (cancelCasts); after that it lands anyway. */
+       rule .arrival and canDodge use); self-casts and dashes after the cast time. The landing is lost if the caster dies before
+       the cast time ends, or is disabled during a channel / charge (cancelCasts; item 28: crowd control doesn't cancel a cast
+       time, wiki Cast time); after that it lands anyway. */
     const ct=Math.max(0, (a.p && a.p.castTime) || 0), land=landOf(u,a,tgt,d0), chan = a.p && a.p.delayKind==="channel" ? (a.p.delay||0) : 0;
     if (a.p && a.p.charge && tgt) u.nextAct=Math.max(u.nextAct, t+land);   // a charged cast (Xerath Q): charging and the release lockout hold the caster
     if (chan){ u.nextAct=Math.max(u.nextAct, t+ct+chan); u.nextAA=Math.max(u.nextAA, t+ct+chan); }   // a channel after the cast (Karthus R): he does nothing else meanwhile
-    const P={slot:a.slot, end:t+ct+chan, done:false, cancelled:false}, step=u.curStep ?? null;   // until P.end a stun, silence or death cancels it
+    // until P.end death cancels it; crowd control only once its channel has started (P.chanFrom; wiki Cast time, item 28)
+    const P={slot:a.slot, end:t+ct+chan, chanFrom: inTable(CHARGE_CAST, u.c.champ, a.slot) ? t : chan ? t+ct : null, charge: inTable(CHARGE_CAST, u.c.champ, a.slot), done:false, cancelled:false}, step=u.curStep ?? null;
+    if (chan && ct >= dt/2-1e-9) events.push({at:t+ct, fn:(tt)=>{ if (P.cancelled || P.done || !u.alive) return;   // stunned or silenced as the channel starts
+      const s=unstopOn(u,tt); if ((locked(u,tt) || !canCast(u,tt)) && !(s && s.slot===a.slot)){ P.cancelled=true; say(tt, `  ${u.name}'s ${a.slot} channel can't start (the caster is disabled as its cast time ends): it doesn't land`); } }});
+    // unstoppable abilities (UNSTOPPABLE, item 28): the immunity window, from the press or the dash's start until the landing
+    const US=(UNSTOPPABLE[u.c.champ]||{})[a.slot];
+    if (US){ u.unstop={imm:US.imm, slot:a.slot, why:US.why, from: US.from==="press" ? t : US.from==="dash" ? t+ct : t+US.from, until:t+Math.max(ct, land)};
+      simNotes.add(`${u.name} ${a.slot}: unstoppable — ${US.why}; ${US.imm==="cc"?"immune to all crowd control":"immune to airborne, sleep and the special-cased suppressions; other crowd control still applies but can't stop it"} from ${US.from==="press"?"the press":US.from==="dash"?"the end of its cast time":`${fmt(US.from)} s after the press`} until it lands; spell shields still block it`);
+      if (US.from==="press") unstopClean(u, t); }
     // the numbers at the press: another cast of this ability before this one lands recomputes a.parts (abNums)
     const snap={parts:a.parts, later:a.later, heal:a.heal, shield:a.shield};
     const L={started:false, castOk: tgt ? inReach(u,a,tgt) : false, pressT:t, land, deferred:false};
@@ -2140,12 +2182,27 @@ function simulate(sidesIn, T, simNotes, fo){
       if (by>1){ dashed=true;
         // the dash starts when the cast time ends (backlog 25); its hits land when it arrives, a blink's at once
         const dur = a.blink ? 0 : Math.max(0.05, (di.time-di.castTime)*by/Math.max(1,di.dist)), arrive=dct+dur;
-        const move=(tt)=>{ if (!u.alive) return false; if (tt>t && !canDash(u,tt)){ say(tt, `  ${u.name}'s ${a.slot} dash is stopped (immobilized or grounded)`); return false; }
-          const to=dest(), by2=Math.abs(to-u.x); if (a.blink) displace(u, to, 1e-3, tt);   /* lands at the start of the next tick */ else displace(u, to, dur, tt);
-          say(tt, `${u.name} ${a.blink?"blinks":"dashes"} ${fmt(by2)} units ${o.away?`away from ${o.away.name}`:`toward ${tgt.name}`} (${a.slot})${a.blink?"":` in ${fmt(dur)}s`}`); return true; };
-        simNotes.add(`fight(): dashes and blinks use the game data dash range and speed (dashInfo); they start when the cast time ends, a dash's hits land when it arrives, a blink's at once`);
+        if (US){ if (US.from==="dash") u.unstop.from=t+dct; u.unstop.until=t+arrive; }
+        /* item 28 (wiki Cast time, Dash, Types of Crowd Control § Airborne): the dash starts when the cast time ends whatever
+           happened to the caster meanwhile (the newest movement overrides an older displacement); only a displacement or knockdown
+           landing in the step it starts stops it (it would override the dash), and for DASH_CC_STOPS dashes an immobilize or
+           polymorph on the caster. Unstoppable dashes (UNSTOPPABLE) start regardless. */
+        const ccStops=inTable(DASH_CC_STOPS, u.c.champ, a.slot); let D=null;
+        const move=(tt)=>{ if (!u.alive) return false;
+          if (unstopOn(u,tt)) unstopClean(u,tt);
+          else if (u.dashStopAt!=null && u.dashStopAt>=tt-1e-9){ say(tt, `  ${u.name}'s ${a.slot} dash is stopped (${u.dashStopWhy} as it starts; wiki Dash)`); return false; }
+          else if (ccStops && (locked(u,tt) || ccOn(u,tt,"polymorph") || u.immobAt>=tt-1e-9)){ say(tt, `  ${u.name}'s ${a.slot} dash is stopped (immobilized: this dash is interrupted by crowd control, wiki Dash)`); return false; }
+          const to=dest(), by2=Math.abs(to-u.x); if (u.move && u.move.forced && u.move.t0<tt-1e-9) u.move=null;   // overrides an older displacement
+          if (a.blink) displace(u, to, 1e-3, tt);   /* lands at the start of the next tick */ else displace(u, to, dur, tt);
+          D={slot:a.slot, t0:tt, t1:tt+(a.blink?0:dur), to, ccStops, stopped:false}; u.dashNow=D;
+          say(tt, `${u.name} ${a.blink?"blinks":"dashes"} ${fmt(by2)} units ${o.away?`away from ${o.away.name}`:`toward ${tgt.name}`} (${a.slot})${a.blink?"":` in ${fmt(dur)}s`}${unstopOn(u,tt)?` (${u.unstop.imm==="cc"?"immune to crowd control":"unstoppable: displacement immune"})`:""}`); return true; };
+        simNotes.add(`fight(): dashes and blinks use the game data dash range and speed (dashInfo); they start when the cast time ends (crowd control during the cast time doesn't stop them: wiki Cast time), a dash's hits land when it arrives, a blink's at once; a displacement or knockdown during the dash stops it and its hits (wiki Dash), a stun or root doesn't`);
         if (u.script) u.nextAct=Math.max(u.nextAct, t+arrive);   // perform(): the next step comes after the dash lands
-        const hit=(tt)=>{ if (!u.alive || locked(u,tt)) return; P.done=true; resolveCast(u,a,tgt,tt,d0,{...L, deferred:tt>t}); if (!hsWithLanding) return; support(tt); };
+        // the hit: lost if the dash was stopped; the reach is tested where the dash ends (item 28: a dash pressed from its dash range
+        // but beyond the ability's reach hits once it arrives in reach; the press-time reach also counts: targeted dashes track)
+        const hit=(tt)=>{ if (!u.alive) return; if (u.dashNow===D) u.dashNow=null; if (D && D.stopped){ P.done=true; return; } P.done=true;
+          const px = a.blink && D ? D.to : (u.xS ?? u.x), arrOk = !!tgt && Math.abs(px-(tgt.xS ?? tgt.x)) <= abReach(u,a,tgt)+1e-6;
+          resolveCast(u,a,tgt,tt,d0,{...L, deferred:tt>t, castOk:L.castOk || arrOk}); if (!hsWithLanding) return; support(tt); };
         if (a.blink){ later(dct, (tt)=>{ if (move(tt)) hit(tt); else P.done=true; }); if (!hsWithLanding) later(dct, support); }
         else { let ok=true; later(dct, (tt)=>{ ok=move(tt); }); later(arrive, (tt)=>{ if (ok) hit(tt); else P.done=true; }); if (!hsWithLanding) later(Math.min(hsAt, arrive), support); }
         if (dct >= dt/2-1e-9 || arrive >= dt/2-1e-9) castStart(u, a, t), L.started=true;
@@ -6206,6 +6263,55 @@ const CAST_UNTARGETABLE = {
   Kayn:    {slot:"R", dur:1.35, lock:1.35, why:"Umbral Trespass: vanishes at once (0.25 s dash, 0.5 s before the channel, recast after 0.1 s, recast delay 0.5 s: 1.35 s at the earliest; wiki); the exit dash isn't modelled"},
 };
 const CAST_START = {Zed:"R", Pantheon:"E", ...Object.fromEntries(Object.entries(CAST_UNTARGETABLE).map(([k,v])=>[k,v.slot]))};
+/* Unstoppable (AUTOPILOT item 28; wiki "Crowd control" § Immunity, checked 2026-09-24). "Unstoppable" in the game is displacement
+   immunity (its buff icon): immune to airborne (knock-up, knockback, pull), knockdown, sleep, enemy stasis and the special-cased
+   suppressions (Ambessa R, Skarner E/R, Sett R, Tahm Kench R); stuns and other CC still apply (wiki Vi R / Nautilus R notes) but
+   can't stop the dash ("The dash cannot be deterred by crowd control", wiki Malphite R / Vi R; their dash tables: interrupts=death).
+   Total CC immunity ("cc") ignores every crowd control. Spell shields still block the ability's effects (spellshield = True on the
+   pages). imm: "displacement" | "cc"; from: when the immunity starts — "press" (the wiki's "take effect at the start of the cast
+   time" list, wiki Cast time), "dash" (the end of the cast time: the dash's start), or seconds after the press (Galio R: its
+   channel can only be interrupted in the first 1.25 s); it lasts until the ability lands (a dash's arrival). Abilities on the
+   wiki lists that fight() doesn't model as one cast (Vex R / Nocturne R / Yone E recasts, Kalista R on the Oathsworn, Briar R,
+   Pantheon R, Udyr E, Karthus / Kog'Maw passives) aren't listed; Olaf R, Fiora W and Morgana E have their own immunity code. */
+const UNSTOPPABLE = {
+  Malphite:{R:{imm:"displacement", from:"dash", why:"Unstoppable Force: dashes with displacement immunity; the dash can't be deterred by crowd control (wiki)"}},
+  Vi:      {R:{imm:"displacement", from:"dash", why:"Cease and Desist: dashes with displacement immunity; the dash can't be deterred by crowd control, stuns still apply (wiki)"}},
+  Hecarim: {R:{imm:"displacement", from:"dash", why:"Onslaught of Shadows: dashes with displacement immunity (wiki)"}},
+  JarvanIV:{R:{imm:"displacement", from:"dash", why:"Cataclysm: leaps with displacement immunity (wiki)"}},
+  Camille: {R:{imm:"displacement", from:"dash", why:"The Hextech Ultimatum: leaps with displacement immunity (wiki)"}},
+  Volibear:{R:{imm:"displacement", from:"dash", why:"Stormbringer: leaps with displacement immunity (wiki)"}},
+  Aurora:  {R:{imm:"displacement", from:"dash", why:"Between Worlds: displacement immunity (wiki)"}},
+  Ambessa: {R:{imm:"displacement", from:"dash", why:"Public Execution: displacement immunity (wiki)"}},
+  Sett:    {R:{imm:"displacement", from:"dash", why:"The Show Stopper: displacement immunity (wiki)"}},
+  KSante:  {W:{imm:"displacement", from:"press", why:"Path Maker: displacement immunity while charging and dashing (wiki)"},
+            R:{imm:"displacement", from:"press", why:"All Out: displacement immunity over the cast time (wiki)"}},
+  RekSai:  {R:{imm:"displacement", from:"press", why:"Void Rush: displacement immunity from the start of the cast time (wiki Cast time)"}},
+  Shyvana: {R:{imm:"displacement", from:"press", why:"Dragon's Descent: displacement immunity from the start of the cast time (wiki Cast time)"}},
+  Viego:   {R:{imm:"displacement", from:"press", why:"Heartbreaker: displacement immunity from the start of the cast time (wiki Cast time)"}},
+  Illaoi:  {R:{imm:"displacement", from:"press", why:"Leap of Faith: displacement immunity from the start of the cast time (wiki Cast time)"}},
+  TahmKench:{R:{imm:"displacement", from:"press", why:"Devour: displacement immunity (wiki; takes effect at the start of the cast time, wiki Cast time)"}},
+  Ornn:    {W:{imm:"displacement", from:"press", why:"Bellows Breath: displacement immunity (wiki)"}},
+  Warwick: {Q:{imm:"displacement", from:"dash", why:"Jaws of the Beast: displacement immunity (wiki)"},
+            R:{imm:"cc", from:"press", why:"Infinite Duress: crowd control immunity from the start of the cast time (wiki)"}},
+  Sion:    {R:{imm:"cc", from:"press", why:"Unstoppable Onslaught: crowd control immunity (wiki)"}},
+  Kled:    {R:{imm:"cc", from:"press", why:"Chaaaaaaaarge!!!: crowd control immunity while charging (wiki)"}},
+  Rammus:  {R:{imm:"cc", from:"press", why:"Soaring Slam: crowd control immunity (wiki)"}},
+  Galio:   {R:{imm:"cc", from:1.25, why:"Hero's Entrance: crowd control immunity after the first 1.25 s of the channel, which is interruptible only before then (wiki)"}},
+};
+/* Displacement immunity also resists these suppressions (wiki Crowd control § Displacement Immunity) and the stun of these
+   knock-up + stun abilities (same section, Notes). */
+const DISP_SUPPRESS = {Ambessa:["R"], Skarner:["E","R"], Sett:["R"], TahmKench:["R"]};
+const DISP_STUN = {Alistar:["Q"], Ivern:["R"], Maokai:["Q"], Ornn:["E","R"], Rammus:["Q"], Sion:["Q","R"], Tristana:["R"], Velkoz:["E"], XinZhao:["R"], Zac:["Q","E"]};
+/* Dashes (wiki Dash): a displacement (airborne) or a knockdown stops a dash in progress — the newest movement overrides the older
+   ("move blocks", wiki Types of Crowd Control § Airborne) — unless the dasher is displacement or CC immune (or spell shielded /
+   untargetable, which blocks the ability itself). Stuns, roots, silences and the rest don't stop a dash already under way, except
+   for these dashes, which immobilizing effects and polymorph also interrupt (wiki Dash § Dashes that are interruptible by CC). */
+const DASH_CC_STOPS = {Akshan:["E"], Camille:["E"], Kalista:["P"], Rakan:["W","E"], Yasuo:["E"], Yuumi:["W"]};
+const KNOCKDOWN = {Ahri:["E"], Amumu:["R"], Jinx:["E"], Lissandra:["R"], Malzahar:["R"], Veigar:["E"], Vex:["E"], Viktor:["W"], Warwick:["R"], Yone:["R"], Zac:["Q"]};
+/* charges the engine models as a cast time (the wiki's channel-type table for them is "charge", which crowd control interrupts:
+   Vi Q interrupts = death, ground, root, silence; Sion Q default = silence, death; wiki Template:Channel type): interruptible from the press */
+const CHARGE_CAST = {Vi:["Q"], Sion:["Q"]};
+const inTable = (T, champ, slot) => !!(T[champ] && T[champ].includes(slot));
 /* Energy (AUTOPILOT item 24): game data CharacterRecord primaryAbilityResource arType 1 = energy: 200 maximum (Shen 400),
    10 per second (wiki: 50 per 5 s), no growth. Ability costs are the spell data costs (a.S.cost, by rank). Restores (wiki + game data):
    Zed W passive 30–50 (W rank; rank 1 if unlearned) when Zed and a shadow (or two shadows) hit the same target with one Q or E;
