@@ -698,7 +698,7 @@ function kitRankKey(c){ const k=KIT[c.champ]; return k && k.stats && k.rankStats
 
 /* ================= fight simulator ================= */
 const SIM_ASSUMPTIONS = [
-  "fight(): positions on one line (1-D): side 1's front at 0, side 2's front at start: units (default 0 = contact); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range, other abilities their reach + the target's hitbox (wiki Range)",
+  "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range, other abilities their reach + the target's hitbox (wiki Range)",
   "fight(): every ability and attack in range hits (perfect aim, no dodging in fight(); use canDodge for that); abilities land when cast (no travel time)",
   "fight(): abilities are cast as soon as they're off cooldown (0.25s cast lock); mana is ignored",
   "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground stops dashes, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
@@ -812,7 +812,7 @@ function ccDuration(e, ten){
 function simulate(sidesIn, T, simNotes, fo){
   fo = fo || {};
   const saved=TR; TR=null;
-  const dt=0.05, U=[], log=[], events=[];
+  const dt=0.05, U=[], log=[], events=[], pendingKills=[]; let inTick=false, dmgQueue=null, healQueue=null;
   const say=(t,s)=>{ if (log.length<600) log.push(`${t.toFixed(2)}s  ${s}`); };
   SIM_ASSUMPTIONS.forEach(n=>simNotes.add(n));
   const has=(u,k)=>u.items.has(k);
@@ -859,11 +859,12 @@ function simulate(sidesIn, T, simNotes, fo){
       dmgBy:new Map(), marks:{}, expose:null, vuln:null, venom:null, malig:null, bloodlet:{n:0,until:-1,at:-1}, squall:null,
       script: c._script ? c._script.slice() : null, si:0, stepLog:[], scriptWait: c._scriptWait !== false};
     u.ranged = st.ranged;
-    // position on the line (side 1 faces +x from 0, side 2 faces −x from fo.start) and crowd control state
+    // position on the line (side 1 faces +x from −start/2, side 2 faces −x from +start/2) and crowd control state
     // formation (default): each unit stands max(0, attack range − 175) behind its side's front, i.e. ranged units at their
     // attack range from where the enemy front will stand; fight(..., formation: false) puts everyone on the front line
     u.depth = fo.formation===false ? 0 : Math.max(0, st.range-175);
-    u.x = side===0 ? -u.depth : (fo.start||0)+u.depth; u.x0=u.x; u.ccs=[]; u.slows=[]; u.move=null; u.role=o.role||null; u.walk=null; u.chan=null;
+    // centred on 0 so mirrored positions are exact negatives (no rounding bias)
+    u.x = side===0 ? -(fo.start||0)/2-u.depth : (fo.start||0)/2+u.depth; u.x0=u.x; u.ccs=[]; u.slows=[]; u.move=null; u.role=o.role||null; u.walk=null; u.chan=null;
     u.flags=new Set(); u.kit={};
     for (const s of ["P","Q","W","E","R"]){
       const S=CALC.champs[c.champ][s]; if (!S) continue;
@@ -905,39 +906,43 @@ function simulate(sidesIn, T, simNotes, fo){
     for (const f of u.flags) simNotes.add(`${u.name}: ${f}`);
     return u;
   }
-  const enemiesOf = (u,t) => U.filter(x=>x.alive && x.side!==u.side && t>=x.stasisUntil);
-  const partDmg = (p, x) => { let v = !p.pct ? p.v : p.v*(p.pctOf==="current" ? Math.max(0,x.hp) : p.pctOf==="missing" ? Math.max(0,x.max-x.hp) : x.max);
+  const inStasis = (x,t) => t < (x.stasisS ?? x.stasisUntil);      // stasisS: at the start of the tick (stasis gained mid-tick counts from the next)
+  const enemiesOf = (u,t) => U.filter(x=>x.alive && x.side!==u.side && !inStasis(x,t));
+  const partDmg = (p, x) => { const hp = x.hpS ?? x.hp; let v = !p.pct ? p.v : p.v*(p.pctOf==="current" ? Math.max(0,hp) : p.pctOf==="missing" ? Math.max(0,x.max-hp) : x.max);
     if (p.floor && v<p.floor) v=p.floor;                                                              // champion kits: Dr. Mundo Q minimum
     if (p.ampMissing) v*=1+Math.min(p.ampCap??1, p.ampMissing*Math.max(0,1-x.hp/x.max));             // Akali R recast, Samira passive
     return v; };
   const alliesOf = (u) => U.filter(x=>x.alive && x.side===u.side);
-  const pct = x => x.hp/x.max;
-  const incoming = (x,t,w=1.5) => x.dmgIn.filter(d=>d.t>t-w).reduce((s,d)=>s+d.v,0)/w;
+  const pct = x => (x.hpS ?? x.hp)/x.max;     // hpS: health at the start of the tick (decisions are simultaneous)
+  const incoming = (x,t,w=1.5) => x.dmgIn.filter(d=>d.t>t-w && d.t<t).reduce((s,d)=>s+d.v,0)/w;
   const sameChamp = (u, c) => !!c && champKey(u.c)===champKey(c);
   /* ---- positions, movement and crowd control (fight(); scripted combos ignore range) ---- */
   const RAD = u => hitboxOf(u.c);                       // gameplay radius per champion (character record; dummy grows with health)
   const face = u => u.side===0 ? 1 : -1;                // the direction of the enemy side
-  const gap = (a,b) => Math.abs(a.x-b.x);
-  const ccOn = (u,t,type) => u.ccs.some(c=>c.type===type && c.until>t);
+  const gap = (a,b) => Math.abs((a.xS ?? a.x)-(b.xS ?? b.x));   // xS: position at the start of the tick (simultaneous decisions)
+  // a crowd control applied during tick t takes effect from the next tick, so the order units act in within a tick doesn't matter
+  const ccLive = (c,t) => c.until>t && !(c.at>=t);
+  const ccOn = (u,t,type) => u.ccs.some(c=>c.type===type && ccLive(c,t));
   const LOCKS = ["stun","suppress","sleep","knockup","knockback","pull","charm","fear","taunt","berserk"];
-  const locked = (u,t) => u.ccs.some(c=>c.until>t && LOCKS.includes(c.type));
+  const locked = (u,t) => u.ccs.some(c=>ccLive(c,t) && LOCKS.includes(c.type));
   const canCast = (u,t) => !locked(u,t) && !ccOn(u,t,"silence") && !ccOn(u,t,"polymorph");
   const canAttack = (u,t) => !locked(u,t) && !ccOn(u,t,"disarm") && !ccOn(u,t,"polymorph");
-  const canMove = (u,t) => !locked(u,t) && !ccOn(u,t,"root") && !(u.move && u.move.t1>t);
+  const canMove = (u,t) => !locked(u,t) && !ccOn(u,t,"root") && !(u.move && u.move.t1>t && u.move.t0<t);   // a displacement started this tick counts from the next
   const canDash = (u,t) => canMove(u,t) && !ccOn(u,t,"ground");
   const ccImmune = (u,t) => u.shields.some(s=>s.ccImmune && s.until>=t && shieldLeft(s,t)>0.01);
   // wiki Movement speed: only the strongest slow counts; slow resist scales it; soft caps after
-  function slowNow(u,t){ let best=0; for (const s of u.slows){ if (s.until<=t) continue; const v = s.decay ? s.pct*(s.until-t)/Math.max(1e-9,s.until-s.t0) : s.pct; if (v>best) best=v; } return best*(1-(u.st.slowresist||0)); }
+  function slowNow(u,t){ let best=0; for (const s of u.slows){ if (s.until<=t || s.t0>=t) continue;   // takes effect from the next tick
+      const v = s.decay ? s.pct*(s.until-t)/Math.max(1e-9,s.until-s.t0) : s.pct; if (v>best) best=v; } return best*(1-(u.st.slowresist||0)); }
   const msNow = (u,t) => msCap((u.st.msuncapped||u.st.ms)*(1-slowNow(u,t)));
   // Cheap Shot's crowd control (wiki Rune_data_Cheap_Shot): immobilize, blind, disarm, ground, nearsight, polymorph, silence, slow
   const CHEAP_CC = ["stun","root","knockup","knockback","pull","suppress","sleep","charm","fear","taunt","berserk","blind","disarm","ground","nearsight","polymorph","silence"];
-  const cheapShotImpaired = (x,t) => x.ccs.some(c=>c.until>t && CHEAP_CC.includes(c.type)) || x.slows.some(s=>s.until>t) || x.impairedUntil>t;
+  const cheapShotImpaired = (x,t) => x.ccs.some(c=>ccLive(c,t) && CHEAP_CC.includes(c.type)) || x.slows.some(s=>s.until>t && !(s.t0>=t)) || x.impairedUntil>t;
   // Approach Velocity (wiki): +7.5% move speed walking toward a movement-impaired enemy within 1000, +15% toward one you impaired (any distance)
   function msWalk(u,t,dir){
     if (!u.runes.has("approachvelocity") || !dir) return msNow(u,t);
-    let b=0; for (const e of U){ if (!e.alive || e.side===u.side || Math.sign(e.x-u.x)!==dir) continue;
-      const imp = e.slows.some(s=>s.until>t) || e.ccs.some(c=>c.until>t && ["stun","root","knockup","suppress","sleep","charm","fear","taunt","ground"].includes(c.type));
-      if (!imp) continue; const mine = e.slows.some(s=>s.until>t && s.by===u) || e.ccs.some(c=>c.until>t && c.src===u) || e.impairedBy===u && e.impairedUntil>t;
+    let b=0; for (const e of U){ if (!e.alive || e.side===u.side || Math.sign((e.xS??e.x)-(u.xS??u.x))!==dir) continue;
+      const imp = e.slows.some(s=>s.until>t && !(s.t0>=t)) || e.ccs.some(c=>ccLive(c,t) && ["stun","root","knockup","suppress","sleep","charm","fear","taunt","ground"].includes(c.type));
+      if (!imp) continue; const mine = e.slows.some(s=>s.until>t && !(s.t0>=t) && s.by===u) || e.ccs.some(c=>ccLive(c,t) && c.src===u) || e.impairedBy===u && e.impairedUntil>t;
       b=Math.max(b, mine ? 0.15 : gap(u,e)<=1000 ? 0.075 : 0); }
     if (!b) return msNow(u,t);
     return msCap(u.st.msraw*(1+u.st.mspct+b)*(1-slowNow(u,t))); }
@@ -946,15 +951,18 @@ function simulate(sidesIn, T, simNotes, fo){
     if (p.delivery==="unit") return p.range>0 && p.range<20000 ? p.range : p.range>=20000 ? Infinity : aaReach(u,x);   // wiki Range: unit-targeted = centred
     const r=reachOf(p); return r>=20000 ? Infinity : r>0 ? r + RAD(x) : aaReach(u,x); }
   const inReach = (u,a,x) => gap(u,x) <= abReach(u,a,x) + 1e-6;
-  const roleOf = u => u.role || (u.ranged ? (fo.kite===false ? "fight" : "kite") : "dive");
-  function displace(x, to, dur, t){ x.move={x0:x.x, x1:to, t0:t, t1:t+Math.max(dur,1e-3)}; }
+  // fight(..., kite: false) wins over x.role = "kite" (the option is the more specific instruction for this fight)
+  const roleOf = u => { const r = u.role || (u.ranged ? "kite" : "dive"); return r==="kite" && fo.kite===false ? "fight" : r; };
+  const arenaClamp = (x, to, t) => x.arena && x.arena.until>t ? Math.max(x.arena.cx-x.arena.r, Math.min(x.arena.cx+x.arena.r, to)) : to;   // Jarvan IV R walls
+  // forced (enemy) displacements beat the unit's own dash started in the same tick, whichever came first in the tick
+  function displace(x, to, dur, t, forced){ if (!forced && x.move && x.move.forced && x.move.t0>=t) return; to=arenaClamp(x, to, t); x.move={x0:x.x, x1:to, t0:t, t1:t+Math.max(dur,1e-3), forced:!!forced}; }
   function stepMove(u,t){ const m=u.move; if (!m) return; const f=Math.min(1,(t-m.t0)/(m.t1-m.t0)); u.x=m.x0+(m.x1-m.x0)*f; if (f>=1) u.move=null; }
   const clampRoom = (u, x) => fo.room==null ? x : u.side===0 ? Math.max(u.x0-fo.room, x) : Math.min(u.x0+fo.room, x);
   function walk(u, toX, t, why){
     const d=toX-u.x, step=msWalk(u,t,Math.sign(d))*dt; if (Math.abs(d)<1e-6) return;
-    const nx=clampRoom(u, u.x + Math.sign(d)*Math.min(step, Math.abs(d))); if (Math.abs(nx-u.x)<1e-9) return;
+    const nx=arenaClamp(u, clampRoom(u, u.x + Math.sign(d)*Math.min(step, Math.abs(d))), t); if (Math.abs(nx-u.x)<1e-9) return;
     const state=`${why}`; if (u.walk!==state){ u.walk=state; say(t, `${u.name} ${why} (move speed ${fmt(msNow(u,t))})`); }
-    u.x=nx;
+    u.nx=nx;                                   // applied at the end of the tick (everyone moves simultaneously)
   }
   const holdStill = u => { u.walk=null; };
   // an enemy diving an ally that outranges it (or u itself): the peel target
@@ -964,9 +972,11 @@ function simulate(sidesIn, T, simNotes, fo){
     return best; }
   function chaser(u,t){ let best=null, bd=Infinity;
     for (const e of enemiesOf(u,t)){ if (e.passive) continue; const g=gap(u,e); if (aaReach(e,u)<aaReach(u,e) && g<aaReach(u,e)-5 && g<bd){ bd=g; best=e; } } return best; }
-  function interrupt(x,t){
+  // crowd control's interruption (channels, cast locks) is applied at the end of the tick, whatever order the units acted in
+  function interrupt(x,t){ if (inTick){ x.interruptAt=t; return; } doInterrupt(x,t); }
+  function doInterrupt(x,t){
     if (x.chan && x.chan.until>t){ for (const y of U) y.dots=y.dots.filter(d=>!(d.u===x && d.ability && d.ability.channel)); say(t, `  ${x.name}'s ${x.chan.slot} channel is interrupted`); x.chan=null; }
-    x.nextAct=Math.min(x.nextAct, t);
+    x.nextAct=Math.min(x.nextAct, t+dt);   // free again from the next tick (not later in this one: order-independence)
   }
   // spell shields: items (Banshee's, Edge of Night, Verdant Barrier) and abilities (Sivir E, Nocturne W: cast as the ability lands, perfect play)
   function blocked(u,a,x,t){
@@ -978,8 +988,24 @@ function simulate(sidesIn, T, simNotes, fo){
       if (b.heal) heal(x,x,b.heal,t,`${s} spell shield block`); return true; }
     return false;
   }
+  // Kennen's Mark of the Storm (wiki): each ability hit adds a mark for 6 s (MarkDuration); the third consumes them to stun
+  // for 1.25 s (StunDuration), 0.5 s (ReducedStunDuration) if the same target was stunned by it in the last 6 s.
+  // Slicing Maelstrom marks each target up to 3 times: modelled as marks at 0, 0.5 and 1 s while the target stays inside.
+  function passiveMarks(u, a, x, t){
+    if (u.c.champ!=="Kennen" || u.script || !x.alive) return;
+    const P=CALC.champs.Kennen.P; if (!P || !P.dv || !P.dv.stunduration) return;
+    const add=(tt)=>{ if (!x.alive || !u.alive) return; const k=x.kmark ||= {n:0, until:-1, last:-99};
+      if (k.until<tt) k.n=0; k.n++; k.until=tt+(dvOf(P,"markduration",1)||6);
+      if (k.n>=3){ k.n=0; const reduced = tt-k.last < (dvOf(P,"diminishingreturnduration",1)||6); k.last=tt;
+        const dur = reduced ? dvOf(P,"reducedstunduration",1) : dvOf(P,"stunduration",1);
+        say(tt, `  ${x.name}: 3 Marks of the Storm → stun${reduced?" (reduced: stunned by it within 6 s)":""}`);
+        applyCC(u, {slot:"P", S:P, p:{}, cc:[{type:"stun", dur, src:{dur:"dv:StunDuration"}}], hard:true}, x, tt, 0); } };
+    add(t);
+    if (a.slot==="R"){ const r=(a.p&&a.p.radius)||550; for (const dd of [0.5, 1]) events.push({at:t+dd, fn:(tt)=>{ if (gap(u,x)<=r+RAD(x)) add(tt); }}); }
+    simNotes.add(`${u.name} P: Mark of the Storm — every ability hit marks the target; 3 marks stun it (1.25 s, 0.5 s again within 6 s; game data); R marks each target up to 3 times (0, 0.5, 1 s)`);
+  }
   function applyCC(u, a, x, t, d0){
-    if (!a.cc || !a.cc.length || !x.alive || t<x.stasisUntil) return;
+    if (!a.cc || !a.cc.length || !x.alive || inStasis(x,t)) return;
     // a crowd-control-immunity shield (Morgana E) is cast on the ally just as the hard CC lands (perfect play)
     if (a.hard && !ccImmune(x,t)) for (const y of alliesOf(x)){ if (y.passive || y.script || !canCast(y,t)) continue;
       for (const s of ["Q","W","E","R"]){ const b=y.abAll[s]; if (!b || !b.ccImmune || !b.shield || (y.cd[s]||0)>t) continue; const r=b.p&&b.p.range||0; if (y!==x && gap(y,x)>r+RAD(x)) continue;
@@ -1006,9 +1032,9 @@ function simulate(sidesIn, T, simNotes, fo){
           const dir = placed ? (roleOf(u)==="engage" && !a.peeling ? -face(u) : face(u)) : away;
           const push = e.mode==="to" ? Math.max(0, e.dist-gap(u,x)) : e.dist; to=x.x+dir*push;
           what=`knocked back ${fmt(push)} units${e.mode==="to"?` (to ${fmt(e.dist)} from ${u.name})`:""}${placed?(dir===face(u)?" away from "+u.name+"'s team":" toward "+u.name+"'s team"):" away from "+u.name}`; }
-        x.ccs.push({type:e.type, until:t+e.dur, src:u}); displace(x, to, e.dur, t); x.walk=null; interrupt(x,t);
+        x.ccs.push({type:e.type, until:t+e.dur, src:u, at:t}); displace(x, to, e.dur, t, true); interrupt(x,t);
         say(t, `  ${x.name} is ${what} over ${fmt(e.dur)}s (airborne; tenacity doesn't apply): ${fmt(gap(u,x))} → ${fmt(Math.abs(to-u.x))} units from ${u.name}`); continue; }
-      x.ccs.push({type:e.type, until:t+eff, src:u});
+      x.ccs.push({type:e.type, until:t+eff, src:u, at:t});
       if (LOCKS.includes(e.type) || ["silence","polymorph"].includes(e.type)) interrupt(x,t);
       say(t, `  ${x.name} is ${CC_VERB[e.type]||e.type} for ${fmt(eff)}s${why}${NO_TENACITY.has(e.type)&&ten>0?" (tenacity doesn't apply)":""}`);
       if (e.type==="knockup" || e.type==="stun" || e.type==="suppress"){ x.impairedBy=u; x.impairedUntil=Math.max(x.impairedUntil, t+eff); }
@@ -1016,18 +1042,18 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   // charm, fear, taunt, berserk: the unit walks (and taunt/berserk attack) on its own
   function forcedAct(u,t){
-    if (u.ccs.some(c=>c.until>t && ["stun","suppress","sleep","knockup","knockback","pull"].includes(c.type))) return;
-    const c=u.ccs.find(c=>c.until>t && ["charm","fear","taunt","berserk"].includes(c.type)); if (!c || !c.src) return;
+    if (u.ccs.some(c=>ccLive(c,t) && ["stun","suppress","sleep","knockup","knockback","pull"].includes(c.type))) return;
+    const c=u.ccs.find(c=>ccLive(c,t) && ["charm","fear","taunt","berserk"].includes(c.type)); if (!c || !c.src) return;
     if ((c.type==="taunt"||c.type==="berserk") && c.src.alive && t>=u.nextAA && gap(u,c.src)<=aaReach(u,c.src)){ autoAttack(u,c.src,t); return; }
     if (!(u.move && u.move.t1>t) && !ccOn(u,t,"root")) walk(u, c.type==="fear" ? u.x+(u.x===c.src.x?-face(u):Math.sign(u.x-c.src.x))*1000 : c.src.x, t, c.type==="fear"?`flees from ${c.src.name}`:`walks to ${c.src.name} (${c.type})`);
   }
   function pickTarget(u, foes, role, t){
     let tgt = u.target ? foes.find(x=>sameChamp(x,u.target)) : null;
     if (tgt) return tgt;
-    if (role==="dive" || role==="engage") return foes.slice().sort((a,b)=>a.hp-b.hp)[0];
+    if (role==="dive" || role==="engage") return foes.slice().sort((a,b)=>(a.hpS??a.hp)-(b.hpS??b.hp))[0];
     const reach = x => Math.max(aaReach(u,x), ...Object.values(u.ab).filter(a=>a.parts.length).map(a=>Math.min(abReach(u,a,x), 3000)));
     const near = foes.filter(x=>gap(u,x)<=reach(x));
-    if (near.length) return near.sort((a,b)=>a.hp-b.hp)[0];
+    if (near.length) return near.sort((a,b)=>(a.hpS??a.hp)-(b.hpS??b.hp))[0];
     return foes.slice().sort((a,b)=>gap(u,a)-gap(u,b))[0];
   }
   function moveAI(u, tgt, role, t){
@@ -1073,9 +1099,9 @@ function simulate(sidesIn, T, simNotes, fo){
     if (has(u,"blackfiretorch")){ const n=U.filter(x=>x.alive && x.side!==u.side && x.dots.some(d=>d.id==="blackfire" && d.u===u && d.until>=t)).length; add("apPct", idv("blackfiretorch","APPerStack",0.04)*n); }
     if (has(u,"immortalpath") && pct(u)<0.5){ add("healIn",idv("immortalpath","HealingMod",0.12)); add("shieldIn",idv("immortalpath","HealingMod",0.12)); }
     if (U.some(x=>x.alive && x.side!==u.side && has(x,"frozenheart"))) m.asMult=r3(1+idv("frozenheart","ASPDSlow",-0.2));
-    // runes with in-fight stats (wiki Rune_data_*): Conqueror 1.8–4 adaptive per stack (AP = AD / 0.6), Absolute Focus
+    // runes with in-fight stats (wiki Rune_data_*): Conqueror 1.08–2.56 AD or 1.8–4.26 AP per stack (wiki; AP = AD / 0.6), Absolute Focus
     // off below 70% health, Unflinching +10 armor/MR while crowd controlled and 2 s after, Nimbus Cloak decaying speed
-    if (u.runes.has("conqueror") && u.conq.until>t && u.conq.n>0){ const per=lerpL(1.8,4,L(u))*u.conq.n; if (u.base.adaptiveType==="physical") add("bonusad",per); else add("ap",per/0.6); }
+    if (u.runes.has("conqueror") && u.conq.until>t && u.conq.n>0){ const per=lerpL(1.08,2.56,L(u))*u.conq.n; if (u.base.adaptiveType==="physical") add("bonusad",per); else add("ap",per/0.6); }
     if (u.runes.has("absolutefocus") && u.hp<0.7*u.max) m.afOff=1;
     if (u.runes.has("unflinching") && (u.ccs.some(c=>c.until>t-2) || u.slows.some(s=>s.until>t-2))){ add("bonusarmor",10); add("bonusmr",10); }
     if (u.nimbus && u.nimbus.until>t) add("mspct", Math.round(u.nimbus.pct*(u.nimbus.until-t)/2*100)/100);
@@ -1102,6 +1128,7 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   // heal and shield given by src; item hooks for helping allies
   function heal(src, tgt, amt, t, what, isVamp, noHooks){
+    if (healQueue){ healQueue.push([src, tgt, amt, t, what, isVamp, noHooks]); return 0; }   // heals from this tick's damage land after all of it
     if (!tgt.alive || amt<=0) return 0;
     let a = isVamp ? amt : amt*(1+src.st.healpower+(src.runes.has("revitalize")&&pct(tgt)<0.4?0.10:0)+actualizerAmp(src,t));
     a *= 1+tgt.st.healIn;
@@ -1169,7 +1196,10 @@ function simulate(sidesIn, T, simNotes, fo){
     }
   }
   function deal(att, tgt, raw, type, t, kind, what, o={}){
-    if (!tgt.alive || t<tgt.stasisUntil || raw<=0) return 0;
+    if (dmgQueue && att.side!==tgt.side){ dmgQueue.push([att, tgt, raw, type, t, kind, what, o]);
+      if (att.kit && att.kit.hit && kind==="ability" && tgt.alive && !inStasis(tgt,t) && raw>0) att.kit.hit.add(tgt);   // kits that collect a cast's targets (Annie, …) see the hit now
+      return 0; }   // resolved after everyone has acted this tick
+    if (!tgt.alive || inStasis(tgt,t) || raw<=0) return 0;
     // practice-tool dummy: after 3 s without damage it restores to full health and resets its damage tracking (wiki Practice Tool § Dummy)
     if (tgt.dummy && tgt.hp<tgt.max && t-tgt.lastHurtAt>=DUMMY_RESET-1e-9){ tgt.hp=tgt.max; tgt.dummyTaken=0; say(t, `${tgt.name} resets to full health (no damage for ${DUMMY_RESET}s)`); }
     if (kind!=="dot" && kind!=="abilitydot"){ enterCombat(att,t,true); enterCombat(tgt,t,false); }
@@ -1294,8 +1324,8 @@ function simulate(sidesIn, T, simNotes, fo){
     if (att.hits.length<2000) att.hits.push({t, v, type, what:what||kind, kind, tgt:tgt.name, step: att.curStep ?? (kind==="dot"||kind==="abilitydot" || !att.script ? null : att.stepLog.length)});
     // practice-tool dummy: can't die or go below 1 health; it takes at most (max health − 1) (wiki). wouldDieAt = when a champion with these stats dies.
     if (tgt.dummy){ tgt.dummyTaken+=left; if (tgt.dummyTaken>=tgt.max && tgt.wouldDieAt==null){ tgt.wouldDieAt=t; say(t, `${tgt.name}: ${fmt(tgt.dummyTaken)} damage taken ≥ ${fmt(tgt.max)} health (a champion would die here; the dummy stays at 1)`); } if (tgt.hp<1) tgt.hp=1; return v; }
-    if (tgt.hp<=0) kill(tgt, att, t);
-    else if (has(att,"thecollector") && pct(tgt)<idv("thecollector","ExecuteThreshold",0.05) && !o.redirect){ say(t, `${att.name} executes ${tgt.name} (The Collector)`); tgt.hp=0; kill(tgt, att, t); }
+    if (tgt.hp<=0){ if (inTick){ if (!pendingKills.some(k=>k.tgt===tgt)) pendingKills.push({tgt, att}); } else kill(tgt, att, t); }
+    else if (has(att,"thecollector") && pct(tgt)<idv("thecollector","ExecuteThreshold",0.05) && !o.redirect){ say(t, `${att.name} executes ${tgt.name} (The Collector)`); tgt.hp=0; if (inTick){ if (!pendingKills.some(k=>k.tgt===tgt)) pendingKills.push({tgt, att}); } else kill(tgt, att, t); }
     return v;
   }
   function lifeline(u, t, type){
@@ -1510,7 +1540,7 @@ function simulate(sidesIn, T, simNotes, fo){
     u.nextAA=t+1/as; u.nextAct=t+Math.min(0.25,0.4/as); u.lastAAt=t; u.walk=null;
     if (ccOn(u,t,"blind")){ say(t, `${u.name}'s attack on ${tgt.name} misses (blinded)`); return; }
     // the attack's damage (critical strikes at their expected value)
-    const hp0=tgt.hp, crit=u.st.crit, cdm=u.st.critdmg*(has(tgt,"randuinsomen")?1-idv("randuinsomen","PercentCritDamageReduction",0.3):1);
+    const hp0=tgt.hpS ?? tgt.hp, crit=u.st.crit, cdm=u.st.critdmg*(has(tgt,"randuinsomen")?1-idv("randuinsomen","PercentCritDamageReduction",0.3):1);
     let mult=1+crit*(cdm-1), what=crit?"attack, expected crit":"attack", trueX=0;
     if (has(u,"sunderedsky") && !(u.sunder[tgt.name]>t)){ u.sunder[tgt.name]=t+idv("sunderedsky","Cooldown",10); mult=cdm*idv("sunderedsky","CritModifier",0.8); what="attack, Sundered Sky crit"; }
     else if (fh){ const fm=idv("fiendhunterbolts","CritModifier",0.8);
@@ -1518,6 +1548,7 @@ function simulate(sidesIn, T, simNotes, fo){
     const kam=CHAMP_MECH[u.c.champ], am = kam && kam.attack ? kam.attack(u,tgt,t,mult) : null;   // champion kits: empowered attacks
     if (am && am.replace) deal(u,tgt,am.replace.v,am.replace.type,t,"aa",am.replace.what); else deal(u,tgt,u.st.ad*mult,"physical",t,"aa",what);
     if (am && am.bonus) for (const b of am.bonus) deal(u,tgt,b.v,b.type,t,"aa",b.what);
+    if (tgt.alive) kitBrushBolts(u, tgt, t);
     if (trueX>0) deal(u,tgt,trueX,"true",t,"proc","Fiendhunter Bolts");
     if (what==="attack, Sundered Sky crit"){ const hv=idv("sunderedsky","HealBaseADRatio",0.9)*u.st.basead*(u.ranged?idv("sunderedsky","RangedHealMod",0.5):1)+idv("sunderedsky","MissingHealthHeal",0.04)*(u.max-u.hp);
       const room=u.max-u.hp, full=hv*(1+u.st.healpower)*(1+u.st.healIn)*(t<u.grievUntil?1-u.grievBy:1); heal(u,u,hv,t,"Sundered Sky");
@@ -1571,11 +1602,11 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   function hitList(u,a,tgt,t){
     if (u.script) return a.aoe ? enemiesOf(u,t) : (tgt ? [tgt] : []);
-    if (!a.aoe) return tgt && tgt.alive && t>=tgt.stasisUntil && inReach(u,a,tgt) ? [tgt] : [];
+    if (!a.aoe) return tgt && tgt.alive && !inStasis(tgt,t) && inReach(u,a,tgt) ? [tgt] : [];
     const p=a.p||{}, r=p.radius||0, foes=enemiesOf(u,t);
     let list;
     if (p.delivery==="self") list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6);
-    else if (tgt && r>0 && (p.kind==="area" || ["placed","lobbed","remote"].includes(p.delivery))) list = foes.filter(x=>Math.abs(x.x-tgt.x)<=r+RAD(x)+1e-6 && gap(u,tgt)<=abReach(u,a,tgt)+1e-6);
+    else if (tgt && r>0 && (p.kind==="area" || ["placed","lobbed","remote"].includes(p.delivery))) list = foes.filter(x=>gap(x,tgt)<=r+RAD(x)+1e-6 && gap(u,tgt)<=abReach(u,a,tgt)+1e-6);
     else list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6);        // lines and cones: on one line, everything within reach
     return list;
   }
@@ -1594,7 +1625,7 @@ function simulate(sidesIn, T, simNotes, fo){
       const di=a.di, ref=o.away||tgt, dir = o.away ? (u.x===ref.x ? -face(u) : Math.sign(u.x-ref.x)) : (ref.x===u.x ? face(u) : Math.sign(ref.x-u.x));
       let to = o.away ? clampRoom(u, u.x+dir*di.dist) : u.x+dir*Math.min(di.dist, Math.max(0, gap(u,tgt)-RAD(u)-RAD(tgt)));
       const by=Math.abs(to-u.x);
-      if (by>1){ if (a.blink) u.x=to; else { arrive=Math.max(0.05, (di.time-di.castTime)*by/Math.max(1,di.dist)); displace(u, to, arrive, t); }
+      if (by>1){ if (a.blink) displace(u, to, 1e-3, t);   /* lands at the start of the next tick */ else { arrive=Math.max(0.05, (di.time-di.castTime)*by/Math.max(1,di.dist)); displace(u, to, arrive, t); }
         say(t, `${u.name} ${a.blink?"blinks":"dashes"} ${fmt(by)} units ${o.away?`away from ${o.away.name}`:`toward ${tgt.name}`} (${a.slot})${a.blink?"":` in ${fmt(arrive)}s`}`);
         simNotes.add(`fight(): dashes and blinks use the game data dash range and speed (dashInfo); a dash's hits land when it arrives, a blink's at once`); }
     }
@@ -1639,7 +1670,7 @@ function simulate(sidesIn, T, simNotes, fo){
         else for (const p of a.parts) deal(u,x,partDmg(p,x),p.type,t,"ability",a.slot);
         say(t, `  ${a.slot} hits ${x.name}${x.alive?` → ${fmt(x.hp)}/${fmt(x.max)}`:""}`);
         if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; }
-        applyCC(u,a,x,t,d0);
+        applyCC(u,a,x,t,d0); passiveMarks(u,a,x,t);
         if (tps > 0) return;
         abilityItems(u,x,t,a,i===0);
         onHit(u,x,t,"ability",a);
@@ -1647,7 +1678,7 @@ function simulate(sidesIn, T, simNotes, fo){
       });
     }
     if (!a.parts.length && (tgt || (a.p && a.p.delivery==="self")) && (a.immob || a.slows || (a.cc && a.cc.length))){ say(t, `${u.name} casts ${a.slot}`); a.saidAt=t;
-      for (const x of hitList(u,a,tgt,t)){ if (blocked(u,a,x,t)) continue; if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
+      for (const x of hitList(u,a,tgt,t)){ if (blocked(u,a,x,t)) continue; passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
     else if (!a.parts.length && !a.heal && !a.shield) say(t, `${u.name} casts ${a.slot}`);
     if (km && km.afterCast) km.afterCast(u, a, ktg, t);
   }
@@ -1677,6 +1708,11 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   function order(u){ const r=u.rotation ? u.rotation.split("").filter(s=>"QWER".includes(s)) : ["R","Q","E","W"]; return r.filter(s=>u.ab[s]); }
   /* ---- champion audit helpers (CHAMP_MECH) ---- */
+  const kitOathsworn = u => alliesOf(u).find(x=>x!==u && x.alive) || null;
+  // Brushmaker: Ivern's brush empowers his and his allies' attacks (wiki Ivern_W; allies need Ivern within 1000, assumed)
+  function kitBrushBolts(u, tgt, t){ for (const iv of U) if (iv.side===u.side && iv.alive && iv.c.champ==="Ivern" && iv.kit.brushUntil>t){
+      const A=iv.abAll.W; if (!A) continue; const v=evalCalc({S:A.S, rank:A.rank, st:iv.st, flags:iv.flags}, iv===u ? "totaldamage" : "totalallydamage").v;
+      deal(u,tgt,v,"magic",t,"proc",iv===u?"Brushmaker":"Brushmaker (ally)"); } }
   // Yasuo / Yone Steel Tempest / Mortal Steel: a hit gives a Gathering Storm stack (6 s, max 2); the cast at 2 stacks is the
   // empowered third cast, the only one that knocks up (wiki). onCast: before the hit (choose the crowd control); after: stack.
   function kitGatheringStorm(u, a, t, after){ const K=u.kit, G=K.storm && K.storm.until>t ? K.storm : {n:0};
@@ -1719,6 +1755,46 @@ function simulate(sidesIn, T, simNotes, fo){
       if ((u.cd.E||0) > t){ u.cd.E=Math.max(t, u.cd.E - v); say(t, `  dagger picked up: Shunpo cooldown −${fmt(v)}s`); }
       simNotes.add("Katarina: picking up a Dagger (P step) reduces Shunpo's cooldown by the tooltip's daggercooldownreduction");
     } },
+    /* ---- range-disengage debate fixes (2026-09-23) ---- */
+    Ivern: {
+      onCast(u, a, tgt, t){ if (a.slot!=="W") return; u.kit.brushUntil=t+(dvOf(a.S,"maxbrushduration",a.rank)||45);
+        simNotes.add(`${u.name} W: grows a brush where the fight is; Ivern and his allies are assumed to fight inside it for its 45 s, so their attacks fire Brushmaker bolts (Ivern ${fmt(evalCalc({S:a.S,rank:a.rank,st:u.st,flags:u.flags},"totaldamage").v)}, allies ${fmt(evalCalc({S:a.S,rank:a.rank,st:u.st,flags:u.flags},"totalallydamage").v)} magic); fight() recasts it only every 20 s (one charge)`); },
+    },
+    Annie: {
+      onCast(u, a, tgt, t){ const K=u.kit; if (K.pyro==null) K.pyro=dvOf(CALC.champs.Annie.P,"maxstacks",1)||4;   // wiki: max stacks at game start / respawn
+        K.stunCast = ["Q","W","R"].includes(a.slot) && K.pyro>=4; K.hit=new Set(); if (K.stunCast) K.pyro=0; },
+      onDealt(att, tgt, v, pre, type, t, kind){ const K=att.kit; if (K.hit && kind==="ability") K.hit.add(tgt); },
+      afterCast(u, a, tgt, t){ const K=u.kit, hit=[...(K.hit||[])]; K.hit=null;
+        if (K.stunCast){ K.stunCast=false; const P=CALC.champs.Annie.P, L=u.st.level, dur=(dvOf(P,"stunbaseduration",1)||1.25)+(dvOf(P,"stundurationpertier",1)||0.25)*(L>=11?2:L>=6?1:0);
+          for (const x of hit) if (x.alive) applyCC(u, {...a, cc:[{type:"stun", dur}], hard:true}, x, t, 0);
+          simNotes.add(`${u.name}: Pyromania — she starts Energized (wiki: full stacks at game start and respawn); her next Q, W or R stuns every enemy it damages for ${fmt(dur)}s (1.25/1.5/1.75 s at levels 1/6/11); Q hits and W/E/R casts build the next 4 stacks`); return; }
+        if (a.slot!=="Q" || hit.length) K.pyro=Math.min(4, K.pyro+1); },
+    },
+    JarvanIV: {
+      afterCast(u, a, tgt, t){ if (a.slot!=="R" || !tgt) return;
+        // he leaps onto the target champion (unit-targeted, wiki), wherever it went during the 0.35 s leap; the ring is centred there
+        const cx=tgt.xS ?? tgt.x; u.move=null; displace(u, cx - (Math.sign(cx-u.x)||1)*(RAD(u)+RAD(tgt)), 1e-3, t, true);   /* lands at the start of the next tick */ const until=t+(dvOf(a.S,"wallduration",a.rank)||3.5), r=255;
+        for (const x of [u, ...enemiesOf(u,t)]) if (x===u || Math.abs((x.xS??x.x)-cx)<=350+RAD(x)) x.arena={cx, r, until};
+        say(t, `  ${u.name}: Cataclysm walls in everyone within 350 of ${tgt.name} for ${fmt(until-t)}s`);
+        simNotes.add(`${u.name} R: Cataclysm's terrain ring (wiki: 350 creation radius, pathing inside 255 of the centre, 3.5 s) keeps everyone caught inside from walking or dashing out (1-D: within 255 of the target's spot); blinks and Flash still cross it; the recast that breaks the walls is not used`); },
+    },
+    Kalista: {
+      castable:(u, a, tgt, t)=>a.slot!=="R" || kitOathsworn(u) ? true : "Fate's Call needs an Oathsworn ally",
+      init(u){ const R=u.abAll.R; if (R){ R.dash=null; R.blink=false; R.knock=null; R.hard=false; } },   // Kalista doesn't move or knock anyone herself: the Oathsworn does
+      onCast(u, a, tgt, t){ if (a.slot!=="R") return; a.ccAll ??= a.cc||[]; a.cc=[];   // the crowd control is the Oathsworn's landing, below
+        const o=kitOathsworn(u); if (!o) return; const dur=dvOf(a.S,"knockupduration",a.rank)||1;
+        o.stasisUntil=Math.max(o.stasisUntil, t+1); displace(o, u.x, 1e-3, t, true);   /* lands at the start of the next tick */   // held and pulled to Kalista over 1 s: untargetable and invulnerable (wiki)
+        say(t, `  ${u.name}: Fate's Call pulls ${o.name} in`);
+        events.push({at:t+1, fn:(tt)=>{ if (!o.alive) return; o.x=u.x; const foes=enemiesOf(u,tt); if (!foes.length) return;
+          const e=foes.slice().sort((p,q)=>gap(p,u)-gap(q,u))[0], dist=gap(e,u);   // start-of-tick positions (order-independent) if (dist>1200+RAD(e)) return;
+          o.stasisUntil=Math.max(o.stasisUntil, tt+dist/1500);   // silenced and unable to act until the dash lands (wiki); modelled as held
+          events.push({at:tt+dist/1500, fn:(t2)=>{ if (!o.alive || !e.alive) return; const ex=e.xS ?? e.x, dir=Math.sign(ex-o.x)||1;
+            o.x = ex - dir*Math.min(dist, (CALC.champs[o.c.champ].base.range||125)+RAD(o)+RAD(e));
+            say(t2, `  ${o.name} lands from Fate's Call`);
+            for (const x of enemiesOf(u,t2)) if (gap(x,e)<=300) applyCC(o, {slot:"R", S:a.S, p:{}, cc:[{type:"knockup", dur}], hard:true}, x, t2, 0); }}); }});
+        simNotes.add(`${u.name} R: the Oathsworn (the first other ally in her team) is held 1 s (untargetable), then dashes at 1500/s to the nearest enemy within 1200, lands at its own attack range and knocks up enemies within 300 of that enemy for ${fmt(dur)}s (wiki: 1/1.5/2 s; landing radius not given, 300 assumed)`); },
+      afterCast(u, a, tgt, t){ if (a.slot==="R" && a.ccAll) a.cc=a.ccAll; },
+    },
     /* ---- champion audit (backlog 10): own-ability mechanics in fights; static numbers live in KIT ---- */
     Syndra: {
       onCast(u, a, tgt, t){ const K=u.kit, n=kitStacks(u.c), P=CALC.champs.Syndra.P;
@@ -1797,11 +1873,14 @@ function simulate(sidesIn, T, simNotes, fo){
       afterCast(u, a, tgt, t){ kitSmolderExecute(u, tgt, t); },
     },
     Ezreal: {
-      onCast(u, a, tgt, t){ if (a.slot==="W" && tgt){ const m=(a.later||[]).find(p=>p.later==="mark"); if (m){ tgt.ezMark={by:u, until:t+(dvOf(a.S,"detonationtimeout",a.rank)||4), v:m.v};
+      onCast(u, a, tgt, t){ u.kit.hit=new Set(); if (a.slot==="W" && tgt){ const m=(a.later||[]).find(p=>p.later==="mark"); if (m){ tgt.ezMark={by:u, until:t+(dvOf(a.S,"detonationtimeout",a.rank)||4), v:m.v};
         simNotes.add(`${u.name} W: the mark is detonated by the next attack or ability hit within 4 s`); } } },
-      afterCast(u, a, tgt, t){ if (!tgt) return;
+      onDealt(att, tgt, v, pre, type, t, kind){ if (att.kit.hit && kind==="ability") att.kit.hit.add(tgt); },
+      afterCast(u, a, tgt, t){ const hit=[...(u.kit.hit||[])]; u.kit.hit=null; if (!tgt) return;
+        if (a.slot==="W"){ kitEzP(u, t); return; }                 // the orb's hit (the mark) counts for Rising Spell Force
+        if (!hit.length) return;                                    // missed: no stack, no detonation, no refund
         kitEzP(u, t);
-        if (a.slot!=="W") kitEzDetonate(u, tgt, t);
+        for (const x of hit) kitEzDetonate(u, x, t);
         if (a.slot==="Q"){ const cut=dvOf(a.S,"cdrefund",a.rank)||1.5; for (const s of ["Q","W","E","R"]) if ((u.cd[s]||0)>t) u.cd[s]=Math.max(t, u.cd[s]-cut);
           simNotes.add(`${u.name} Q: a hit cuts every current cooldown by ${fmt(cut)} s`); } },
       onHit(u, x, t, o){ if (o.basic && o.primary) kitEzDetonate(u, x, t); },
@@ -1951,12 +2030,18 @@ function simulate(sidesIn, T, simNotes, fo){
     simNotes.add(`${u.name} uses its summoner spells in fights: Ignite and Exhaust on first contact (Exhaust on the enemy with the most AD + AP), Heal and Barrier below 30% health`);
   }
   const DAMAGE_ACTIVES = ["hextechrocketbelt","hextechgunblade","profanehydra","ravenoushydra","tiamat","stridebreaker","titanichydra","actualizer"];
+  // heals and shields: every unit's are cast in a first pass each tick, before anyone's damage (order-independent)
+  function supportPass(u, t, cc){
+    if (!cc || u.script) return false;
+    for (const s of order(u)){ const a=u.ab[s]; if (!a || t<(u.cd[s]||0) || a.parts.length || a.spellShield!=null || !(a.heal||a.shield)) continue; if (supportTargets(u,a,t,false)){ cast(u,a,null,t); return true; } }
+    return false;
+  }
   function act(u, t){
     if (locked(u,t)){ forcedAct(u,t); return; }
     if (u.script) return runScript(u, t);
     const cc = canCast(u,t), role=roleOf(u);
     // support abilities first: heals and shields that are needed now (spell shields are raised when an ability lands)
-    if (cc) for (const s of order(u)){ const a=u.ab[s]; if (!a || t<(u.cd[s]||0) || a.parts.length || a.spellShield!=null || !(a.heal||a.shield)) continue; if (supportTargets(u,a,t,false)){ cast(u,a,null,t); return; } }
+    if (supportPass(u,t,cc)) return;
     if (u.passive) return;
     const foes=enemiesOf(u,t); if (!foes.length) return;
     const tgt = pickTarget(u, foes, role, t);
@@ -2007,8 +2092,8 @@ function simulate(sidesIn, T, simNotes, fo){
     if (imm && u.immUntil>=t){ if (u.immAt==null) u.immAt=(u.immOn??t)+1; if (t>=u.immAt-1e-9){ u.immAt=t+1; const v=itemCalc(u.st,imm,"damagepertick"); for (const f of enemiesOf(u,t)) deal(u,f,v,"magic",t,"dot",null); } }
     else u.immAt=null;
     if (has(u,"unendingdespair") && u.champCombatAt!=null){ if (u.udAt==null) u.udAt=u.champCombatAt+idv("unendingdespair","Cooldown",4);
-      if (t>=u.udAt){ u.udAt=t+idv("unendingdespair","Cooldown",4); let dealt=0; for (const f of enemiesOf(u,t)) dealt+=deal(u,f,itemCalc(u.st,"unendingdespair","draincalc"),"magic",t,"proc","Unending Despair");
-        if (dealt>0) heal(u,u,idv("unendingdespair","HealMultiplier",2.5)*dealt,t,"Unending Despair"); } }
+      if (t>=u.udAt){ u.udAt=t+idv("unendingdespair","Cooldown",4); const hm=idv("unendingdespair","HealMultiplier",2.5), then=v=>{ if (v>0) heal(u,u,hm*v,t,"Unending Despair"); };
+        for (const f of enemiesOf(u,t)){ const v=deal(u,f,itemCalc(u.st,"unendingdespair","draincalc"),"magic",t,"proc","Unending Despair",{then}); if (!dmgQueue) then(v); } } }
     if (has(u,"warmogsarmor") && u.st.bonushp>=idv("warmogsarmor","HealthThreshold",2000) && t-u.lastHurtAt>=idv("warmogsarmor","OOCTimerChampion",8) && u.hp<u.max && t>=(u.warmogAt||0)){
       u.warmogAt=t+idv("warmogsarmor","SecondsPerHeal",0.5); heal(u,u,idv("warmogsarmor","MaxHealthRatio",0.015)*u.max,t,null,true); }
     if (has(u,"doransring") && !(CALC.champs[u.c.champ].base.mp>0) && t>=(u.ringAt||0)){ u.ringAt=t+0.5;
@@ -2020,13 +2105,22 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   // before the first action: effects that are already up when the fight starts
   for (const u of U){
+    { const km=CHAMP_MECH[u.c.champ]; if (km && km.init) km.init(u); }   // champion kits: fix what the generic tags get wrong
     if (has(u,"kaenicrookern")) itemsTick(u, 0);
     if (has(u,"knightsvow")){ const pool=alliesOf(u).filter(x=>x!==u); const p=u.policy&&typeof u.policy==="object" ? pool.find(x=>sameChamp(x,u.policy)) : null;
       const x=p || pool.sort((a,b)=>(b.st.ad+b.st.ap)-(a.st.ad+a.st.ap))[0]; if (x){ u.vowAlly=x; x.vowBy=u; say(0, `${u.name}: Knight's Vow on ${x.name}`); } }
   }
+  // resolve the damage queued this tick (see the tick loop), then the heals it caused
+  function flush(){ if (!dmgQueue) return; const q=dmgQueue; dmgQueue=null; healQueue=[];
+    for (const a of q){ const v=deal(...a); if (a[7] && a[7].then) a[7].then(v); }
+    const hq=healQueue; healQueue=null; for (const h of hq) heal(...h); }
   let t=0, over=false;
   for (t=0; t<=T+1e-9 && !over; t=Math.round((t+dt)*1000)/1000){
-    for (let i=events.length-1;i>=0;i--) if (events[i].at<=t){ const e=events.splice(i,1)[0]; e.fn(t); }
+    // one tick: everyone acts on the state at the start of the tick; deaths, walking and new crowd control take effect at its end
+    inTick=true; for (const u of U){ u.nx=null; if (u.alive) stepMove(u,t); }
+    const simul = !U.some(u=>u.script);
+    if (simul) dmgQueue=[];            // events and damage over time: also resolved together (flushed before the passes)
+    for (let i=events.length-1;i>=0;i--) if (events[i].at<=t+1e-6){ const e=events.splice(i,1)[0]; e.fn(t); }   // tolerance: mirrored positions differ in the last bits
     for (const u of U){
       if (u.reviveAt>=0 && t>=u.reviveAt){ u.reviveAt=-1; u.hp=0.5*u.st.basehp; say(t, `${u.name} revives (Guardian Angel) at ${fmt(u.hp)} health`); }
       for (const d of u.dots){ while (u.alive && d.next<=t && d.next<=d.until+1e-9){ const m = d.rampAfter && d.next-d.start>d.rampAfter ? 1.75 : 1;
@@ -2036,7 +2130,19 @@ function simulate(sidesIn, T, simNotes, fo){
       u.dots=u.dots.filter(d=>d.next<=d.until+1e-9);
       u.shields=u.shields.filter(s=>s.until>=t && shieldLeft(s,t)>0.01);
     }
-    for (const u of U){ if (!u.alive) continue; refresh(u,t); stepMove(u,t); if (t<u.stasisUntil) continue; itemsTick(u,t); summonersTick(u,t); if (locked(u,t)) u.lockTime=(u.lockTime||0)+dt; if (t>=u.nextAct || locked(u,t)) act(u,t); }
+    flush();
+    for (const u of U){ u.hpS=u.hp; u.xS=u.x; u.stasisS=u.stasisUntil; }   // the state everyone decides on this tick
+    // pass 1: items, summoners, heals and shields (protection lands before anyone's damage this tick); pass 2: everything else
+    if (simul) dmgQueue=[];
+    for (const u of U){ if (!u.alive) continue; refresh(u,t); if (t<u.stasisUntil) continue; itemsTick(u,t); summonersTick(u,t); if (t>=u.nextAct && !locked(u,t)) supportPass(u,t,canCast(u,t)); }
+    // pass 2 queues damage between the sides and applies it once everyone has acted (then the heals it causes), so nobody's
+    // action this tick sees another's damage from the same tick. Scripted combos (perform) keep immediate damage for their step log.
+    for (const u of U){ if (!u.alive || t<u.stasisUntil) continue; if (locked(u,t)) u.lockTime=(u.lockTime||0)+dt; if (t>=u.nextAct || locked(u,t)) act(u,t); }
+    flush();
+    inTick=false;
+    for (const u of U){ if (u.nx!=null && u.alive && !(u.move && u.move.t0>=t)) u.x=u.nx; u.nx=null; u.hpS=null; u.xS=null; u.stasisS=null; }
+    for (const u of U) if (u.interruptAt===t){ u.interruptAt=null; if (u.alive) doInterrupt(u,t); }
+    for (const k of pendingKills.splice(0)) if (k.tgt.alive && k.tgt.hp<=0) kill(k.tgt, k.att, t);
     const aliveBy=[0,1].map(s=>U.some(x=>x.side===s && (x.alive || x.reviveAt>=0)));
     if (!aliveBy[0] || !aliveBy[1]) over=true;
     // scripted combos end once every script has finished and nothing is still burning or pending
@@ -2323,6 +2429,16 @@ const KIT = {
   },
   Caitlyn: {
     W: {parts(x){ return [{...x.part("headshotbonusdamage","physical"), label:"added to the Headshot on a trapped champion", later:"headshot"}]; }},
+  },
+  Kalista: {
+    R: {parts(x){ x.note("Fate's Call deals no damage: the Oathsworn is pulled in, then dashes out and knocks up enemies where it lands (fight()/perform())");
+      return [{label:"Fate's Call (no damage; the Oathsworn's knock-up)", v:0, s:"0", type:"magic", later:"oath"}]; }},
+  },
+  Ivern: {
+    // Brushmaker: the damage is a bolt on Ivern's attacks while he's in brush (wiki Ivern_W passive), not a cast; 3 charges,
+    // one every 20 s, 0.5 s between casts. One brush (45 s) covers a fight, so fight() casts it once per charge time.
+    W: {simCd:(x)=>dvOf(x.S,"recharge",x.rank) || (x.S.recharge||[])[x.rank] || 20,
+      parts(x){ return [{...x.part("totaldamage","magic"), label:"Brushmaker bolt on each of Ivern's attacks while in brush", later:"brush"}]; }},
   },
   Akali: {
     E: {opts:{recast:{bool:true, dflt:true, what:"the recast dash (70% of the total)"}},
@@ -2653,7 +2769,7 @@ function travelDist(p, d){
   }
 }
 function describePhys(who, p){
-  return `${who}: ${DELIVERIES[p.delivery]||p.delivery} (${p.kind}), range ${fmt(p.range)}${p.minRange?` (charged from ${fmt(p.minRange)} over ${fmt(p.chargeTime)}s)`:""}${p.delivery==="vector"&&p.length?` + ${fmt(p.length)} length`:""}${p.delivery==="remote"?`, from ${p.origin||"another object"}`:""}, cast time ${fmt(p.castTime)}s${p.speed?`, speed ${fmt(p.speed)}/s${p.accel?` accelerating to ${fmt(p.maxSpeed||p.minSpeed)}`:""}`:""}${p.halfWidth?`, width ${fmt(2*p.halfWidth)}`:""}${p.kind!=="line"&&p.radius?`, radius ${fmt(p.radius)}`:""}${p.delay?`, delay ${fmt(p.delay)}s`:""}`;
+  return `${who}: ${DELIVERIES[p.delivery]||p.delivery} (${p.kind}), range ${fmt(p.range)}${p.minRange?` (charged from ${fmt(p.minRange)} over ${fmt(p.chargeTime)}s)`:""}${p.delivery==="vector"&&p.length?` + ${fmt(p.length)} length`:""}${p.delivery==="remote"?`, from ${p.origin||"another object"}`:""}, cast time ${fmt(p.castTime)}s${p.speed?`, speed ${fmt(p.speed)}/s${p.accel?` accelerating ${p.maxSpeed||p.minSpeed?`to ${fmt(p.maxSpeed||p.minSpeed)}`:`by ${fmt(p.accel)}/s²`}`:""}`:""}${p.halfWidth?`, width ${fmt(2*p.halfWidth)}`:""}${p.kind!=="line"&&p.radius?`, radius ${fmt(p.radius)}`:""}${p.delay?`, delay ${fmt(p.delay)}s`:""}`;
 }
 /* One line saying where the ability comes from and what the distance does to its timing. */
 function deliveryLine(c, p, d, tr, travel){
@@ -2690,7 +2806,7 @@ function arrivalTime(c, slot, d, p0){
   const t = p.castTime + tr + (p.delay||0);
   line(`${describePhys(`${label(c)}.${slot}`, p)}`);
   line(`  ${deliveryLine(c, p, d, tr, travel)}`);
-  const how = !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||p.speed)}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
+  const how = !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
   line(`  arrives at ${fmt(d)} units after ${fmt(p.castTime)}s cast${how}${p.delay?` + ${fmt(p.delay)}s ${p.delayKind==="missile_travel"?"flight time":p.delayKind==="arm"?"arming delay":p.delayKind==="channel"?"channel":"appear-delay"}`:""} = ${fmt(t)}s from the start of the cast`);
   delayNote(c, slot, p);
   const who=`${label(c)}.${slot}`;
@@ -3138,7 +3254,11 @@ function Interpreter(ast, emitRaw){
             if (named.delivery!=null && !Object.keys(DELIVERIES).includes(String(named.delivery))) throw new Error(`delivery is one of ${Object.keys(DELIVERIES).map(x=>`"${x}"`).join(", ")}`);
             if (named.origin!=null && typeof named.origin!=="number") throw new Error("origin: is a distance in units, from the object the ability comes from (e.g. Orianna's ball) to the target");
             WORLD.setPhys(c.champ, s, named, ln, `${champName(c)}.${s}.setPhysics(${Object.entries(named).map(([k,v])=>`${k}: ${show(v)}`).join(", ")})`); return null; },
-          ccDuration: (args,named)=>{ const ty=String(args[0]||"").toLowerCase(), r=Math.max(1, rankOf(c,s)||1), cl=ccList(c, s, r), e=cl.list.find(e=>e.type===ty);
+          ccDuration: (args,named)=>{ const ty=String(args[0]||"").toLowerCase(), r=Math.max(1, rankOf(c,s)||1), cl=ccList(c, s, r);
+            // "airborne" = any knock-up, knockback or pull (wiki Airborne): the longest one, as fight() applies it
+            const e = ty==="airborne" ? cl.list.filter(e=>AIRBORNE.has(e.type)).sort((x,y)=>y.dur-x.dur)[0] : cl.list.find(e=>e.type===ty);
+            { const S=CALC.champs[c.champ][s]||{}, ck=dvOf(S,"chargeknockup",r), md=dvOf(S,"maxduration",r);   // Janna Q: longer when charged
+              if (e && AIRBORNE.has(e.type) && ck && md) line(`${label(c)}.${s}: uncharged ${fmt(e.dur)}s (what fight() uses); +${fmt(ck)}s per second charged, up to ${fmt(e.dur+ck*md)}s after ${fmt(md)}s (game data ChargeKnockup, MaxDuration; wiki 0.5–1.25 s)`); }
             if (!e){ line(`${label(c)}.${s} (rank ${r}) has no ${ty}${cl.list.length?` (it has ${cl.list.map(e=>e.type).join(", ")})`:""}`); return 0; }
             line(`${label(c)}.${s} (rank ${r}): ${ccDescribe(e)} — ${ccSrc(e)}`);
             const vs=vsArg(named); if (!vs) return e.dur;
@@ -3307,7 +3427,7 @@ function Interpreter(ast, emitRaw){
     return r;
   }
   function fightOpts(named){ const o={}; named=named||{};
-    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), kite: (false = ranged units don't kite), room: (how far a unit can back off), formation: (false = everyone on the front line)`);
+    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), kite: (false = nobody kites, even with role "kite"), room: (how far a unit can back off; default unlimited), formation: (false = everyone on the front line)`);
     if (named.formation!=null) o.formation=truthy(named.formation);
     if (named.start!=null){ if (typeof named.start!=="number" || named.start<0) throw new Error("start: is the distance between the two sides in units (0 or more)"); o.start=named.start; }
     if (named.kite!=null) o.kite=truthy(named.kite);
@@ -3355,7 +3475,7 @@ function Interpreter(ast, emitRaw){
       case "assign": {
         let v=evalE(e.value, env);
         if (e.op!=="="){ const old=evalE(e.target, env); v=arith(e.op[0], old, v, e.line); }
-        store(e.target, copy(v), env, e.line); return v;
+        store(e.target, copy(v), env, e.line, e.value); return v;
       }
       case "bin": {
         if (e.op==="&&"){ const a=evalE(e.a,env); return truthy(a) ? truthy(evalE(e.b,env)) : false; }
@@ -3382,8 +3502,8 @@ function Interpreter(ast, emitRaw){
     switch(op){ case "+": return a+b; case "-": return a-b; case "*": return a*b; case "/": return a/b; case "%": return a%b; }
     throw new LangError(`unknown operator ${op}`, ln);
   }
-  function store(target, v, env, ln){
-    if (target.k==="id"){ if(!env.has(target.name)) throw new LangError(`“${target.name}” is not declared; declare it first, e.g. auto ${target.name} = …;`, ln); const old=env.get(target.name); if (v && v.t==="champ") v.label = target.name; env.set(target.name, v); if (target.name==="defaultLevel") statMemo.clear(); if (target.name==="gameMinute"){ GAME.minute=v; statMemo.clear(); } return; }
+  function store(target, v, env, ln, rhs){
+    if (target.k==="id"){ if(!env.has(target.name)) throw new LangError(`“${target.name}” is not declared; declare it first, e.g. auto ${target.name} = …;`, ln); const old=env.get(target.name); if (v && v.t==="champ" && !(rhs && (rhs.k==="id" || rhs.k==="index") && !v.label)) v.label = target.name; env.set(target.name, v); if (target.name==="defaultLevel") statMemo.clear(); if (target.name==="gameMinute"){ GAME.minute=v; statMemo.clear(); } return; }
     if (target.k==="member"){
       const obj=evalE(target.obj, env);
       if (obj&&obj.t==="champ" && ["target","healPolicy","passive","rotation","souls","skillOrder","role"].includes(target.name)){
@@ -3532,7 +3652,9 @@ function Interpreter(ast, emitRaw){
         let v = d.init ? evalE(d.init.k==="ctor" ? {k:"call", fn:{k:"id",name:s.type,line:s.line}, args:d.init.args, named:{}, line:s.line} : d.init, env) : defaultOf(s.type);
         if (s.type==="Champion" && d.init && d.init.k==="list") throw new LangError("write a champion as Syndra(11), not in braces", s.line);
         v = s.ref ? v : coerce(s.type, v, s.line);
-        if (v && v.t==="champ" && !s.ref) v.label = d.name;
+        // a fresh champion takes the variable's name (logs, lookups); a copy of an unnamed one (a TeamComp or list element, a
+        // loop variable) keeps showing the champion's name, so fights with the original team still read the same
+        if (v && v.t==="champ" && !s.ref && !(d.init && (d.init.k==="id" || d.init.k==="index") && !v.label)) v.label = d.name;
         env.def(d.name, v); } return;
       case "if": if (truthy(evalE(s.c,env))) exec(s.a, env); else if (s.b) exec(s.b, env); return;
       case "while": while (truthy(evalE(s.c,env))){ try { exec(s.body, env); } catch(x){ if(x===BREAK) break; if(x===CONTINUE) continue; throw x; } } return;

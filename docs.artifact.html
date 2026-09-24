@@ -1,80 +1,115 @@
 <title>Rift Logic Reference</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
 :root{
-  --bg:#EDF0F4; --surface:#FFFFFF; --surface-2:#E4E9F0; --ink:#0B1426; --muted:#53607A;
-  --line:#CBD3DF; --gold:#8C6A1F; --gold-soft:#F3EAD6; --teal:#04766E; --amber:#9A5B00; --amber-soft:#F8ECD6;
-  --code-bg:#F8FAFC; --kw:#6B3FA0; --cmt:#7C879B; --num:#B3263A;
-  --display:"Cinzel", "Trajan Pro", Georgia, serif;
-  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+  --bg:#EFF2F5; --surface:#FFFFFF; --surface-2:#F6F8FA; --inset:#E9EDF1; --code-bg:#FBFCFD;
+  --ink:#121A23; --ink-2:#36424F; --muted:#677483; --faint:#9AA5B1; --line:#DCE2E8; --line-strong:#C4CCD5;
+  --accent:#0B6E78; --accent-ink:#FFFFFF; --accent-soft:#DDEFF0;
+  --gold:#8A6516; --ok:#1C7A48; --ok-soft:#E0F1E7; --no:#B42F3E; --no-soft:#F8E3E5; --warn:#935800; --warn-soft:#F6EAD5;
+  --phys:#C8621A; --magic:#5563D8; --true:#8B95A1; --heal:#2F8F46; --shield:#9AA6B2;
+  --phys-t:#A5500F; --magic-t:#4350C4; --true-t:#3B4450; --heal-t:#257537; --shield-t:#5D6A77;
+  --side1:#2F6FD0; --side2:#C4453A;
+  --kw:#7A3EAA; --ty:#0B6E78; --ch:#8A6516; --num:#A8385A; --str:#2E7A3A; --cmt:#7D8894;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --shadow:0 12px 32px rgba(18,26,35,.16);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --bg:#081221; --surface:#0E1B30; --surface-2:#13243D; --ink:#E9E3D2; --muted:#93A0B8;
-    --line:#22354F; --gold:#C8AA6E; --gold-soft:#2A2616; --teal:#35C9B9; --amber:#E7B062; --amber-soft:#35270F;
-    --code-bg:#0A1628; --kw:#B79AF0; --cmt:#6E7C95; --num:#F0707C;
+    --bg:#0D1218; --surface:#131A22; --surface-2:#171F29; --inset:#1C2530; --code-bg:#10161D;
+    --ink:#E2E8EE; --ink-2:#B8C2CC; --muted:#84919F; --faint:#566270; --line:#242E39; --line-strong:#323E4B;
+    --accent:#3FB7B4; --accent-ink:#04201F; --accent-soft:#123135;
+    --gold:#D4AF63; --ok:#4CC287; --ok-soft:#12301F; --no:#F07580; --no-soft:#3A1A20; --warn:#E5AE5A; --warn-soft:#33260F;
+    --phys:#D6772F; --magic:#7482EC; --true:#C3CBD3; --heal:#42A95A; --shield:#7C8A98;
+    --phys-t:#F0A060; --magic-t:#A4ADFF; --true-t:#EEF1F4; --heal-t:#72D08B; --shield-t:#B4C0CB;
+    --side1:#5B93E8; --side2:#E26B5F;
+    --kw:#C49DF2; --ty:#4FC1BD; --ch:#D4AF63; --num:#F28DA8; --str:#8FCB80; --cmt:#65717F;
+    --shadow:0 12px 32px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#081221; --surface:#0E1B30; --surface-2:#13243D; --ink:#E9E3D2; --muted:#93A0B8;
-  --line:#22354F; --gold:#C8AA6E; --gold-soft:#2A2616; --teal:#35C9B9; --amber:#E7B062; --amber-soft:#35270F;
-  --code-bg:#0A1628; --kw:#B79AF0; --cmt:#6E7C95; --num:#F0707C;
+  --bg:#0D1218; --surface:#131A22; --surface-2:#171F29; --inset:#1C2530; --code-bg:#10161D;
+  --ink:#E2E8EE; --ink-2:#B8C2CC; --muted:#84919F; --faint:#566270; --line:#242E39; --line-strong:#323E4B;
+  --accent:#3FB7B4; --accent-ink:#04201F; --accent-soft:#123135;
+  --gold:#D4AF63; --ok:#4CC287; --ok-soft:#12301F; --no:#F07580; --no-soft:#3A1A20; --warn:#E5AE5A; --warn-soft:#33260F;
+  --phys:#D6772F; --magic:#7482EC; --true:#C3CBD3; --heal:#42A95A; --shield:#7C8A98;
+  --phys-t:#F0A060; --magic-t:#A4ADFF; --true-t:#EEF1F4; --heal-t:#72D08B; --shield-t:#B4C0CB;
+  --side1:#5B93E8; --side2:#E26B5F;
+  --kw:#C49DF2; --ty:#4FC1BD; --ch:#D4AF63; --num:#F28DA8; --str:#8FCB80; --cmt:#65717F;
+  --shadow:0 12px 32px rgba(0,0,0,.5);
 }
+[hidden]{display:none!important}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font:15.5px/1.65 var(--sans);padding-inline:clamp(16px,3vw,40px);padding-block:28px 72px}
-.wrap{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;align-items:start}
-@media (max-width:880px){.wrap{grid-template-columns:minmax(0,1fr);gap:20px}}
-header.top{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px 30px;border-bottom:1px solid var(--line);padding-bottom:18px}
-h1{font:700 clamp(26px,3.6vw,38px)/1.05 var(--display);letter-spacing:.05em;margin:0}
-h1 span{color:var(--gold)}
-.sub{color:var(--muted);margin:6px 0 0;max-width:64ch}
-.top a{font:600 13px var(--sans);color:var(--gold);text-decoration:none;border-bottom:1px solid currentColor}
-nav{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);max-height:calc(100vh - 32px);overflow:auto;font-size:14px;padding-right:6px}
-@media (max-width:880px){nav{position:static;max-height:none;border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:var(--surface)}}
-nav ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
-nav a{display:block;color:var(--muted);text-decoration:none;padding:3px 8px;border-radius:5px}
-nav a:hover{color:var(--ink);background:var(--surface-2)}
-nav .grp{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:12px 8px 4px}
-main{min-width:0;display:grid;gap:42px}
-section{display:grid;gap:12px;min-width:0;scroll-margin-top:16px}
-h2{font:600 22px/1.2 var(--display);letter-spacing:.03em;margin:0;text-wrap:balance}
-h3{font:600 15px/1.3 var(--sans);margin:10px 0 0}
-p{margin:0;max-width:72ch}
-code{font:13px var(--mono);background:var(--surface-2);padding:1px 5px;border-radius:4px}
-pre{margin:0;font:13px/1.65 var(--mono);background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 var(--sans);padding-inline:16px;padding-block:0 72px;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:var(--accent);text-underline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:220px minmax(0,1fr);gap:0 48px;align-items:start}
+header.top{grid-column:1/-1;position:sticky;top:env(safe-area-inset-top,0px);z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding-block:10px;margin-bottom:28px;background:var(--bg);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px;font:600 15.5px/1 var(--sans);margin-right:auto}
+.brand svg{width:18px;height:18px}
+.brand span{color:var(--muted);font-weight:500}
+.btn{display:inline-flex;align-items:center;min-height:32px;padding:6px 11px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font:600 13px/1 var(--sans);text-decoration:none}
+.btn:hover{filter:brightness(1.07)}
+nav{position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;font-size:13.5px;padding-right:4px}
+nav summary{display:none}
+nav ol{list-style:none;margin:0;padding:0;display:grid;gap:1px}
+nav a{display:block;color:var(--ink-2);text-decoration:none;padding:3px 10px;border-radius:5px;border-left:2px solid transparent}
+nav a:hover{color:var(--ink);background:var(--inset)}
+nav a[aria-current="true"]{color:var(--accent);border-left-color:var(--accent);border-radius:0 5px 5px 0;background:var(--accent-soft)}
+nav .grp{font:600 10.5px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:14px 10px 5px}
+nav .grp:first-child{margin-top:2px}
+@media (max-width:879px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  header.top{margin-bottom:14px}
+  nav{position:static;max-height:none;margin-bottom:24px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0}
+  nav summary{display:block;cursor:pointer;padding:10px 14px;font:600 13px var(--sans);list-style:none}
+  nav summary::-webkit-details-marker{display:none}
+  nav summary::after{content:" ▾";color:var(--muted)}
+  nav details[open] summary::after{content:" ▴"}
+  nav ol{padding:0 8px 10px}
+}
+main{min-width:0;display:grid;gap:44px}
+section{display:grid;gap:12px;min-width:0;scroll-margin-top:72px}
+h1{font:600 30px/1.15 var(--sans);letter-spacing:-.015em;margin:0 0 4px}
+h2{font:600 21px/1.25 var(--sans);letter-spacing:-.01em;margin:0;text-wrap:balance;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h3{font:600 15px/1.35 var(--sans);margin:8px 0 0}
+p,ul{max-width:68ch}
+p{margin:0}
+ul{margin:0;padding-left:20px}
+li{margin:3px 0}
+code{font:13px var(--mono);background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+.codebox{position:relative;min-width:0}
+pre{margin:0;font:12.5px/1.7 var(--mono);background:var(--code-bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre;tab-size:4}
 pre .c{color:var(--cmt);font-style:italic}
+.copy{position:absolute;top:6px;right:6px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);border-radius:5px;padding:3px 8px;font:500 11.5px var(--sans);cursor:pointer;opacity:.85}
+.copy:hover{opacity:1;border-color:var(--accent);color:var(--accent)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
 .tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 table{border-collapse:collapse;width:100%;font-size:14px}
-th{font:600 11.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
-td{padding:8px 12px;border-top:1px solid var(--line);vertical-align:top}
+th{font:600 10.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line-strong);background:var(--surface-2)}
+td{padding:7px 12px;border-top:1px solid var(--line);vertical-align:top}
 tr:first-child td{border-top:0}
-td:first-child{font:13px var(--mono);white-space:pre;color:var(--ink)}
-td:nth-child(2){color:var(--ink)}
-td.m,td:last-child{color:var(--muted)}
-.note{border-left:3px solid var(--amber);background:var(--amber-soft);padding:10px 14px;border-radius:0 8px 8px 0;font-size:14.5px;max-width:78ch}
-.list{font:13px/1.9 var(--mono);color:var(--muted);max-width:none}
-.list b{color:var(--ink);font-weight:600}
-ul{margin:0;padding-left:20px;max-width:72ch}
-li{margin:3px 0}
-a{color:var(--gold)}
-:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+td:first-child{font:12.5px/1.6 var(--mono);white-space:pre;color:var(--ink)}
+td:last-child{color:var(--ink-2)}
+td:only-child{color:var(--ink)}
+.note{border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);background:var(--warn-soft);padding:10px 14px;border-radius:8px;font-size:14px;max-width:72ch}
+.list{font:12.5px/1.9 var(--mono);color:var(--ink-2);max-width:none}
+.list b{color:var(--ink);font:600 10.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;margin-right:4px}
 </style>
 
 <div class="wrap">
   <header class="top">
-    <div>
-      <h1>Rift <span>Logic</span> Reference</h1>
-      <p class="sub">The complete language: every statement, type, member and built-in, how proofs and fights are decided, and exactly what the model does and doesn't include.</p>
-    </div>
-    <a id="applink" href="index.html">Open the editor</a>
+    <div class="brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg>Rift Logic <span>Reference</span></div>
+    <a class="btn" id="applink" href="index.html">Open the editor</a>
   </header>
 
   <nav aria-label="Contents">
+    <details id="toc" open><summary>Contents</summary>
     <ol>
       <li class="grp">Start</li>
       <li><a href="#overview">Overview</a></li>
@@ -111,9 +146,11 @@ a{color:var(--gold)}
       <li><a href="#data">Data sources</a></li>
       <li><a href="#limits">Limits</a></li>
     </ol>
+    </details>
   </nav>
 
   <main>
+    <h1>Rift Logic Reference</h1>
     <section id="overview">
       <h2>Overview</h2>
       <p>Rift Logic is a small C++-style language for making claims about League of Legends that can be checked against the game's own data. It has three kinds of answer:</p>
@@ -127,7 +164,7 @@ a{color:var(--gold)}
 
     <section id="running">
       <h2>Running programs</h2>
-      <p><b>In the editor</b>, results update as you type (<code>Ctrl/⌘ + Enter</code> re-runs). The inspector on the right shows any champion's or item's data, including every named formula you can reach.</p>
+      <p><b>In the editor</b>, results update as you type (<code>Ctrl/⌘ + Enter</code> re-runs). Click a row in the results to see its working, assumptions and tables. The <b>Inspect</b> tab shows any champion's or item's data, including every named formula you can reach.</p>
       <p><b>From the command line</b>, the same engine runs a file:</p>
       <pre>node tools/rl.js program.rl           <span class="c"># full working for every result</span>
 node tools/rl.js program.rl --brief   <span class="c"># one line per result</span>
@@ -280,7 +317,7 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
         <tr><td>a.Q.damage(passes: 1)</td><td>Only the first pass of those abilities (Ahri Q's orb misses on the way back).</td></tr>
         <tr><td>a.R.damage(spheres: 5)</td><td>For abilities whose damage is per unit with a guaranteed minimum count, <code>.damage</code> is that minimum (Syndra R: 3 spheres); name the count to use more (Syndra R: 3–7 spheres; <code>count:</code> also works).</td></tr>
         <tr><td>a.Q.damage(snips: 3)  a.R.damage(needles: 5)</td><td>Champion kits (champion audit): hits, recasts and empowered parts the tooltip gives in words. <code>.damage</code> is what perfect play lands, and the working says so: Gwen Q 5 snips in the centre (<code>snips:</code> 1–5, <code>center:</code>), R 9 needles (<code>needles:</code>); Viktor Q with Discharge (<code>discharge:</code>), R 6 storm ticks (<code>ticks:</code>); Dr. Mundo W 12 ticks + recast (<code>ticks:</code>, <code>recast:</code>), Q never below its minimum; Kai'Sa Q all missiles on one target (<code>missiles:</code>); Smolder E all bolts (<code>bolts:</code>), R in the centre (<code>sweetspot:</code>); Samira W 2 slashes (<code>slashes:</code>), R 10 shots (<code>shots:</code>), Q as the blade slash (<code>melee:</code>); Zed Q <code>shurikens:</code> 1–3; Akali E and R with the recast (<code>recast:</code>); Yasuo E <code>stacks:</code> 0–4. Yasuo and Yone Q (and Yone W) cooldowns come from bonus attack speed; Yasuo and Yone crit chance is doubled. <code>perform()</code> and <code>fight()</code> use what actually happens instead: Snippy stacks from attacks, live shadows and Dark Spheres, Plasma, Headshot counts, Style, Gathering Storm, marks (Zed R, Yone E, Ezreal W) and missing health.</td></tr>
-        <tr><td>a.Q.value("name", vs: t)  a.Q.name_of_formula</td><td>Any named formula or value of the ability (the inspector lists them).</td></tr>
+        <tr><td>a.Q.value("name", vs: t)  a.Q.name_of_formula</td><td>Any named formula or value of the ability (the Inspect tab lists them).</td></tr>
         <tr><td>a.W.heal  a.W.heal(target: x)</td><td>Heal amount with heal &amp; shield power, and what x receives. Targets the tooltip can't reach are an error.</td></tr>
         <tr><td>a.E.shield(target: x)</td><td>The same for shields.</td></tr>
         <tr><td>a.W.healTarget  a.E.shieldTarget</td><td>“caster only”, “another ally”, “an ally or self”, “self and an ally”, “every ally” or “none”.</td></tr>
@@ -351,7 +388,7 @@ print(Annie(11).perform(c, vs: Dummy(hp: 3000)).damage);</pre>
       <h2>Fight</h2>
       <div class="tscroll"><table><tbody>
         <tr><td>Fight f = fight(blue, red, 10);</td><td>Both sides fight for up to 10 seconds (0–120). A side is a Champion or TeamComp.</td></tr>
-        <tr><td>fight(blue, red, 20, start: 1000)</td><td>The two front lines start 1000 units apart (default 0: in contact). Also <code>formation: false</code> (everyone on the front line instead of ranged units at their attack range behind it), <code>kite: false</code> (ranged champions stand and fight), <code>room: 600</code> (how far a champion can back off from where it started). See <a href="#cc">Crowd control and positions</a>.</td></tr>
+        <tr><td>fight(blue, red, 20, start: 1000)</td><td>The two front lines start 1000 units apart (default 0: in contact). Also <code>formation: false</code> (everyone on the front line instead of ranged units at their attack range behind it), <code>kite: false</code> (nobody kites: role <code>"kite"</code>, whether default or set with <code>x.role</code>, becomes <code>"fight"</code> for this fight), <code>room: 600</code> (a champion can back off at most 600 units from where it started; <b>default: unlimited</b>). See <a href="#cc">Crowd control and positions</a>.</td></tr>
         <tr><td>f.ccTime(x)  f.blocks(x)  f.position(x)  f.distance(x, y)</td><td>Seconds x spent unable to act (stunned, airborne, suppressed, asleep, charmed, feared, taunted); abilities x's spell shields blocked; x's position on the line at the end (side 1 faces +, side 2 faces −); the distance between two champions at the end.</td></tr>
         <tr><td>f.winner  f.duration  f.log</td><td>1 or 2 if only that side has anyone alive, else 0; end time; every event as text.</td></tr>
         <tr><td>f.alive(x)  f.dead(x)  f.hp(x)  f.hpPercent(x)  f.deathTime(x)</td><td>How one champion ended up (deathTime is infinite if alive).</td></tr>
@@ -490,7 +527,7 @@ prove beats(Fizz, Syndra);</pre>
     <section id="sim">
       <h2>How fights are simulated</h2>
       <ul>
-        <li>Time moves in 0.05-second steps.</li>
+        <li>Time moves in 0.05-second steps. Within a step everyone acts at once, on the state at the start of the step: first items, summoner spells, heals and shields, then everything else. Damage between the sides (and the healing it causes), deaths, walking, blinks, new crowd control (and the interruptions it causes), stasis and knockbacks take effect at the end of the step. So the order of the champions, and which side is side 1, doesn't change the result: a mirror match ends even, and <code>fight(a, b)</code> is <code>fight(b, a)</code> with the sides swapped (<code>tests/fight_symmetry.rl</code>). Two champions can kill each other in the same step. The line is centred on 0 (side 1's front at −start/2) so mirrored positions are exact.</li>
         <li>Each champion, when free, first uses a heal or shield if an ally needs one (healing ultimates are saved for allies below 40% health), then peels (below), then the first ability in its rotation that is off cooldown and in reach, otherwise an auto attack if the target is in attack range, otherwise it moves. Casting locks the champion for 0.25 seconds. See <a href="#cc">Crowd control and positions</a>.</li>
         <li>Damage goes through amplifiers, resistances after penetration, Bone Plating and shields, then health. Lifesteal (attacks), omnivamp and Conqueror heal the attacker; grievous wounds cut healing received by 40%.</li>
         <li>Heals go to whoever the healer's policy picks; team heals reach everyone; Moonstone chains 30% to a second ally.</li>
@@ -505,7 +542,7 @@ prove beats(Fizz, Syndra);</pre>
       <h2>Crowd control and positions</h2>
       <h3>Positions</h3>
       <ul>
-        <li>One line. Side 1's front is at 0 and faces +; side 2's front is at <code>start:</code> (default 0) and faces −. Each champion stands max(0, attack range − 175) behind its front, so ranged champions start at their attack range from where the enemy front will be (<code>formation: false</code>: everyone on the front line).</li>
+        <li>One line, centred on 0. Side 1's front is at −start/2 and faces +; side 2's front is at +start/2 and faces − (<code>start:</code> default 0). Each champion stands max(0, attack range − 175) behind its front, so ranged champions start at their attack range from where the enemy front will be (<code>formation: false</code>: everyone on the front line).</li>
         <li>Reach (wiki "Range"): basic attacks use edge range (attack range + both gameplay radii); point-and-click abilities centred range; other abilities their reach (<code>.reach</code>) + the target's radius. Placed and lobbed areas hit every enemy within their radius of the target; self-centred areas every enemy within the radius of the caster; lines and cones every enemy within reach (on one line everything is in the path).</li>
         <li>Walking uses the current move speed: (base + flat) × (1 + % bonuses) × (1 − the strongest slow × (1 − slow resist)), then the soft caps (wiki "Movement speed": only the strongest slow counts).</li>
         <li>Dashes and blinks (abilities tagged dash or blink) use the dash range and speed from the game data (<code>dashInfo</code>; 1200 units/s when the data has none). A dash ends touching its target or at its range; its hits land when it arrives. A blink moves at once.</li>
@@ -517,7 +554,7 @@ prove beats(Fizz, Syndra);</pre>
         <tr><td>"dive"</td><td>Default for melee champions. Walks or dashes to the lowest-health enemy and uses everything on it, except knockbacks, which it holds to peel an enemy diving an ally.</td></tr>
         <tr><td>"engage"</td><td>Like dive, but also uses knockbacks offensively at once (placed ones push the target into its team).</td></tr>
         <tr><td>"peel"</td><td>Holds every hard crowd control ability for enemies that reach an ally they are outranged by (or itself), guards the rearmost ranged ally when nobody is diving.</td></tr>
-        <tr><td>"fight"</td><td>Targets the lowest-health enemy it can reach, walks to attack range, no kiting. Ranged champions use it with <code>fight(…, kite: false)</code>.</td></tr>
+        <tr><td>"fight"</td><td>Targets the lowest-health enemy it can reach, walks to attack range, no kiting. Every <code>"kite"</code> champion, default or set with <code>x.role</code>, uses it under <code>fight(…, kite: false)</code>.</td></tr>
       </tbody></table></div>
       <p>An enemy "dives" ally A when it is within its own attack range (+ 50) of A and A's attack range is longer. Spell shields, Morgana E and cleanses react perfectly: Sivir E and Nocturne W are raised as a hostile ability lands; Morgana E is cast on the ally a hard crowd control is about to land on (if in range); Quicksilver Sash and Mercurial Scimitar cleanse as soon as a cleansable crowd control lands; Mikael's Blessing is used on a crowd-controlled ally.</p>
       <h3>Crowd control types</h3>
@@ -530,7 +567,7 @@ prove beats(Fizz, Syndra);</pre>
       </tbody></table></div>
       <p>Source: wiki "Types of Crowd Control" (summary table). Tenacity (wiki "Tenacity") shortens every type except airborne, suppression and drowsy, to no less than 0.3 s; items, elixirs and the rune shard stack multiplicatively (1 − (1 − a)(1 − b)…). Quicksilver removes everything except airborne (suppression included); Mikael's Blessing removes stuns, roots, silences, polymorphs, forced actions, sleep and slows, not suppression or airborne. Spell shields (Banshee's Veil, Edge of Night, Verdant Barrier, Sivir E, Nocturne W) block one whole ability, crowd control included.</p>
       <h3>Where the numbers come from</h3>
-      <p><code>src/cc_export.py</code> reads which crowd control each ability applies from the wiki ability text (<code>{{tip|stun|…}}</code> for <code>{{fd|1}}</code> seconds, knock back <code>900 units</code>, slowed by <code>80%</code>) and takes the value from the game data (StunDuration, RootDuration, KnockupDuration, KnockbackDistance, SlowAmount, …) when one exists and agrees with the wiki at every rank; otherwise the wiki's value, and the working says so. Where they disagree the wiki value is used and the game data value is shown (<code>python src/cc_export.py</code> lists them: KSante Q, Rammus Q, Urgot E, Hwei R, Lissandra R, Maokai Q…). Effects the wiki makes conditional on terrain (Vayne E stun, Poppy E stun, Ornn E) are left out, as are effects with no known duration (the assumptions list each one). Braum R: the first target's knock-up grows from 0.6 s with distance, assumed linear up to the ability's reach.</p>
+      <p><code>src/cc_export.py</code> reads which crowd control each ability applies from the wiki ability text (<code>{{tip|stun|…}}</code> for <code>{{fd|1}}</code> seconds, knock back <code>900 units</code>, slowed by <code>80%</code>) and takes the value from the game data (StunDuration, RootDuration, KnockupDuration, KnockbackDistance, SlowAmount, …) when one exists and agrees with the wiki at every rank; otherwise the wiki's value, and the working says so. Where they disagree the wiki value is used and the game data value is shown (<code>python src/cc_export.py</code> lists them: KSante Q, Rammus Q, Urgot E, Hwei R, Lissandra R, Maokai Q…). Durations that grow with distance travelled (Xerath E 0.75–2.25 s, Braum R) are assumed linear up to the ability's reach; charge-dependent ones (Janna Q, K'Sante W, Sion Q) use the uncharged value, since fights cast at once. Kennen's Mark of the Storm is modelled: every ability hit marks, the third mark stuns 1.25 s (0.5 s if stunned by it within 6 s; game data), Slicing Maelstrom marks each target up to 3 times. Effects the wiki makes conditional on terrain (Vayne E stun, Poppy E stun, Ornn E) are left out, as are effects with no known duration (the assumptions list each one). Braum R: the first target's knock-up grows from 0.6 s with distance, assumed linear up to the ability's reach.</p>
     </section>
 
     <section id="damage">
@@ -570,7 +607,7 @@ prove beats(Fizz, Syndra);</pre>
 
     <section id="tags">
       <h2>Ability tags</h2>
-      <p>Tags are read from each ability's tooltip text. <code>mobile</code> means dash or blink; <code>hardcc</code> means any hard crowd control; <code>targeted</code> means point-and-click. The inspector shows the phrase behind every tag.</p>
+      <p>Tags are read from each ability's tooltip text. <code>mobile</code> means dash or blink; <code>hardcc</code> means any hard crowd control; <code>targeted</code> means point-and-click. The Inspect tab shows the phrase behind every tag.</p>
       <p class="list" id="taglist"></p>
     </section>
 
@@ -612,5 +649,34 @@ prove beats(Fizz, Syndra);</pre>
   put("taglist", "", D.tags);
   const p = document.getElementById("patch"); if (p && D.patch) p.textContent = D.patch;
   if (D.appUrl) document.getElementById("applink").href = D.appUrl;
+})();
+</script>
+
+<script>
+(() => {
+  const toc = document.getElementById("toc"), mq = window.matchMedia ? matchMedia("(min-width: 880px)") : null;
+  const fit = () => { if (toc && mq) toc.open = mq.matches; };
+  fit(); if (mq && mq.addEventListener) mq.addEventListener("change", fit);
+  if (toc) toc.addEventListener("click", e => { if (e.target.closest("a") && mq && !mq.matches) toc.open = false; });
+  for (const pre of document.querySelectorAll("main pre")){
+    const box = document.createElement("div"); box.className = "codebox"; pre.replaceWith(box); box.append(pre);
+    const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.textContent = "Copy"; box.append(b);
+    b.addEventListener("click", () => {
+      const text = pre.textContent;
+      const done = label => { b.textContent = label; b.classList.add("done"); setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1400); };
+      const select = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); done("Selected"); };
+      try { navigator.clipboard.writeText(text).then(() => done("Copied"), select); } catch (_) { select(); }
+    });
+  }
+  const links = [...document.querySelectorAll("nav a[href^='#']")], byId = new Map(links.map(a => [a.getAttribute("href").slice(1), a]));
+  if ("IntersectionObserver" in window){
+    const seen = new Set();
+    const io = new IntersectionObserver(es => {
+      for (const e of es) e.isIntersecting ? seen.add(e.target.id) : seen.delete(e.target.id);
+      const first = [...document.querySelectorAll("main section[id]")].find(s => seen.has(s.id));
+      if (first) for (const [id, a] of byId) a.setAttribute("aria-current", String(id === first.id));
+    }, {rootMargin: "-70px 0px -60% 0px"});
+    for (const s of document.querySelectorAll("main section[id]")) io.observe(s);
+  }
 })();
 </script>
