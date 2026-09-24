@@ -352,15 +352,12 @@ ul.conds li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px;font-s
   </dialog>
 
   <dialog class="dlg" id="vimdlg" aria-labelledby="vimT">
-    <h3 id="vimT">Vim mode</h3>
-    <p><b>How to get out:</b> press <kbd>Esc</kbd>, then type <kbd>:q</kbd> and <kbd>Enter</kbd>. Or click the <b>Vim</b> button again.</p>
-    <ul>
-      <li><kbd>Esc</kbd> normal mode · <kbd>i</kbd> <kbd>a</kbd> <kbd>o</kbd> <kbd>O</kbd> <kbd>I</kbd> <kbd>A</kbd> insert</li>
-      <li>Move: <kbd>h j k l</kbd> <kbd>w b e</kbd> <kbd>0 ^ $</kbd> <kbd>gg G</kbd>, with counts (<kbd>3j</kbd>)</li>
-      <li>Edit: <kbd>x</kbd> <kbd>dd</kbd> <kbd>yy</kbd> <kbd>p P</kbd> <kbd>D C</kbd> <kbd>cw dw diw ciw</kbd> <kbd>r</kbd> <kbd>J</kbd> <kbd>u</kbd> <kbd>Ctrl-r</kbd></li>
-      <li><kbd>v</kbd> <kbd>V</kbd> visual · <kbd>/</kbd> search, <kbd>n N</kbd> · <kbd>:w</kbd> saves the file · <kbd>:42</kbd> goes to line 42</li>
-    </ul>
-    <div class="dlgbtns"><button type="button" class="btn ghost" id="vimNo">Cancel</button><button type="button" class="btn primary" id="vimYes">Turn on vim mode</button></div>
+    <form id="vimform" method="dialog">
+      <h3 id="vimT">How do you exit vim?</h3>
+      <p><input id="vimans" type="text" autocomplete="off" spellcheck="false" aria-label="How do you exit vim?" style="width:100%;font:500 14px/1.4 var(--mono);padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface-2);color:var(--ink)"></p>
+      <p id="vimerr" role="alert" style="color:var(--no);font-size:13px;margin:-6px 0 12px" hidden></p>
+      <div class="dlgbtns"><button type="button" class="btn ghost" id="vimNo">Cancel</button><button type="submit" class="btn primary" id="vimYes">Enable</button></div>
+    </form>
   </dialog>
 
   <main class="ide" id="ide">
@@ -8941,7 +8938,17 @@ const VIM = (() => {
   src.addEventListener("input", () => { if (on && mode !== "insert") setMode("insert"); });
   $("vimbtn").addEventListener("click", () => {
     if (on){ disable(); return; }
-    const d = $("vimdlg"); $("vimYes").onclick = () => { d.close(); enable(); }; $("vimNo").onclick = () => d.close(); d.showModal(); $("vimYes").focus();
+    // no hints: only someone who knows how to leave vim gets to turn it on
+    const d = $("vimdlg"), ans = $("vimans"), err = $("vimerr");
+    ans.value = ""; err.hidden = true;
+    $("vimNo").onclick = () => d.close();
+    $("vimform").onsubmit = e => {
+      e.preventDefault();
+      const a = ans.value.toLowerCase().replace(/<\s*(esc|escape|cr|enter|return)\s*>|\b(esc|escape|enter|return)\b|[⎋⏎↵\s]/g, "");
+      if (/^(:(q|q!|qa|qa!|qall|qall!|quit|quit!|wq|wq!|wqa|x|x!|xa|exit|exit!))$|^(zz|zq)$/.test(a) || /^ZZ|ZQ$/.test(ans.value.trim())){ d.close(); enable(); }
+      else { err.textContent = "Nope, vim mode stays off."; err.hidden = false; ans.select(); }
+    };
+    d.showModal(); ans.focus();
   });
   let was = null; try { was = localStorage.getItem("riftlogic.vim"); } catch (_) {}
   return {restore(){ if (was) enable(); }, get on(){ return on; }, get mode(){ return mode; }};
