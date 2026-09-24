@@ -704,7 +704,7 @@ function kitRankKey(c){ const k=KIT[c.champ]; return k && (k.stats || k.statsFin
 
 /* ================= fight simulator ================= */
 const SIM_ASSUMPTIONS = [
-  "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range (range + both radii for the game files' castRangeUseBoundingBoxes spells: Tristana E/R, Vayne E, Viktor Q, …), other abilities their reach + the target's hitbox (wiki Range; one rule shared with canDodge)",
+  "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range (range + both radii for the game files' castRangeUseBoundingBoxes spells: Tristana E/R, Vayne E, Viktor Q, …), other abilities their reach + the target's hitbox, except skillshots the wiki marks centred ({{tip|cr}}: the reach itself) or edge ({{tip|er}}: + both hitboxes) (wiki Range; one rule shared with canDodge)",
   "fight(): every ability and attack in range hits (perfect aim, no dodging in fight(); use canDodge for that), except the kit mechanics that say otherwise (Viktor's Gravity Field stuns only a unit still inside on its 5th stack, Aftershock can be sidestepped, his storm moves, Akali's shroud hides her from attacks and point-and-click spells); abilities land when cast (no travel time)",
   "fight(): abilities are cast as soon as they're off cooldown (each ability locks its caster for its cast time: game data checked against the wiki's cast time field, calc.json phys.castTime; an ability with none frees the caster on the next step); mana is ignored, energy is not (Zed, Akali, Lee Sin, Kennen, Shen: abilities wait until it covers their cost); a champion whose ability makes it untargetable from the cast (Zed R, Fizz E, Vladimir W, Master Yi Q, Kayn R, Pantheon E) is untargetable for that whole step",
   "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground stops dashes, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
@@ -2543,17 +2543,19 @@ function simulate(sidesIn, T, simNotes, fo){
       recastAs: ["Q","R"],
       onCast(u, a, tgt, t){ const K=u.kit, P=CALC.champs.Riven.P, rb=K.rb && K.rb.until>t ? K.rb : {n:0};
         K.rb={n:Math.min(dvOf(P,"charges",1)||3, rb.n+1), until:t+6};
+        if (a.slot==="W"){ a.p0 ??= a.p; a.p={...a.p0, radius: K.rw && K.rw.until>t ? 360 : a.p0.radius}; }   // Ki Burst 300, 360 during Blade of the Exile (wiki Riven_W)
         simNotes.add(`${u.name}: Runic Blade — each ability cast gives a charge (up to 3, 6 s); each attack spends one for bonus physical damage (30–45% AD by level)`);
         if (a.slot==="Q"){ a.ccAll ??= a.cc||[]; a.p0 ??= a.p; const n=kitRecast(u, a, t, 3, 0.3125, 4, false);
-          a.cc = n===3 ? a.ccAll : a.ccAll.filter(e=>!AIRBORNE.has(e.type)); a.p={...a.p0, radius: n===3 ? 250 : 150};
+          const ex=K.rw && K.rw.until>t;   // Blade of the Exile widens Broken Wings: 200 / 300 (wiki Riven_Q)
+          a.cc = n===3 ? a.ccAll : a.ccAll.filter(e=>!AIRBORNE.has(e.type)); a.p={...a.p0, radius: n===3 ? (ex ? 300 : 250) : (ex ? 200 : 150)};
           u.nextAA=Math.min(u.nextAA, t);
           simNotes.add(`${u.name} Q: Broken Wings casts 3 times (0.3125 s apart at the earliest, 4 s to recast, the cooldown from the first cast); the third knocks back and hits a 250 radius (150 before); each cast resets the attack timer`); }
         if (a.slot==="R"){ const W=K.rw && K.rw.until>t ? K.rw : null, dur=dvOf(a.S,"duration",a.rank)||15;
           if (!W){ const v=(dvOf(a.S,"percentbonusad",a.rank)||0.2)*u.st.ad, R={until:t+dur, cdFull:Math.max(0,(u.cd.R||t)-t)};
-            addBuff(u,"bladeoftheexile",t+dur,{bonusad:v},t); K.rw=R; u.cd.R=t+0.5; a.parts=[];
+            addBuff(u,"bladeoftheexile",t+dur,{bonusad:v, range:dvOf(a.S,"tooltipattackrange",a.rank)||75},t); K.rw=R; u.cd.R=t+0.5; a.parts=[];
             events.push({at:R.until, fn:()=>{ if (u.kit.rw===R){ u.kit.rw=null; u.cd.R=Math.max(u.cd.R, R.until+R.cdFull); } }});
             say(t, `  ${u.name}: Blade of the Exile, +${fmt(v)} bonus AD for ${fmt(dur)} s`);
-            simNotes.add(`${u.name} R: Blade of the Exile gives 20% AD as bonus AD for 15 s (the +75 attack range isn't modelled); the recast Wind Slash deals the damage, raised 2.667% per 1% of the target's missing health (×3 at 75% missing); in fight() it's held until the target is at 25% health or the blade has 1 s left`); }
+            simNotes.add(`${u.name} R: Blade of the Exile gives 20% AD as bonus AD and +75 attack range (game data TooltipAttackRange; wiki) for 15 s, and widens Broken Wings (200 / 300) and Ki Burst (360); the recast Wind Slash deals the damage, raised 2.667% per 1% of the target's missing health (×3 at 75% missing); in fight() it's held until the target is at 25% health or the blade has 1 s left`); }
           else { a.parts=(a.later||[]).filter(p=>p.later==="recast").map(p=>({v:p.v, type:p.type, pct:false, ampMissing:p.ampMissing, ampCap:p.ampCap}));
             K.rw=null; u.cd.R=W.until+W.cdFull; } } },
       castable:(u, a, tgt, t)=>{ const W=u.kit.rw; if (a.slot!=="R" || !W || !(W.until>t) || !tgt) return true;
@@ -3397,7 +3399,7 @@ function simulate(sidesIn, T, simNotes, fo){
     const foes=enemiesOf(u,t); if (!foes.length) return;
     let tgt = u.target ? foes.find(x=>sameChamp(x,u.target)) : null; if (!tgt) tgt = foes.slice().sort((a,b)=>a.hp-b.hp)[0];
     for (const k of ["exhaust","ignite"]) if (took.includes(k) && !(k==="exhaust" && (u.c.opts||{}).exhaustAt!=null)){ const x=k==="exhaust" ? foes.slice().sort((a,b)=>(b.st.ad+b.st.ap)-(a.st.ad+a.st.ap))[0] : tgt;
-      if (x && gap(u,x)<=SUMM_RANGE[k]+1e-6 && !unseen(x,t)) useSummoner(u,k,x,t); }
+      if (x && gap(u,x)<=SUMM_RANGE[k]+1e-6 && !unseen(x,t)) sumGuard(u,k,x,t); }
     simNotes.add(`${u.name} uses its summoner spells in fights: Ignite and Exhaust as soon as the target is within cast range (Exhaust 650, Ignite 600, centre to centre; Exhaust on the enemy with the most AD + AP), Heal and Barrier below 30% health`);
   }
   /* x.exhaustAt (item 24): when a champion (a fighter, or a combo's target even if it doesn't fight back) presses Exhaust:
@@ -3415,9 +3417,18 @@ function simulate(sidesIn, T, simNotes, fo){
     if (typeof X==="number"){ if (t<X-1e-6 || !foes.length) return; }
     else { const m=/^arrival(?:\+([0-9.]+))?$/.exec(X), d=m && m[1] ? Number(m[1]) : 0;
       if (!foes.length){ u.xArrive=null; return; } if (u.xArrive==null) u.xArrive=t; if (t<u.xArrive+d-1e-6) return; }
-    u.xAtUsed=true; useSummoner(u,"exhaust",foes[0],t);
+    if (sumGuard(u,"exhaust",foes[0],t)) u.xAtUsed=true;
     if (!took.length) simNotes.add(`${u.name} is assumed to have Exhaust (set .summoners = {…} to restrict)`);
     simNotes.add(`${u.name}: Exhaust pressed by exhaustAt = ${JSON.stringify(X)} (${fmt(t)}s, on ${foes[0].name})`); }
+  /* Ignite / Exhaust pressed in pass 1 on a unit that then goes untargetable at its own cast this step (CAST_START: Zed R, …)
+     can't have happened (the cast-start state covers the whole step): undone once the early group has acted (item 24). */
+  const sumPending=[];
+  function sumGuard(u, k, x, t){ const ev0=events.length, snap={exhaust:x.exhaust, grievBy:x.grievBy, grievUntil:x.grievUntil, cd:u.rcd["sum:"+k], nimbus:u.nimbus};
+    const ok=useSummoner(u,k,x,t); if (ok && CAST_START[x.c.champ]) sumPending.push({u, k, x, snap, ev:events.slice(ev0)}); return ok; }
+  function sumUndo(t){ for (const p of sumPending.splice(0)){ if (p.x.castStasisAt!==t) continue; const {u, k, x, snap}=p;
+      x.exhaust=snap.exhaust; x.grievBy=snap.grievBy; x.grievUntil=snap.grievUntil; u.rcd["sum:"+k]=snap.cd; u.nimbus=snap.nimbus; if (k==="exhaust") u.xAtUsed=false;
+      for (const e of p.ev){ const i=events.indexOf(e); if (i>=0) events.splice(i,1); }
+      say(t, `  ${u.name}'s ${summName(k)} on ${x.name} doesn't happen: ${x.name} is untargetable from its cast this step`); } }
   const DAMAGE_ACTIVES = ["hextechrocketbelt","hextechgunblade","profanehydra","ravenoushydra","tiamat","stridebreaker","titanichydra","actualizer"];
   // heals and shields: every unit's are cast in a first pass each tick, before anyone's damage (order-independent)
   function supportPass(u, t, cc){
@@ -3558,6 +3569,7 @@ function simulate(sidesIn, T, simNotes, fo){
     const act2 = u => { if (!u.alive || t<u.stasisUntil) return; if (locked(u,t)) u.lockTime=(u.lockTime||0)+dt; if (t>=u.nextAct || locked(u,t)) act(u,t); };
     let early=false; for (const u of U) if (CAST_START[u.c.champ]){ early=true; act2(u); }
     if (early) for (const u of U) if (u.castStasisAt===t && u.stasisS!=null) u.stasisS=u.stasisUntil;
+    sumUndo(t);   // a summoner spell pressed on such a unit this step (pass 1) is taken back
     for (const u of U) if (!CAST_START[u.c.champ]) act2(u);
     flush();
     inTick=false;
@@ -4771,6 +4783,8 @@ function abilityValue(c, slot, field, vs, opt){
     const v=base*100/(100+h); line(`${who}.cd = ${fmt(base)}s × 100/(100 + ${fmt(h)} haste${extra?` incl. ${fmt(extra)} ${slot==="R"?"ultimate":"basic ability"}${mandate?"/immobilizing":""} haste`:""}${own?`${extra?",":" incl."} ${fmt(own)} from ${ ["Q","W","E","R"].filter(x=>(CALC.champs[c.champ][x]||{}).grantsHaste?.slot===slot).map(x=>`${label(c)}.${x}`).join(", ") }`:""}) = ${fmt(v)}s`); return v;
   }
   if (f==="cost"){ const v=(S.cost||[])[rank]??0; line(`${who}.cost = ${fmt(v)}`); return v; }
+  if (f==="range" && S.phys && S.phys.attackRangeBonus!=null && !c.dummy){ const ar=stats(c).range, v=ar+S.phys.attackRangeBonus;
+    line(`${who}.range = attack range ${fmt(ar)} + ${fmt(S.phys.attackRangeBonus)} = ${fmt(v)} (its hits are basic attacks; wiki target range: the attack range)`); return v; }
   if (f==="range"){ const v0=(S.range||[])[Math.max(1,rank)]??0, rb=levelRangeBonus(c, slot), v=v0+(rb ? rb.v : 0);
     line(`${who}.range = ${rb ? `${fmt(v0)} + ${rb.why} = ` : ""}${fmt(v)}${S.minRange?" (fully charged)":""}`); return v; }
   if (f==="minrange"){ const v=((S.minRange||S.range)||[])[Math.max(1,rank)]??0; line(`${who}.minRange = ${fmt(v)}${S.minRange?" (uncharged)":" (not a charged ability)"}`); return v; }
@@ -4970,6 +4984,8 @@ function physOf(c, slot){
   const rank=Math.max(1, (c.ranks && c.ranks[slot]!=null ? c.ranks[slot] : c.dummy ? 1 : rankOf(c, slot)) || 1);
   p.range = sl.range && sl.range.length ? (sl.range[rank-1] ?? sl.range[0]) : 0;
   { const rb=levelRangeBonus(c, slot); if (rb) p.range += rb.v; }
+  // hits that are basic attacks (Twitch R): the target range is the attack range + the bonus (wiki "Twitch's attack range"), not the files' bolt travel
+  if (p.attackRangeBonus!=null && !c.dummy) p.range = stats(c).range + p.attackRangeBonus;
   if (S.minRange){ p.minRange = S.minRange[rank] ?? S.minRange[1]; p.chargeTime = S.chargeTime; }
   const ov = w.physOver && w.physOver[slot];
   const originText = p.origin;
@@ -4996,7 +5012,9 @@ const DELIVERIES = {skillshot:"skillshot", lobbed:"lobbed", placed:"placed", vec
      whatever the target's size; wiki: "Annie q and normal attack same 625 range, but normal attack range longer")
      — except the spells whose record sets castRangeUseBoundingBoxes (Tristana E/R, Vayne E, Viktor Q, Ryze W/E,
      Anivia E, Lucian Q, …; the same list as the wiki's edge-range table): edge range, range + rc + rt
-   - everything else (skillshots, areas, cones): centre to edge: its reach (reachOf) + rt
+   - everything else (skillshots, areas, cones): centre to edge: its reach (reachOf) + rt; except skillshots whose wiki
+     range icon marks the files' number (calc.json phys.reachMode): {{tip|cr}} centred (reach), {{tip|er}} edge (reach + rc + rt)
+   - abilities whose hits are basic attacks (p.attackRangeBonus: Twitch R): attack range + bonus + rc + rt
    A point-and-click ability without a cast range of its own (an empowered attack) uses the attack reach. */
 function attackReach(range, rc, rt){ return range + rc + rt; }
 function hitReach(p, rc, rt, atkRange){
@@ -5004,12 +5022,20 @@ function hitReach(p, rc, rt, atkRange){
   if (p.attackRangeBonus!=null) return attackReach((atkRange||0) + p.attackRangeBonus, rc, rt);
   // p.reach (data/delivery_overrides.json): a dash or orbit before the homing bolt (Ahri W/R, Ezreal E, Kindred Q): centred too
   if (p.delivery==="unit"){ const r=p.reach ?? p.range; return !(r>0) ? attackReach(atkRange||0, rc, rt) : p.edgeRange ? r + rc + rt : r; }
-  const r=reachOf(p); return r>0 ? r + rt : attackReach(atkRange||0, rc, rt);
+  const r=reachOf(p); if (!(r>0)) return attackReach(atkRange||0, rc, rt);
+  // skillshots: the wiki's range icon per ability (calc.json phys.reachMode, backlog 23): {{tip|cr}} centred (the target's centre
+  // must be within the range: wiki Range, "in most cases the target's center has to be within the maximum range"), {{tip|er}} edge
+  // range (range + both hitboxes); without an icon centre to edge (range + the target's hitbox)
+  if (p.delivery==="skillshot" && p.reachMode==="centre") return r;
+  if (p.delivery==="skillshot" && p.reachMode==="edge") return r + rc + rt;
+  return r + rt;
 }
 // the working for hitReach, in words
 function reachWhy(p, rc, rt, atkRange){ const v=hitReach(p, rc, rt, atkRange), r = p.delivery==="unit" ? p.reach ?? p.range : reachOf(p);
   if (p.attackRangeBonus!=null) return `its hits are basic attacks: attack range ${fmt(atkRange||0)} + ${fmt(p.attackRangeBonus)} + ${fmt(rc)} + ${fmt(rt)} hitboxes = ${fmt(v)} (edge range, wiki Range)`;
   if (!(r>0)) return `attack range ${fmt(atkRange||0)} + ${fmt(rc)} + ${fmt(rt)} hitboxes = ${fmt(v)} (edge range, wiki Range)`;
+  if (p.delivery==="skillshot" && p.reachMode==="centre") return `reach ${fmt(r)}, centre to centre (the wiki marks its range {{tip|cr}}: the target's centre must be within it)`;
+  if (p.delivery==="skillshot" && p.reachMode==="edge") return `reach ${fmt(r)} + ${fmt(rc)} caster hitbox + ${fmt(rt)} hitbox = ${fmt(v)} (the wiki marks its range {{tip|er}}: edge range)`;
   if (p.delivery!=="unit") return `reach ${fmt(r)} + ${fmt(rt)} hitbox = ${fmt(v)} (centre to edge, wiki Range)`;
   if (p.edgeRange) return `${fmt(r)} + ${fmt(rc)} caster hitbox + ${fmt(rt)} hitbox = ${fmt(v)} (edge range: the game files' castRangeUseBoundingBoxes; wiki Range "Targeted abilities")`;
   return `${fmt(v)}, centre to centre (point-and-click spells use centred range, wiki Range: the hitboxes don't extend it)`; }
