@@ -1,0 +1,616 @@
+<title>Rift Logic Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --surface-2:#E4E9F0; --ink:#0B1426; --muted:#53607A;
+  --line:#CBD3DF; --gold:#8C6A1F; --gold-soft:#F3EAD6; --teal:#04766E; --amber:#9A5B00; --amber-soft:#F8ECD6;
+  --code-bg:#F8FAFC; --kw:#6B3FA0; --cmt:#7C879B; --num:#B3263A;
+  --display:"Cinzel", "Trajan Pro", Georgia, serif;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#081221; --surface:#0E1B30; --surface-2:#13243D; --ink:#E9E3D2; --muted:#93A0B8;
+    --line:#22354F; --gold:#C8AA6E; --gold-soft:#2A2616; --teal:#35C9B9; --amber:#E7B062; --amber-soft:#35270F;
+    --code-bg:#0A1628; --kw:#B79AF0; --cmt:#6E7C95; --num:#F0707C;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#081221; --surface:#0E1B30; --surface-2:#13243D; --ink:#E9E3D2; --muted:#93A0B8;
+  --line:#22354F; --gold:#C8AA6E; --gold-soft:#2A2616; --teal:#35C9B9; --amber:#E7B062; --amber-soft:#35270F;
+  --code-bg:#0A1628; --kw:#B79AF0; --cmt:#6E7C95; --num:#F0707C;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15.5px/1.65 var(--sans);padding-inline:clamp(16px,3vw,40px);padding-block:28px 72px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:880px){.wrap{grid-template-columns:minmax(0,1fr);gap:20px}}
+header.top{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px 30px;border-bottom:1px solid var(--line);padding-bottom:18px}
+h1{font:700 clamp(26px,3.6vw,38px)/1.05 var(--display);letter-spacing:.05em;margin:0}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);margin:6px 0 0;max-width:64ch}
+.top a{font:600 13px var(--sans);color:var(--gold);text-decoration:none;border-bottom:1px solid currentColor}
+nav{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);max-height:calc(100vh - 32px);overflow:auto;font-size:14px;padding-right:6px}
+@media (max-width:880px){nav{position:static;max-height:none;border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:var(--surface)}}
+nav ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav a{display:block;color:var(--muted);text-decoration:none;padding:3px 8px;border-radius:5px}
+nav a:hover{color:var(--ink);background:var(--surface-2)}
+nav .grp{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:12px 8px 4px}
+main{min-width:0;display:grid;gap:42px}
+section{display:grid;gap:12px;min-width:0;scroll-margin-top:16px}
+h2{font:600 22px/1.2 var(--display);letter-spacing:.03em;margin:0;text-wrap:balance}
+h3{font:600 15px/1.3 var(--sans);margin:10px 0 0}
+p{margin:0;max-width:72ch}
+code{font:13px var(--mono);background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre{margin:0;font:13px/1.65 var(--mono);background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
+pre .c{color:var(--cmt);font-style:italic}
+.tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:600 11.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+td{padding:8px 12px;border-top:1px solid var(--line);vertical-align:top}
+tr:first-child td{border-top:0}
+td:first-child{font:13px var(--mono);white-space:pre;color:var(--ink)}
+td:nth-child(2){color:var(--ink)}
+td.m,td:last-child{color:var(--muted)}
+.note{border-left:3px solid var(--amber);background:var(--amber-soft);padding:10px 14px;border-radius:0 8px 8px 0;font-size:14.5px;max-width:78ch}
+.list{font:13px/1.9 var(--mono);color:var(--muted);max-width:none}
+.list b{color:var(--ink);font-weight:600}
+ul{margin:0;padding-left:20px;max-width:72ch}
+li{margin:3px 0}
+a{color:var(--gold)}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rift <span>Logic</span> Reference</h1>
+      <p class="sub">The complete language: every statement, type, member and built-in, how proofs and fights are decided, and exactly what the model does and doesn't include.</p>
+    </div>
+    <a id="applink" href="index.html">Open the editor</a>
+  </header>
+
+  <nav aria-label="Contents">
+    <ol>
+      <li class="grp">Start</li>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#running">Running programs</a></li>
+      <li><a href="#first">A first program</a></li>
+      <li class="grp">The language</li>
+      <li><a href="#syntax">Syntax</a></li>
+      <li><a href="#types">Types and values</a></li>
+      <li><a href="#names">Names: champions, items, runes</a></li>
+      <li><a href="#control">Functions and control flow</a></li>
+      <li><a href="#output">assert, print, prove</a></li>
+      <li class="grp">Objects</li>
+      <li><a href="#champion">Champion</a></li>
+      <li><a href="#ability">Ability</a></li>
+      <li><a href="#item">Item and ItemSet</a></li>
+      <li><a href="#rune">Rune</a></li>
+      <li><a href="#summoner">Summoner spells</a></li>
+      <li><a href="#teamcomp">TeamComp and lists</a></li>
+      <li><a href="#fight">Fight</a></li>
+      <li><a href="#combo">Combo</a></li>
+      <li><a href="#dummy">Practice-tool dummy</a></li>
+      <li><a href="#builtins">Built-in functions</a></li>
+      <li class="grp">Reasoning</li>
+      <li><a href="#rules">Rules and claims</a></li>
+      <li><a href="#facts">Correcting the data</a></li>
+      <li><a href="#physics">Physics and dodging</a></li>
+      <li><a href="#sim">How fights are simulated</a></li>
+      <li><a href="#cc">Crowd control and positions</a></li>
+      <li class="grp">The model</li>
+      <li><a href="#damage">Damage, healing, stats</a></li>
+      <li><a href="#runes-list">Modelled runes</a></li>
+      <li><a href="#items-list">Modelled item passives</a></li>
+      <li><a href="#tags">Ability tags</a></li>
+      <li><a href="#data">Data sources</a></li>
+      <li><a href="#limits">Limits</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>Rift Logic is a small C++-style language for making claims about League of Legends that can be checked against the game's own data. It has three kinds of answer:</p>
+      <ul>
+        <li><b>Calculations</b>: damage, healing, stats, cooldowns, projectile travel times, from the formulas the game ships with.</li>
+        <li><b>Simulations</b>: timed fights between champions or team comps, with runes, item passives, heals and shields.</li>
+        <li><b>Arguments</b>: rules that argue for or against a claim like <code>beats(Fizz, Syndra)</code>, where the strongest argument wins.</li>
+      </ul>
+      <p>Every result shows its working and lists every assumption the model made. A result is only as good as those assumptions, which is why they're always visible.</p>
+    </section>
+
+    <section id="running">
+      <h2>Running programs</h2>
+      <p><b>In the editor</b>, results update as you type (<code>Ctrl/⌘ + Enter</code> re-runs). The inspector on the right shows any champion's or item's data, including every named formula you can reach.</p>
+      <p><b>From the command line</b>, the same engine runs a file:</p>
+      <pre>node tools/rl.js program.rl           <span class="c"># full working for every result</span>
+node tools/rl.js program.rl --brief   <span class="c"># one line per result</span>
+echo 'print(Syndra(11).Q.damage);' | node tools/rl.js -</pre>
+      <p>The exit code is 0 when every <code>assert</code> and <code>prove</code> held, and 1 when anything was refuted or errored, so programs can be used as checks.</p>
+      <p><b>Imports</b> (command line only): <code>import "../lib.rl";</code> at the top of a file pulls in another program's functions, rules, variables and data corrections. Paths are relative to the importing file, each file is imported once, and the imported file's own <code>assert</code>/<code>print</code>/<code>prove</code> output is not shown. The reasoning workspace (<code>reasoning/</code>) uses this to share scenario comps and rules between questions.</p>
+    </section>
+
+    <section id="first">
+      <h2>A first program</h2>
+<pre>ItemSet burst = {Ludens, Sorc};
+Champion a = Syndra(11).with(burst, Electrocute);
+Champion tank = Garen(11).with(Plated, Kaenic);
+
+assert(a.Q.damage(vs: tank) > 150);          <span class="c">// Proved or Refuted, with the formula</span>
+print(a.ap, a.Q.cd, a.combo(Q, E, R, vs: tank));
+assert(canKill(a, tank, 5), "Syndra kills Garen in 5 seconds");</pre>
+    </section>
+
+    <section id="syntax">
+      <h2>Syntax</h2>
+      <p>C++ you'd sketch on a whiteboard. Statements end with <code>;</code>. Comments are <code>// …</code> and <code>/* … */</code>. Strings use double quotes. There are no pointers, headers, classes or templates.</p>
+      <div class="tscroll"><table>
+        <thead><tr><th>Form</th><th>Meaning</th></tr></thead><tbody>
+        <tr><td>Champion a = Syndra(11);</td><td>Declare with a type. Several at once: <code>Champion a = …, b = …;</code></td></tr>
+        <tr><td>auto x = a.ap * 2;</td><td><code>auto</code> works anywhere a type does.</td></tr>
+        <tr><td>Champion a(Syndra, 11);</td><td>Constructor-style declaration.</td></tr>
+        <tr><td>ItemSet s = {Ludens, Sorc};</td><td>Brace lists become ItemSets, TeamComps or lists, depending on the type (or contents, with <code>auto</code>).</td></tr>
+        <tr><td>+ - * / %</td><td>Arithmetic. All numbers are decimal: <code>2 / 5</code> is <code>0.4</code>. <code>int</code> truncates only when stored.</td></tr>
+        <tr><td>30%</td><td>A percent literal: <code>0.3</code>.</td></tr>
+        <tr><td>== != &lt; &lt;= &gt; &gt;=</td><td>Comparisons. Champions compare equal when same champion, level, items, runes and ranks.</td></tr>
+        <tr><td>&amp;&amp; || !</td><td>Logic, short-circuiting.</td></tr>
+        <tr><td>= += -= *= /= ++ --</td><td>Assignment. Objects are copied on assignment and when passed to functions.</td></tr>
+        <tr><td>"text" + x</td><td>String concatenation with any value.</td></tr>
+        <tr><td>f(x, vs: t)</td><td>Named arguments follow the positional ones.</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="types">
+      <h2>Types and values</h2>
+      <div class="tscroll"><table>
+        <thead><tr><th>Type</th><th>What it holds</th></tr></thead><tbody>
+        <tr><td>int double float</td><td>Numbers.</td></tr>
+        <tr><td>bool string</td><td><code>true</code>/<code>false</code>; text.</td></tr>
+        <tr><td>Champion</td><td>A champion at a level, with items, runes, ability ranks and fight settings.</td></tr>
+        <tr><td>Ability</td><td>One of a champion's abilities: <code>a.Q</code>. Keeps a reference to its champion.</td></tr>
+        <tr><td>Item  ItemSet</td><td>One shop item; a set of items.</td></tr>
+        <tr><td>Rune</td><td>A keystone, minor rune or stat shard.</td></tr>
+        <tr><td>Summoner</td><td>A summoner spell: <code>Flash</code>, <code>Ghost</code>, <code>Heal</code>, <code>Barrier</code>, <code>Ignite</code>, <code>Exhaust</code>, <code>Cleanse</code> (<a href="#summoner">Summoner spells</a>).</td></tr>
+        <tr><td>TeamComp</td><td>A list of champions.</td></tr>
+        <tr><td>Fight</td><td>The result of <code>fight(…)</code>.</td></tr>
+        <tr><td>Dummy</td><td>The practice-tool target dummy, <code>Dummy(hp: 3000, resists: 50)</code>. It is also a Champion, so it goes anywhere a target does (<a href="#dummy">Practice-tool dummy</a>).</td></tr>
+        <tr><td>auto</td><td>Whatever the value is.</td></tr>
+      </tbody></table></div>
+      <p>Assignment and parameter passing copy champions, sets and comps. To change the original inside a loop or function, use a reference: <code>for (Champion&amp; c : team) c.target = x;</code>.</p>
+    </section>
+
+    <section id="names">
+      <h2>Names: champions, items, runes</h2>
+      <p>A capitalised name that isn't a variable is looked up in this order: classes (<code>Mage</code>), summoner spells (<code>Flash</code>, <code>Ignite</code>, …), champions, exact rune names, items, then rune name prefixes. Lower-case names are variables or ability tags (<code>stun</code>, <code>dash</code>).</p>
+      <ul>
+        <li><b>Champions</b> are written without spaces or punctuation: <code>KSante</code>, <code>MissFortune</code>, <code>Wukong</code>. <code>Syndra</code> alone is Syndra at <code>defaultLevel</code> with no items; <code>Syndra(11)</code> sets the level.</li>
+        <li><b>Items</b> accept any unique start of the name: <code>Ludens</code>, <code>Rabadon</code>, <code>Sorc</code>, <code>Plated</code>. An ambiguous prefix is an error that lists the matches.</li>
+        <li><b>Runes</b> by name, without spaces: <code>Electrocute</code>, <code>SuddenImpact</code>, <code>AdaptiveForce</code>, <code>HealthScaling</code>.</li>
+        <li><b>Ability slots</b> <code>P Q W E R</code> are used in <code>combo(Q, E, R)</code>.</li>
+        <li><b>Globals</b>: <code>defaultLevel</code> (11) and <code>gameMinute</code> (20) can be assigned.</li>
+      </ul>
+    </section>
+
+    <section id="control">
+      <h2>Functions and control flow</h2>
+<pre>double burstOn(Champion c, Champion t) {
+    return c.combo(Q, E, vs: t) + c.proc(Ludens, vs: t);
+}
+bool oneShots(Champion c, Champion t) { return burstOn(c, t) >= t.hp; }
+
+for (Champion c : blue) if (c.is(Mage)) mages++;
+for (int i = 0; i &lt; 5; i++) { … }
+while (x &lt; 10) { … }             <span class="c">// break and continue work as usual</span></pre>
+      <p>Functions can be declared anywhere at the top level and called before their declaration. Parameters need types; a function with a return type other than <code>void</code> must return. Programs are stopped after about three million steps, which catches endless loops.</p>
+    </section>
+
+    <section id="output">
+      <h2>assert, print, prove</h2>
+      <div class="tscroll"><table>
+        <thead><tr><th>Statement</th><th>Result</th></tr></thead><tbody>
+        <tr><td>assert(a.Q.damage > b.Q.damage);</td><td><b>Proved</b> or <b>Refuted</b>. When the condition is a comparison, both sides are shown with their working and the percentage difference.</td></tr>
+        <tr><td>assert(cond, "title");</td><td>The same, with your own title.</td></tr>
+        <tr><td>print(a, b, "text");</td><td>Each value with how it was calculated.</td></tr>
+        <tr><td>prove beats(Fizz, Syndra);</td><td>Runs the rules for a claim: <b>Proved</b>, <b>Refuted</b>, <b>Contested</b> or <b>No rule applies</b>, with the argument tree.</td></tr>
+        <tr><td>prove forall (Champion c : list) beats(c, x);</td><td>The same claim for every champion in a list, grouped by verdict.</td></tr>
+        <tr><td>prove expr;</td><td>With a non-claim expression, behaves like <code>assert</code>.</td></tr>
+      </tbody></table></div>
+      <p>Every result lists its <b>assumptions</b>: ranks chosen for you, facts you asserted, item passives not modelled, simulator simplifications.</p>
+    </section>
+
+    <section id="champion">
+      <h2>Champion</h2>
+      <h3>Making and changing</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>Syndra(11)</td><td>A champion at level 11 (1–18).</td></tr>
+        <tr><td>a.with(Ludens, burst, Electrocute)</td><td>A copy with more items, item sets or runes.</td></tr>
+        <tr><td>a.at(16)</td><td>A copy at another level.</td></tr>
+        <tr><td>a.items.add(x) / a.items.remove(x)</td><td>Change items in place.</td></tr>
+        <tr><td>a.runes.add(Conqueror) / a.runes.remove(x)</td><td>Change runes in place.</td></tr>
+        <tr><td>a.level = 13;  a.Q.rank = 3;</td><td>Settable. Unset ranks are the highest possible at the level (basic abilities ⌈level/2⌉ up to 5; ultimate at 6, 11, 16).</td></tr>
+      </tbody></table></div>
+      <h3>Stats</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>ap ad bonusad basead</td><td>Ability power, total, bonus and base attack damage.</td></tr>
+        <tr><td>hp bonushp basehp mana</td><td>Health and mana.</td></tr>
+        <tr><td>armor bonusarmor basearmor mr bonusmr basemr</td><td>Resistances.</td></tr>
+        <tr><td>ehpphysical ehpmagic</td><td>Effective health: hp × (1 + resist ÷ 100).</td></tr>
+        <tr><td>haste ms bonusms as bonusas crit critdmg range</td><td>Ability haste, move speed, attack speed, crit chance and damage, attack range.</td></tr>
+        <tr><td>lethality armorpen armorpenpct magicpen magicpenpct</td><td>Penetration.</td></tr>
+        <tr><td>lifesteal omnivamp tenacity healpower healIn shieldIn</td><td>Sustain; outgoing heal &amp; shield power; extra healing and shielding received.</td></tr>
+        <tr><td>aa dps gold level name</td><td>One auto attack; auto DPS with expected crit; item cost; level; name.</td></tr>
+        <tr><td>attack defense magic difficulty melee hp6 hp11 hp18 …</td><td>Riot's 1–10 ratings; melee (bool); stats at fixed levels regardless of the champion's level.</td></tr>
+      </tbody></table></div>
+      <h3>Methods</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>a.combo(Q, E, R, vs: t)</td><td>Each listed ability's damage once; after t's resistances with <code>vs</code>. Abilities without a damage formula count 0 (noted).</td></tr>
+        <tr><td>a.proc(Ludens, vs: t)</td><td>An item's main damage formula with a's stats, in its own damage type (Luden's at all six echoes, Terminus on-hit, Kraken's third hit before the missing-health bonus…).</td></tr>
+        <tr><td>a.stacks = 225;  a.stacks</td><td>The champion's own permanent stacks: Syndra's Splinters of Wrath (default: 5 per skill point after level 1, up to 85, as leveling in the practice tool gives; 40 = two Dark Sphere charges, 60 = Force of Will true damage, 100 = Unleashed Power execute, 120 = +15% AP), Smolder's Dragon Practice (default 0; tier 1/2/3 at 25/125/225, bonus magic damage on Q, W and E). Reading it gives the count in use.</td></tr>
+        <tr><td>a.evolved = {Q, E};  a.evolved</td><td>Evolved or augmented abilities: Kai'Sa's Second Skin (default from her stats: Q at 100 AD from items and growth, W at 100 AP, E at 100% attack speed from items and growth), Viktor's Hex Core augments (default none: they cost Hex Fragments from kills). Reading it gives the abilities in use, e.g. "QE".</td></tr>
+        <tr><td>a.stacks(Heartsteel, 400)</td><td>A copy of a with stacks earned before the fight: Heartsteel health, Mejai's / Dark Seal Glory, Hubris, Yun Tal, Rod of Ages, Gluttonous Greaves / Immortal Path, Manaflow mana. Runes too: <code>a.stacks(LegendAlacrity, 10)</code>, Legend: Haste / Bloodline, Ultimate Hunter, Overgrowth, <code>DarkHarvest</code> (souls), <code>ManaflowBand</code> (bonus mana). Without it an item counts as freshly bought and a rune as a fresh game (0 stacks), as in the practice tool; the assumptions say which.</td></tr>
+        <tr><td>a.is(Mage)  a.has(stun)</td><td>Class and ability-tag checks.</td></tr>
+        <tr><td>a.cdOf(tag)  a.cdmaxOf(tag)  a.rangeOf(tag)</td><td>Rank-1 cooldown, max-rank cooldown or range of whichever ability has the tag (shortest cooldown, longest range).</td></tr>
+        <tr><td>a.threatRange</td><td>Longest reach of any damaging ability or attack.</td></tr>
+        <tr><td>a.gapClose  a.closeGap(d)</td><td>Total dash and blink distance; seconds to cover d units using dashes then walking.</td></tr>
+        <tr><td>a.hitbox</td><td>The champion's gameplay radius, used in dodge checks: the game files' character record (<code>overrideGameplayCollisionRadius</code>), else 65. Most champions 65; large ones 80 (Cho'Gath, Malphite, Sion, …), small ones 55 (Teemo, Fizz, Lulu, …), Ivern 70, Warwick 74.75 (65 + his innate 15% size). Size effects (Cho'Gath's Feast, Nasus R, Zac's health, …) aren't simulated; the assumptions mention them.</td></tr>
+        <tr><td>a.summoners  a.Flash  a.summonerHaste</td><td>The champion's summoner spells (a list), one of them bound to the champion (so its numbers use the champion's level and summoner haste), and summoner spell haste from items and Cosmic Insight. See <a href="#summoner">Summoner spells</a>.</td></tr>
+      </tbody></table></div>
+      <h3>Fight settings</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>a.target = b;</td><td>Focus b in fights. Otherwise attacks go to the lowest-health enemy.</td></tr>
+        <tr><td>a.healPolicy = "save";</td><td>Who a heals and shields: <code>"lowest"</code> (default), <code>"save"</code> (whoever dies soonest at the current damage rate), <code>"self"</code>, or a Champion.</td></tr>
+        <tr><td>a.passive = true;</td><td>Only heals and shields; never attacks.</td></tr>
+        <tr><td>a.rotation = "QEWR";</td><td>Ability priority (default R, Q, E, W).</td></tr>
+        <tr><td>a.souls = 10;</td><td>Dark Harvest souls.</td></tr>
+        <tr><td>a.role = "peel";</td><td>How a fights (see <a href="#cc">Crowd control and positions</a>): <code>"kite"</code> (default for ranged champions), <code>"dive"</code> (default for melee), <code>"peel"</code>, <code>"engage"</code> or <code>"fight"</code>.</td></tr>
+        <tr><td>a.tenacity  a.slowresist</td><td>Tenacity and slow resist from items, elixirs and the rune shard, stacking multiplicatively: Mercury's Treads + Sterak's Gage = 1 − 0.7 × 0.8 = 44%.</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="ability">
+      <h2>Ability</h2>
+      <div class="tscroll"><table><tbody>
+        <tr><td>a.Q.damage  a.Q.damage(vs: t)</td><td>The tooltip's damage. Values the tooltip joins with “plus” are summed, each reduced by its own damage type. Percent-of-health formulas use the target's max health with <code>vs</code>. When the tooltip deals one formula twice as different damage types, both passes count (Ahri Q: magic out, true back; Yone W and R: physical and magic).</td></tr>
+        <tr><td>a.Q.damage(passes: 1)</td><td>Only the first pass of those abilities (Ahri Q's orb misses on the way back).</td></tr>
+        <tr><td>a.R.damage(spheres: 5)</td><td>For abilities whose damage is per unit with a guaranteed minimum count, <code>.damage</code> is that minimum (Syndra R: 3 spheres); name the count to use more (Syndra R: 3–7 spheres; <code>count:</code> also works).</td></tr>
+        <tr><td>a.Q.damage(snips: 3)  a.R.damage(needles: 5)</td><td>Champion kits (champion audit): hits, recasts and empowered parts the tooltip gives in words. <code>.damage</code> is what perfect play lands, and the working says so: Gwen Q 5 snips in the centre (<code>snips:</code> 1–5, <code>center:</code>), R 9 needles (<code>needles:</code>); Viktor Q with Discharge (<code>discharge:</code>), R 6 storm ticks (<code>ticks:</code>); Dr. Mundo W 12 ticks + recast (<code>ticks:</code>, <code>recast:</code>), Q never below its minimum; Kai'Sa Q all missiles on one target (<code>missiles:</code>); Smolder E all bolts (<code>bolts:</code>), R in the centre (<code>sweetspot:</code>); Samira W 2 slashes (<code>slashes:</code>), R 10 shots (<code>shots:</code>), Q as the blade slash (<code>melee:</code>); Zed Q <code>shurikens:</code> 1–3; Akali E and R with the recast (<code>recast:</code>); Yasuo E <code>stacks:</code> 0–4. Yasuo and Yone Q (and Yone W) cooldowns come from bonus attack speed; Yasuo and Yone crit chance is doubled. <code>perform()</code> and <code>fight()</code> use what actually happens instead: Snippy stacks from attacks, live shadows and Dark Spheres, Plasma, Headshot counts, Style, Gathering Storm, marks (Zed R, Yone E, Ezreal W) and missing health.</td></tr>
+        <tr><td>a.Q.value("name", vs: t)  a.Q.name_of_formula</td><td>Any named formula or value of the ability (the inspector lists them).</td></tr>
+        <tr><td>a.W.heal  a.W.heal(target: x)</td><td>Heal amount with heal &amp; shield power, and what x receives. Targets the tooltip can't reach are an error.</td></tr>
+        <tr><td>a.E.shield(target: x)</td><td>The same for shields.</td></tr>
+        <tr><td>a.W.healTarget  a.E.shieldTarget</td><td>“caster only”, “another ally”, “an ally or self”, “self and an ally”, “every ally” or “none”.</td></tr>
+        <tr><td>a.Q.cd  a.Q.cdbase  a.Q.cost  a.Q.range  a.Q.rank  a.Q.name</td><td>Cooldown after haste; before haste; mana; cast range; rank; ability name.</td></tr>
+        <tr><td>a.Q.speed  a.Q.width  a.Q.radius  a.Q.castTime  a.Q.delay  a.Q.kind  a.Q.reach  a.Q.delivery  a.Q.length  a.Q.origin</td><td>Physics: projectile speed, full width, area radius, cast time, appear delay, kind (line, area, cone, targeted, self), how far it can hit, where it comes from (skillshot, lobbed, placed, vector, remote, unit, self, cone; see <a href="#physics">Physics</a>), a vector's length, and a remote ability's distance from its object to the target.</td></tr>
+        <tr><td>a.Q.arrival(distance: d)</td><td>Seconds until the ability lands at d units.</td></tr>
+        <tr><td>a.E.ccDuration("root")  a.E.ccDuration("root", vs: t)</td><td>The crowd control's duration at the ability's rank; with <code>vs</code>, after t's tenacity (floor 0.3 s; airborne, suppression and drowsy are unaffected). 0 if the ability doesn't apply that type. The working says where the number comes from (game data value or the wiki).</td></tr>
+        <tr><td>a.R.ccTypes  a.R.knockback  a.W.slowAmount</td><td>The crowd control types the ability applies in fights; its knockback or pull distance (Janna R knocks back <i>to</i> 875 units from her); its slow (0.8 = 80%).</td></tr>
+        <tr><td>a.E.has(untargetable)</td><td>Tag check on this ability.</td></tr>
+        <tr><td>Syndra.R.addTag(targeted);  removeTag(pull);</td><td>Correct the tags (see <a href="#facts">Correcting the data</a>).</td></tr>
+        <tr><td>Fizz.E.setCooldown(10);  Syndra.Q.setPhysics(delay: 0.6);</td><td>Override numbers. setPhysics takes speed, width, radius, castTime, delay, dashSpeed, dashRange, kind, delivery, origin, originRange, length, reveal, reach.</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="item">
+      <h2>Item and ItemSet</h2>
+      <div class="tscroll"><table><tbody>
+        <tr><td>Ludens.gold  Ludens.name</td><td>Total cost; display name.</td></tr>
+        <tr><td>Ludens.ap  Ludens.haste  …</td><td>Any stat (0 if the item doesn't have it).</td></tr>
+        <tr><td>Ludens.basedamage</td><td>Named passive values from the game data.</td></tr>
+        <tr><td>ItemSet s = {Ludens, Sorc};</td><td>A set. <code>s.add(x)</code>, <code>s.remove(x)</code>, <code>s.contains(x)</code>, <code>s.size()</code>, <code>s + x</code>. A set that breaks an item limit (two boots, Void Staff with Cryptbloom) is an error.</td></tr>
+        <tr><td>s.gold  s.ap</td><td>Totals across the set.</td></tr>
+        <tr><td>items()</td><td>Every finished item, for loops.</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="rune">
+      <h2>Rune</h2>
+      <p>Runes go into <code>with()</code> or <code>a.runes.add()</code>. Shards can be repeated: <code>.with(AdaptiveForce, AdaptiveForce, HealthScaling)</code>. <code>Conqueror.description</code> returns the rune's text, which is where its numbers come from. <code>runes()</code> lists every rune. See <a href="#runes-list">Modelled runes</a> for which ones change stats and which act in fights.</p>
+    </section>
+
+    <section id="summoner">
+      <h2>Summoner spells</h2>
+      <p><code>Flash</code>, <code>Ghost</code>, <code>Heal</code>, <code>Barrier</code>, <code>Ignite</code>, <code>Exhaust</code> and <code>Cleanse</code> are values of type <code>Summoner</code>. Give a champion two with <code>x.with(Flash, Ignite)</code> or <code>x.summoners = {Flash, Ignite};</code>. A champion without any set is assumed to have whichever one you use (the result says so).</p>
+<pre>Champion o = Orianna(11).with(Flash, Ignite);
+print(o.Flash.cooldown, o.Ignite.damage);           // 300, 300 at level 11
+prove canDodge(o, Syndra(11).Q, distance: 800, using: o.Flash);
+Combo c = {Flash, Q, W, Ignite};
+print(Annie(11).perform(c, vs: Dummy(hp: 3000)).damage);</pre>
+      <div class="tscroll"><table><thead><tr><th>spell</th><th>numbers (game files; checked against the wiki)</th><th>cooldown</th></tr></thead><tbody>
+        <tr><td>Flash</td><td><code>.distance</code> 400-unit blink, no cast time</td><td>300 s</td></tr>
+        <tr><td>Ghost</td><td><code>.speed</code> 24% → 48% bonus move speed over levels 1–18, <code>.duration</code> 10 s, no ramp-up</td><td>240 s</td></tr>
+        <tr><td>Heal</td><td><code>.heal</code> 80 → 318 over levels 1–18; <code>.speed</code> +30% move speed for 1 s</td><td>240 s</td></tr>
+        <tr><td>Barrier</td><td><code>.shield</code> 100 → 460 over levels 1–18, <code>.duration</code> 2.5 s</td><td>180 s</td></tr>
+        <tr><td>Ignite</td><td><code>.damage</code> 70 true damage, +20 per level to 5, +25 per level from 6 (475 at 18), over 5 s; 40% grievous wounds</td><td>180 s</td></tr>
+        <tr><td>Exhaust</td><td><code>.damageReduction</code> 35% less damage dealt, <code>.slow</code> 40%, <code>.duration</code> 3 s</td><td>240 s</td></tr>
+        <tr><td>Cleanse</td><td><code>.tenacity</code> 75% for 3 s; removes disables</td><td>240 s</td></tr>
+      </tbody></table></div>
+      <p><code>.cooldown</code> uses summoner spell haste: base × 100 ÷ (100 + haste), from Ionian Boots of Lucidity (10), Crimson Lucidity (20) and Cosmic Insight (18). Numbers that scale with level use the champion's level (<code>x.Ignite.damage</code>) or <code>defaultLevel</code> (<code>Ignite.damage</code>).</p>
+      <ul>
+        <li><b>Dodging</b>: <code>using: Flash</code>, <code>using: Ghost</code>, <code>using: Heal</code> (its speed), or combined with abilities: <code>using: {o.W, Flash}</code>. See <a href="#physics">Physics and dodging</a>.</li>
+        <li><b>Combos</b>: <code>Combo c = {Flash, R, Ignite};</code>. Ignite adds its true damage (5 ticks, one every 1.056 s) and grievous wounds; Exhaust cuts the target's damage by 35% for 3 s; Heal and Barrier heal and shield the user. A summoner the champion didn't take is skipped; one on cooldown is waited for, like abilities.</li>
+        <li><b>Fights</b>: a champion with <code>.summoners</code> set uses Ignite and Exhaust as soon as it fights (Exhaust on the enemy with the most AD + AP), and Heal and Barrier below 30% health. Flash, Ghost and Cleanse don't change fight numbers.</li>
+      </ul>
+    </section>
+
+    <section id="teamcomp">
+      <h2>TeamComp and lists</h2>
+      <div class="tscroll"><table><tbody>
+        <tr><td>TeamComp blue = {Ornn(11), Vi(11), a};</td><td>A team.</td></tr>
+        <tr><td>blue[0]  blue.size()  blue.add(x)  blue.contains(x)</td><td>Index, size, add a copy, membership by champion.</td></tr>
+        <tr><td>for (Champion c : blue) …</td><td>Loop over copies; <code>Champion&amp; c</code> to change members.</td></tr>
+        <tr><td>champions()  champions(Assassin)</td><td>Every champion (of a class) at <code>defaultLevel</code>.</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="fight">
+      <h2>Fight</h2>
+      <div class="tscroll"><table><tbody>
+        <tr><td>Fight f = fight(blue, red, 10);</td><td>Both sides fight for up to 10 seconds (0–120). A side is a Champion or TeamComp.</td></tr>
+        <tr><td>fight(blue, red, 20, start: 1000)</td><td>The two front lines start 1000 units apart (default 0: in contact). Also <code>formation: false</code> (everyone on the front line instead of ranged units at their attack range behind it), <code>kite: false</code> (ranged champions stand and fight), <code>room: 600</code> (how far a champion can back off from where it started). See <a href="#cc">Crowd control and positions</a>.</td></tr>
+        <tr><td>f.ccTime(x)  f.blocks(x)  f.position(x)  f.distance(x, y)</td><td>Seconds x spent unable to act (stunned, airborne, suppressed, asleep, charmed, feared, taunted); abilities x's spell shields blocked; x's position on the line at the end (side 1 faces +, side 2 faces −); the distance between two champions at the end.</td></tr>
+        <tr><td>f.winner  f.duration  f.log</td><td>1 or 2 if only that side has anyone alive, else 0; end time; every event as text.</td></tr>
+        <tr><td>f.alive(x)  f.dead(x)  f.hp(x)  f.hpPercent(x)  f.deathTime(x)</td><td>How one champion ended up (deathTime is infinite if alive).</td></tr>
+        <tr><td>f.dealt(x)  f.taken(x)  f.healed(x)  f.shielded(x)  f.received(x)</td><td>Damage dealt and taken, healing and shielding done, healing received.</td></tr>
+        <tr><td>f.survivors(1)  f.deaths(blue)  f.totalHealing(2)</td><td>Per side, by number or by the TeamComp you passed in.</td></tr>
+        <tr><td>canKill(a, t, 3)</td><td>Can a kill t within 3 seconds? t doesn't hit back unless <code>fightBack: true</code>.</td></tr>
+        <tr><td>canKill(a, t, 5, healers: soraka)</td><td>Healers join t's side and only heal and shield.</td></tr>
+        <tr><td>timeToKill(a, t, healers: …, fightBack: …, within: 60)</td><td>Seconds until t dies, or infinity if it survives <code>within</code> seconds.</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="combo">
+      <h2>Combo</h2>
+      <p>A combo is an exact sequence of abilities and auto attacks, run through the fight simulator against one target, so every proc applies: spellblade after abilities, Electrocute on the third separate hit, Luden's, on-hit items, crits, burns, and the target's shields, Zhonya's and healers.</p>
+<pre>Combo burst = {R, E, Q, AA};               <span class="c">// AA = one auto attack</span>
+Combo full = burst + W + Q;                <span class="c">// or Combo(Q, AA) + E, or c.add(W)</span>
+ComboResult r = zed.perform(full, vs: lux);
+print(r.damage, r.time, r.killed, r.steps);</pre>
+      <div class="tscroll"><table><tbody>
+        <tr><td>a.perform(c, vs: t)</td><td>Runs the combo on t and returns a ComboResult. An inline list works too: <code>a.perform({Q, AA, E}, vs: t)</code>.</td></tr>
+        <tr><td>wait: false</td><td>Skip an ability that's on cooldown instead of waiting for it (default: wait).</td></tr>
+        <tr><td>healers: s  fightBack: true  within: 30</td><td>Healers on t's side; t attacks back; time limit in seconds.</td></tr>
+        <tr><td>distance: 750</td><td>Units between the two champions' centres, for effects that depend on it (Arcane Comet +0–100% over 0–750 units, Aftershock's 350 radius). The steps still ignore range.</td></tr>
+        <tr><td>a.combo(c, vs: t)</td><td>Shorthand for <code>a.perform(c, vs: t).damage</code>. (<code>a.combo(Q, E, R, vs: t)</code> with plain slots is the instant formula sum, without procs or timing.)</td></tr>
+        <tr><td>r.damage  r.time  r.dps</td><td>Total damage (including burns after the last step); time of the last step; damage per second.</td></tr>
+        <tr><td>r.bySource("Kraken Slayer")</td><td>Total damage after resistances from one source (an item, rune or ability), like an item's "damage dealt" counter. <code>r.floatingText</code> lists every source's total.</td></tr>
+        <tr><td>r.killed  r.killTime  r.hpLeft  r.hpPercent</td><td>Whether and when the target died; what it has left.</td></tr>
+        <tr><td>r.steps  r.lingering  r.log</td><td>Damage per step (skipped steps say why); damage after the last step; every event.</td></tr>
+        <tr><td>r.healed  r.shielded</td><td>Healing and shielding done by the performer (lifesteal, Sundered Sky, Eclipse, item actives…).</td></tr>
+        <tr><td>{ProfaneHydra, Q, AA}</td><td>An item with an active can be a step: it is pressed at that point (Tiamat and the Hydras, Stridebreaker, Gunblade, Rocketbelt, Zhonya's, Redemption, Locket, Mikael's, Actualizer, potions…). Damaging actives are only used when listed; in <code>fight()</code> fighters press them whenever they're ready.</td></tr>
+        <tr><td>c.size()  c.add(W)  c.steps</td><td>Combo length, extending it, the sequence as text.</td></tr>
+        <tr><td>{Q, E, P, W, E, P}</td><td><code>P</code> applies the passive's damage formula once (e.g. Katarina picking up a dagger). Its trigger is assumed to happen; the assumptions say so. Passives without a damage formula are skipped with a note.</td></tr>
+      </tbody></table></div>
+      <p>Each step happens as soon as it can: an ability when it's off cooldown (casts lock the champion for 0.25 s), an auto attack when the attack timer allows. Every step hits; the assumptions list says so.</p>
+      <div class="tscroll"><table><tbody>
+        <tr><td>print(r.floatingText);</td><td>Every damage instance in order: time, step, source (ability, attack, Luden's, Electrocute…), type, exact value, and the value floored and rounded, then the per-step totals. For comparing with the practice tool line by line.</td></tr>
+        <tr><td>r.stepDamage(i)  r.hit(i)  r.hitCount</td><td>Damage of step i and of damage instance i (both count from 1); the number of instances. Burn ticks after their step are instances with step “tick”.</td></tr>
+      </tbody></table></div>
+      <p><b>Rounding.</b> The game shows whole numbers in floating combat text and on the dummy. Whether it rounds or truncates damage numbers is not documented: the wiki only says the health bar rounds <i>up</i> and the C panel rounds armor, MR, AD and AP to the nearest whole number (wiki “Health”). <code>floatingText</code> shows both until measurements settle it; the practice tests allow ±1 per displayed number.</p>
+    </section>
+
+    <section id="dummy">
+      <h2>Practice-tool dummy</h2>
+      <p><code>Dummy(hp:, armor:, mr:)</code> is the Practice Tool target dummy, usable wherever a target Champion is: <code>x.Q.damage(vs: d)</code>, <code>x.proc(Item, vs: d)</code>, <code>x.perform(combo, vs: d)</code>, <code>canKill</code>, <code>timeToKill</code>, <code>fight</code>. All settings are optional.</p>
+<pre>Dummy d = Dummy();                           <span class="c">// 1000 health, 0 armor, 0 MR</span>
+Dummy big = Dummy(hp: 3000, resists: 50);    <span class="c">// 20 × Add 100 Max HP, 5 × Add 10 Resistances</span>
+print(big);                                  <span class="c">// Target Dummy (practice tool: 3000 health, 50 armor, 50 magic resist)</span>
+auto r = Syndra(11).perform({Q, W, E}, vs: big);
+print(r.floatingText);</pre>
+      <div class="tscroll"><table><tbody>
+        <tr><td>Defaults</td><td>1000 health, 0 armor, 0 magic resist, level 1, no stat growth, move speed 370, attack range 175 (melee), gameplay radius 65. Game file <code>Characters/PracticeTool_TargetDummy</code> (patch 16.19: baseHP 1000, baseArmor 0, no base MR, unit tag “Champion”) and the wiki's <a href="https://wiki.leagueoflegends.com/en-us/Practice_Tool">Practice Tool</a> page agree.</td></tr>
+        <tr><td>hp:</td><td>“Add 100 Max HP” gives 100 <b>bonus</b> health; “Remove” only takes away what was added. So the tool offers 1000, 1100, 1200… and everything above 1000 is bonus health (it matters for Lord Dominik's Regards and other effects that read bonus health).</td></tr>
+        <tr><td>resists:  armor:  mr:</td><td>“Add 10 Resistances” gives 10 bonus armor <i>and</i> 10 bonus MR, so the tool offers 0, 10, 20… with armor = MR. <code>resists: 50</code> sets both. <code>armor:</code> and <code>mr:</code> can be set apart for theory; the output then says the practice tool can't do it.</td></tr>
+        <tr><td>Counts as a champion</td><td>“It stands in as a champion for all intents and purposes” (wiki); the game file tags it Champion. Champion-only effects (Electrocute, Kraken Slayer, Conqueror, Lord Dominik's, …) apply.</td></tr>
+        <tr><td>Can't die</td><td>Its health stops at 1; it takes at most (max health − 1). <code>r.killed</code>/<code>r.killTime</code>, <code>canKill</code> and <code>timeToKill</code> report when damage taken reached its max health, the moment a champion with these stats would die. After that, current-health effects see a 1-health target, as in game. Only Urgot's R can actually kill it (wiki).</td></tr>
+        <tr><td>Resets after 3 s</td><td>After 3 seconds without damage it restores to full health and resets its counters (wiki). A combo with a gap of 3 s or more starts over on a full dummy, in the engine too.</td></tr>
+        <tr><td>Doesn't act</td><td>It never attacks, moves or casts; <code>fightBack:</code> does nothing. <code>canDodge(d, …)</code> is an error. It is immune to Grievous Wounds (it doesn't heal anyway).</td></tr>
+        <tr><td>d.hp  d.armor  d.mr  d.bonushp  d.hitbox</td><td>Its settings. <code>d.hitbox</code> is 65 and grows with bonus health up to 130 at 10,000 health (wiki); straight-line growth in between is an assumption and is labelled as one.</td></tr>
+        <tr><td>Counters</td><td>Since patch 25.14 the dummy's “last hit” counter adds up every damage instance from one hit (an attack plus its on-hit procs) (wiki Practice Tool, patch history). <code>r.floatingText</code> prints per-step totals for that.</td></tr>
+      </tbody></table></div>
+      <p>Measurements from practice-tool sessions go in <code>tests/practice/</code> (format in its README); <code>tools/practice_to_tests.py</code> turns them into assertions that the regression gate runs.</p>
+    </section>
+
+    <section id="builtins">
+      <h2>Built-in functions</h2>
+      <div class="tscroll"><table><tbody>
+        <tr><td>min max abs floor ceil round sqrt pow</td><td>Maths.</td></tr>
+        <tr><td>champions(Class?)  items()  runes()</td><td>Lists for loops.</td></tr>
+        <tr><td>fight  canKill  timeToKill</td><td>See <a href="#fight">Fight</a>.</td></tr>
+        <tr><td>canDodge(b, a.Q, distance: d, using: b.E, reaction: 0.25)</td><td>See <a href="#physics">Physics and dodging</a>.</td></tr>
+        <tr><td>Champion(Syndra, 11)  ItemSet(…)  TeamComp(…)</td><td>Constructors.</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="rules">
+      <h2>Rules and claims</h2>
+<pre>rule dive(Champion x, Champion y) -> beats(x, y) [1] {
+    return x.is(Assassin) &amp;&amp; x.has(mobile) &amp;&amp; !y.has(mobile);
+}
+rule stunTheDive(Champion x, Champion y) -> !beats(x, y) [2] {
+    return x.has(mobile) &amp;&amp; y.has(stun);
+}
+prove beats(Fizz, Syndra);</pre>
+      <ul>
+        <li>A rule is an argument that the claim is true (<code>-> beats(x, y)</code>) or false (<code>-> !beats(x, y)</code>) whenever its body returns true. <code>[n]</code> is its strength, default 1.</li>
+        <li>For a claim, every rule with that name and number of arguments is tried. The strongest argument that fires wins. If the strongest for and against are equally strong, the claim is <b>contested</b>. If none fire, <b>no rule applies</b>.</li>
+        <li>A body written as <code>return c1 &amp;&amp; c2 &amp;&amp; c3;</code> is shown condition by condition, with the evidence for each (the tooltip phrase behind a tag, the formula behind a number). Other bodies are shown as a whole.</li>
+        <li>Claims can be used inside functions and other rules as booleans: <code>beats(a, b)</code>. A claim is true only when it's <b>proved</b>. Sub-proofs are shown nested.</li>
+        <li>Rule arguments are the parameter names in the claim, in order: <code>-> counters(y, x)</code> is allowed.</li>
+      </ul>
+    </section>
+
+    <section id="facts">
+      <h2>Correcting the data</h2>
+      <p>Tags are read from tooltip text, and a few physics values are missing from the game files. Correct them in your program. Every result that uses a correction lists it under <b>Holds only if you accept</b>.</p>
+      <div class="tscroll"><table><tbody>
+        <tr><td>Syndra.R.addTag(targeted);</td><td>Add a tag to an ability.</td></tr>
+        <tr><td>Syndra.W.removeTag(pull);</td><td>Remove a wrong one.</td></tr>
+        <tr><td>Fizz.E.setCooldown(10);</td><td>Override a cooldown.</td></tr>
+        <tr><td>Syndra.Q.setPhysics(speed: 0, delay: 0.6);</td><td>Override physics.</td></tr>
+        <tr><td>Fizz.addClass(Mage);  Fizz.removeClass(Fighter);</td><td>Change classes.</td></tr>
+        <tr><td>Katarina.P.setDamageType("magic");</td><td>Set an ability's damage type when the tooltip doesn't say and the engine's guess (physical if it scales with AD, else magic) is wrong.</td></tr>
+      </tbody></table></div>
+      <p>Corrections apply to that champion everywhere in the program, from the line where they're made.</p>
+    </section>
+
+    <section id="physics">
+      <h2>Physics and dodging</h2>
+      <p><code>canDodge(defender, ability, distance: d, using: defender.X, reaction: r, preBuff: bool, hitbox: units)</code> checks whether the defender can avoid an ability aimed perfectly at them from d units away.</p>
+      <p><b>Where it comes from.</b> Range doesn't always mean the ability travels from the champion to the target. Every ability has a <code>delivery</code> (<code>a.Q.delivery</code>), read from the game files' targeting type and corrected by hand where they mislead (each correction cites its source):</p>
+      <div class="tbl"><table><thead><tr><th>delivery</th><th>what happens</th><th>time to land at d units</th><th>reach</th></tr></thead><tbody>
+        <tr><td>skillshot</td><td>Fired from the caster in a direction (Ezreal Q, Lux Q).</td><td>cast + d ÷ speed + delay</td><td>range</td></tr>
+        <tr><td>lobbed</td><td>Thrown from the caster to a chosen point; hits an area where it lands (Lux E, Ziggs Q, Gragas Q).</td><td>cast + d ÷ speed + delay</td><td>range + radius</td></tr>
+        <tr><td>placed</td><td>Appears at a chosen point within range (Syndra Q, Xerath W, Karthus Q, Veigar W). Distance doesn't matter.</td><td>cast + delay</td><td>range + radius</td></tr>
+        <tr><td>vector</td><td>The caster picks a start point anywhere within range, then it runs its length in a chosen direction (Viktor E, Rumble R). Aimed perfectly the start sits on the target.</td><td>cast + delay + (d − range, if beyond range) ÷ speed</td><td>range + length</td></tr>
+        <tr><td>remote</td><td>Comes from another object: Orianna's ball, Azir's soldiers, Ornn's elemental, Xayah's feathers. The object starts on the target (perfect play) unless you say otherwise with <code>setPhysics(origin: units)</code>.</td><td>cast + origin ÷ speed + delay</td><td>the object's range + radius</td></tr>
+        <tr><td>unit</td><td>Point-and-click, including homing bolts and empowered attacks.</td><td>cast + d ÷ speed</td><td>range</td></tr>
+        <tr><td>self</td><td>Centred on the caster (Amumu R, Alistar Q).</td><td>cast (+ d ÷ speed if it expands)</td><td>radius</td></tr>
+        <tr><td>cone</td><td>A cone from the caster.</td><td>cast + d ÷ speed</td><td>cone length</td></tr>
+      </tbody></table></div>
+      <ul>
+        <li><b>Arrival time</b> (<code>a.Q.arrival(distance: d)</code>) is measured from the start of the cast, by the delivery's formula above.</li>
+        <li><b>Time to respond</b> = arrival time − the moment it becomes visible − reaction time (default 0, perfect play). It becomes visible when the cast ends (the missile or ground marker appears then; during the cast time the target point can't be seen), unless its data says it shows later (Rumble R: nothing is on the ground until the first rockets land). So Syndra Q gives 0.6 s to respond at any distance.</li>
+        <li><b>Hitbox</b>: the defender's gameplay radius (<code>b.hitbox</code>: 65 for most champions, 80 for large ones, 55 for small ones). Test a grown champion with <code>hitbox: 100</code>.</li>
+        <li><b>Out of reach</b>: beyond the reach above plus the defender's hitbox, the defender is safe standing still.</li>
+        <li><b>Walking</b>: the defender must move half the width (lines), the radius (areas) or the cone's half-width at that distance, plus their hitbox, before it lands. Move speed includes boots and other items, runes and League's soft caps (<code>b.ms</code>). For an area centred on the caster, they walk out of it instead. The line prints the move speed that would be needed.</li>
+        <li><b>Point-and-click</b> abilities can't be walked out of.</li>
+        <li><b>using:</b> an ability that makes the defender untargetable or invulnerable dodges anything if its cast time is shorter than the time to respond. A dash or blink adds its distance (after its cast and travel time), then the defender keeps walking. A move-speed boost (Orianna W, Hecarim E, Singed R, Ghost, Heal, …) starts after its cast: the defender stands still while casting, then walks at the boosted speed (with its decay, ramp or field, and League's soft caps above 415). Perfect play: the defender uses whatever moves it farthest, so a boost whose cast costs more than it gains is skipped and plain walking counts.</li>
+        <li><b>preBuff: true</b>: the move-speed boosts in <code>using:</code> were cast before the ability appeared, so they're already running (fresh) when the time to respond starts, and cost no cast time.</li>
+        <li><b>Several at once</b>: <code>using: {o.W, Flash}</code> tries every combination of the listed abilities and summoner spells (boost casts first, then dashes and blinks, then walking) and uses the best. <code>using: Flash</code> adds a 400-unit blink with no cast time.</li>
+      </ul>
+      <p><code>setPhysics</code> also takes <code>delivery: "placed"</code> (or any of the above), <code>origin:</code> (units from the remote object to the target), <code>length:</code> (a vector's length), <code>reveal:</code> (seconds into the cast when it becomes visible) and <code>reach:</code>.</p>
+      <div class="note">Speeds, widths, radii and cast times come from the game files; where only the wiki has a value (some radii and dash speeds), the result lists it as an assumption. Dash speeds and appear delays that neither source has default to 1200 units/s and 0, also listed as assumptions and settable with <code>setPhysics</code>.</div>
+    </section>
+
+    <section id="sim">
+      <h2>How fights are simulated</h2>
+      <ul>
+        <li>Time moves in 0.05-second steps.</li>
+        <li>Each champion, when free, first uses a heal or shield if an ally needs one (healing ultimates are saved for allies below 40% health), then peels (below), then the first ability in its rotation that is off cooldown and in reach, otherwise an auto attack if the target is in attack range, otherwise it moves. Casting locks the champion for 0.25 seconds. See <a href="#cc">Crowd control and positions</a>.</li>
+        <li>Damage goes through amplifiers, resistances after penetration, Bone Plating and shields, then health. Lifesteal (attacks), omnivamp and Conqueror heal the attacker; grievous wounds cut healing received by 40%.</li>
+        <li>Heals go to whoever the healer's policy picks; team heals reach everyone; Moonstone chains 30% to a second ally.</li>
+        <li>Zhonya's (below 30% health) puts a champion in 2.5 seconds of stasis; Guardian Angel revives once after 4 seconds.</li>
+        <li>Summoner spells (only for champions with <code>.summoners</code> set, or as combo steps): Ignite and Exhaust on first contact, Heal and Barrier below 30% health.</li>
+        <li>The fight ends when one side has nobody left, or at the time limit.</li>
+      </ul>
+      <div class="note">Positions are on one line; every ability in reach hits (perfect aim; no dodging inside fights), abilities land when cast (dashes when they arrive), mana is ignored, and special mechanics beyond an ability's tooltip formula aren't simulated. Use <code>canDodge</code> and your own rules to reason about the rest.</div>
+    </section>
+
+    <section id="cc">
+      <h2>Crowd control and positions</h2>
+      <h3>Positions</h3>
+      <ul>
+        <li>One line. Side 1's front is at 0 and faces +; side 2's front is at <code>start:</code> (default 0) and faces −. Each champion stands max(0, attack range − 175) behind its front, so ranged champions start at their attack range from where the enemy front will be (<code>formation: false</code>: everyone on the front line).</li>
+        <li>Reach (wiki "Range"): basic attacks use edge range (attack range + both gameplay radii); point-and-click abilities centred range; other abilities their reach (<code>.reach</code>) + the target's radius. Placed and lobbed areas hit every enemy within their radius of the target; self-centred areas every enemy within the radius of the caster; lines and cones every enemy within reach (on one line everything is in the path).</li>
+        <li>Walking uses the current move speed: (base + flat) × (1 + % bonuses) × (1 − the strongest slow × (1 − slow resist)), then the soft caps (wiki "Movement speed": only the strongest slow counts).</li>
+        <li>Dashes and blinks (abilities tagged dash or blink) use the dash range and speed from the game data (<code>dashInfo</code>; 1200 units/s when the data has none). A dash ends touching its target or at its range; its hits land when it arrives. A blink moves at once.</li>
+        <li>Knockbacks move the target away from the caster by the data distance over the airborne time (Janna R: <i>to</i> 875 units from her; Gragas R 900; Alistar W 700; Vayne E 475); pulls move it toward the caster. A placed knockback (Gragas R) is aimed away from the caster's team, or toward it for role <code>"engage"</code>. Knockbacks whose distance neither source gives (Gragas E, Draven E, Ornn Q) only make the target airborne.</li>
+      </ul>
+      <h3>Roles (x.role)</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>"kite"</td><td>Default for ranged champions. Targets the lowest-health enemy it can reach (else the nearest). Backs off from any shorter-ranged enemy inside its attack range between attacks, uses dashes and blinks to escape such an enemy, and uses hard crowd control first on enemies diving an ally (peel). Knockbacks are held for peel.</td></tr>
+        <tr><td>"dive"</td><td>Default for melee champions. Walks or dashes to the lowest-health enemy and uses everything on it, except knockbacks, which it holds to peel an enemy diving an ally.</td></tr>
+        <tr><td>"engage"</td><td>Like dive, but also uses knockbacks offensively at once (placed ones push the target into its team).</td></tr>
+        <tr><td>"peel"</td><td>Holds every hard crowd control ability for enemies that reach an ally they are outranged by (or itself), guards the rearmost ranged ally when nobody is diving.</td></tr>
+        <tr><td>"fight"</td><td>Targets the lowest-health enemy it can reach, walks to attack range, no kiting. Ranged champions use it with <code>fight(…, kite: false)</code>.</td></tr>
+      </tbody></table></div>
+      <p>An enemy "dives" ally A when it is within its own attack range (+ 50) of A and A's attack range is longer. Spell shields, Morgana E and cleanses react perfectly: Sivir E and Nocturne W are raised as a hostile ability lands; Morgana E is cast on the ally a hard crowd control is about to land on (if in range); Quicksilver Sash and Mercurial Scimitar cleanse as soon as a cleansable crowd control lands; Mikael's Blessing is used on a crowd-controlled ally.</p>
+      <h3>Crowd control types</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>stun, suppression, sleep, airborne (knock-up, knockback, pull)</td><td>No moving, attacking or casting. Interrupts channels.</td></tr>
+        <tr><td>charm, fear (flee), taunt, berserk</td><td>No control: charm and taunt walk to the caster, fear walks away, taunt and berserk attack the caster when in range.</td></tr>
+        <tr><td>root</td><td>No moving or dashing; attacks and casts allowed.</td></tr>
+        <tr><td>silence</td><td>No casting. polymorph: no attacking or casting (walking allowed). disarm: no attacking. ground: no dashes. blind: attacks miss.</td></tr>
+        <tr><td>slow</td><td>Lower move speed (strongest slow only; decaying slows fade linearly).</td></tr>
+      </tbody></table></div>
+      <p>Source: wiki "Types of Crowd Control" (summary table). Tenacity (wiki "Tenacity") shortens every type except airborne, suppression and drowsy, to no less than 0.3 s; items, elixirs and the rune shard stack multiplicatively (1 − (1 − a)(1 − b)…). Quicksilver removes everything except airborne (suppression included); Mikael's Blessing removes stuns, roots, silences, polymorphs, forced actions, sleep and slows, not suppression or airborne. Spell shields (Banshee's Veil, Edge of Night, Verdant Barrier, Sivir E, Nocturne W) block one whole ability, crowd control included.</p>
+      <h3>Where the numbers come from</h3>
+      <p><code>src/cc_export.py</code> reads which crowd control each ability applies from the wiki ability text (<code>{{tip|stun|…}}</code> for <code>{{fd|1}}</code> seconds, knock back <code>900 units</code>, slowed by <code>80%</code>) and takes the value from the game data (StunDuration, RootDuration, KnockupDuration, KnockbackDistance, SlowAmount, …) when one exists and agrees with the wiki at every rank; otherwise the wiki's value, and the working says so. Where they disagree the wiki value is used and the game data value is shown (<code>python src/cc_export.py</code> lists them: KSante Q, Rammus Q, Urgot E, Hwei R, Lissandra R, Maokai Q…). Effects the wiki makes conditional on terrain (Vayne E stun, Poppy E stun, Ornn E) are left out, as are effects with no known duration (the assumptions list each one). Braum R: the first target's knock-up grows from 0.6 s with distance, assumed linear up to the ability's reach.</p>
+    </section>
+
+    <section id="damage">
+      <h2>Damage, healing, stats</h2>
+      <ul>
+        <li><b>Stats at a level</b>: base + growth × (level − 1) × (0.7025 + 0.0175 × (level − 1)), the game's formula.</li>
+        <li><b>Ability formulas</b> are evaluated from the game's calculation trees: per-rank values, stat ratios (total, bonus or base), level curves, sums, products and clamps. Stack-based parts count as 0 stacks (noted).</li>
+        <li><b>Resistances</b>: percent penetration first, then flat (lethality is flat armor penetration); damage × 100 ÷ (100 + resist), or 2 − 100 ÷ (100 − resist) below zero.</li>
+        <li><b>Adaptive</b> runes give AD when bonus AD exceeds AP and AP when AP exceeds bonus AD (1 adaptive = 0.6 AD or 1 AP). The AP compared includes Rabadon's +30%, which then also amplifies adaptive AP. A tie (e.g. no items) goes to the champion's adaptive type from the game files (Zed: AD, Syndra: AP). Adaptive damage is physical or magic by the same test.</li>
+        <li><b>Abilities that apply on-hit effects</b> (the wiki's "Attack effects" list: Katarina's Shunpo, Sinister Steel and Death Lotus, Ezreal Q, Fiora Q, Gangplank Q, Irelia Q, Yasuo Q, Yone Q…) trigger on-hit items at the listed effectiveness (Death Lotus 25/30/35%, Master Yi Q 18.75%, Urgot W 50%…). Channels like Death Lotus are separate hits (15 daggers per target). Ones that also trigger on-attack effects count as basic attacks for Kraken Slayer, Terminus and Hullbreaker stacks. On-hit-only ones stack and consume Kraken's Bring It Down, per the wiki's Kraken Slayer page, but build no Terminus stacks (assumed).</li>
+        <li><b>Critical strikes</b> deal 200% (base; Infinity Edge +30% = 230%). Ashe's crits deal no bonus damage.</li>
+        <li><b>Attack speed</b> is capped at 3.003 (one attack per 0.333 s); Bel'Veth has no cap. Cap exceptions that only last during an ability (Jinx, Kennen, Varus, Sion, Zeri) aren't modelled.</li>
+        <li><b>Move speed</b> = (base + flat) × (1 + % bonuses), then soft caps: above 415 → × 0.8 + 83, above 490 → × 0.5 + 230.</li>
+        <li><b>Item limits</b> from the game's item data: one pair of boots, one Blight item (Void Staff, Cryptbloom, Terminus…), one Hydra, one Spellblade, no two copies of a legendary, and so on. Breaking one is an error.</li>
+        <li><b>Cooldowns</b>: base × 100 ÷ (100 + ability haste). Haste that one ability gives another (Syndra R: Dark Sphere +10 per R rank) is included.</li>
+        <li><b>Heals</b>: formula × (1 + heal &amp; shield power) × (1 + healing received), capped at missing health.</li>
+      </ul>
+    </section>
+
+    <section id="runes-list">
+      <h2>Modelled runes</h2>
+      <p class="list" id="runes-stat"></p>
+      <p class="list" id="runes-fight"></p>
+      <p class="list" id="runes-na"></p>
+      <p class="list" id="runes-other"></p>
+      <p>Values the rune text gives as a range “based on level” are spread evenly from level 1 to 18 unless the wiki gives another curve (Fleet Footwork follows the champion-growth curve). Stacks earned before the fight (Legend runes, Ultimate Hunter, Overgrowth, Dark Harvest souls, Manaflow Band mana) start at 0, as in a fresh practice-tool game; set them with <code>a.stacks(LegendAlacrity, 10)</code>. Gathering Storm, Conditioning and Biscuit Delivery follow <code>gameMinute</code>. Every rune's status, source and approximation is in the runes audit (outputs/runes_audit/RUNES.md), and every choice appears in the assumptions.</p>
+    </section>
+
+    <section id="items-list">
+      <h2>Modelled item passives</h2>
+      <p>Every item's stats are always included. These items' passives and actives are also modelled in fights and combos, using the values in the game data (the few values the data lacks come from the item text):</p>
+      <div class="tscroll"><table><tbody id="items-notes"></tbody></table></div>
+      <p>These items have nothing a fight can see (movement, vision, mana, cleanses, gold); a build that contains one says so in the assumptions:</p>
+      <p class="list" id="items-gaps"></p>
+      <p>Stacks earned before a fight (Heartsteel, Mejai's, Hubris, Yun Tal, Rod of Ages…) start at 0, as when you buy the item in the practice tool; set them with <code>a.stacks(Item, n)</code>. Every approximation (for example Energized items recharging only from attacks, because nobody moves) is listed in the assumptions of any result that uses the item.</p>
+    </section>
+
+    <section id="tags">
+      <h2>Ability tags</h2>
+      <p>Tags are read from each ability's tooltip text. <code>mobile</code> means dash or blink; <code>hardcc</code> means any hard crowd control; <code>targeted</code> means point-and-click. The inspector shows the phrase behind every tag.</p>
+      <p class="list" id="taglist"></p>
+    </section>
+
+    <section id="data">
+      <h2>Data sources</h2>
+      <ul>
+        <li><b>Riot Data Dragon</b> (patch <span id="patch">—</span>): champion stats, ability tooltips, cooldowns, ranges, item names and prices.</li>
+        <li><b>CommunityDragon</b> game files: ability calculation trees, per-rank values, projectile speeds, widths, cast times; item stats and passive values.</li>
+        <li><b>Client rune data</b>: rune descriptions, whose numbers the rune model uses.</li>
+      </ul>
+      <p>The data is rebuilt for a new patch with <code>python src/fetch_static.py</code>, <code>python src/calc_export.py</code> and <code>python src/kb_export.py</code>.</p>
+    </section>
+
+    <section id="limits">
+      <h2>Limits</h2>
+      <ul>
+        <li>A proof holds for the model, not the live game. The assumptions list says exactly where the two can differ.</li>
+        <li>Tooltip-derived tags and damage types can be wrong; check the evidence and correct with <code>addTag</code> / <code>removeTag</code>.</li>
+        <li>Champion-specific mechanics (Zed's shadows, stored damage, stacking passives, empowered recasts) are only as good as the tooltip formula.</li>
+        <li>Fights are one-dimensional: no terrain, walls, flanks or body blocking, and area abilities catch everyone within their radius on the line (2-D spacing would catch fewer). Mana is ignored. Physics checks assume perfect aim and a straight-line dodge.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<script id="docdata" type="application/json">{"patch": "16.19.1", "statRunes": ["Adaptive Force", "Attack Speed", "Ability Haste", "Move Speed", "Health Scaling", "Health", "Armor", "Magic Resist", "Resist Scaling", "Tenacity and Slow Resist", "Eyeball Collection", "Zombie Ward", "Ghost Poro", "Absolute Focus", "Gathering Storm", "Chrysalis", "Transcendence", "Ultimate Hunter", "Legend: Alacrity", "Legend: Haste", "Legend: Bloodline", "Conditioning", "Overgrowth", "Celestial Body", "Revitalize", "Iron Skin", "Mirror Shell", "Jack Of All Trades", "Axiom Arcanist", "Celerity", "Magical Footwear", "Biscuit Delivery", "Manaflow Band", "Cosmic Insight"], "fightRunes": ["Electrocute", "Dark Harvest", "Conqueror", "Lethal Tempo", "Press the Attack", "Fleet Footwork", "Grasp of the Undying", "Aftershock", "Summon Aery", "Arcane Comet", "First Strike", "Hail of Blades", "Guardian", "Deathfire Touch", "Cheap Shot", "Taste of Blood", "Sudden Impact", "Scorch", "Second Wind", "Bone Plating", "Triumph", "Last Stand", "Coup de Grace", "Cut Down", "Celestial Body", "Revitalize", "Axiom Arcanist", "Stormraider's Surge", "Nimbus Cloak", "Glacial Augment", "Font of Life", "Shield Bash", "Unflinching", "Absorb Life", "Absolute Focus", "Approach Velocity"], "naRunes": ["Cash Back", "Deep Ward", "Demolish", "Grisly Mementos", "Hextech Flashtraption", "Presence of Mind", "Relentless Hunter", "Sixth Sense", "Time Warp Tonic", "Treasure Hunter", "Triple Tonic", "Unsealed Spellbook", "Waterwalking"], "otherRunes": ["Ingenious Hunter", "Kleptomancy", "Predator", "Template"], "items": ["Abyssal Mask", "Actualizer", "Archangel's Staff", "Ardent Censer", "Armored Advance", "Axiom Arc", "Bami's Cinder", "Bandlepipes", "Banshee's Veil", "Bastionbreaker", "Black Cleaver", "Blackfire Torch", "Blade of The Ruined King", "Bloodletter's Curse", "Bloodsong", "Bloodthirster", "Bramble Vest", "Catalyst of Aeons", "Celestial Opposition", "Chainlaced Crushers", "Chempunk Chainsword", "Cryptbloom", "Cull", "Dark Seal", "Dawncore", "Dead Man's Plate", "Death's Dance", "Doran's Ring", "Doran's Shield", "Dream Maker", "Dusk and Dawn", "Echoes of Helia", "Eclipse", "Edge of Night", "Elixir of Iron", "Elixir of Sorcery", "Elixir of Wrath", "Endless Hunger", "Essence Reaver", "Executioner's Calling", "Experimental Hexplate", "Fated Ashes", "Fiendhunter Bolts", "Force of Nature", "Frozen Heart", "Gluttonous Greaves", "Guardian Angel", "Guinsoo's Rageblade", "Haunting Guise", "Health Potion", "Heartsteel", "Hexdrinker", "Hexoptics C44", "Hextech Alternator", "Hextech Gunblade", "Hextech Rocketbelt", "Hollow Radiance", "Horizon Focus", "Hubris", "Hullbreaker", "Iceborn Gauntlet", "Immortal Path", "Immortal Shieldbow", "Imperial Mandate", "Jak'Sho, The Protean", "Kaenic Rookern", "Knight's Vow", "Kraken Slayer", "Liandry's Torment", "Lich Bane", "Locket of the Iron Solari", "Lord Dominik's Regards", "Luden's Echo", "Malignance", "Manamune", "Maw of Malmortius", "Mejai's Soulstealer", "Mikael's Blessing", "Moonstone Renewer", "Morellonomicon", "Mortal Reminder", "Nashor's Tooth", "Navori Flickerblade", "Oblivion Orb", "Overlord's Bloodmail", "Plated Steelcaps", "Profane Hydra", "Protoplasm Harness", "Rabadon's Deathcap", "Randuin's Omen", "Rapid Firecannon", "Ravenous Hydra", "Recurve Bow", "Redemption", "Refillable Potion", "Riftmaker", "Rod of Ages", "Runaan's Hurricane", "Rylai's Crystal Scepter", "Scout's Slingshot", "Seeker's Armguard", "Serpent's Fang", "Serylda's Grudge", "Shadowflame", "Sheen", "Solstice Sleigh", "Spear of Shojin", "Spirit Visage", "Staff of Flowing Water", "Statikk Shiv", "Sterak's Gage", "Stormrazor", "Stormsurge", "Stridebreaker", "Sundered Sky", "Sunfire Aegis", "Swiftmarch", "Tear of the Goddess", "Terminus", "The Collector", "Thornmail", "Tiamat", "Titanic Hydra", "Trinity Force", "Unending Despair", "Verdant Barrier", "Voltaic Cyclosword", "Warden's Mail", "Warmog's Armor", "Whispering Circlet", "Winter's Approach", "Wit's End", "Yun Tal Wildarrows", "Zaz'Zak's Realmspike", "Zeke's Convergence", "Zhonya's Hourglass"], "itemNotes": [["Abyssal Mask", "Unmake: enemy champions take 12% more magic damage"], ["Actualizer", "Mana Made Real (active): 8s of +15% (+0.5% per 100 bonus mana) ability damage, healing and shielding, basic cooldowns 30% faster"], ["Archangel's Staff", "Awe: AP = 1% bonus mana; Manaflow mana from .stacks()"], ["Ardent Censer", "Sanctify: healing or shielding an ally gives both +25% attack speed and 20 magic on-hit for 6s"], ["Armored Advance", "Plating: \u221210% basic attack damage taken; Noxian Endurance: physical shield (8% bonus health) after champion physical damage (15s cooldown)"], ["Axiom Arc", "Flux: takedowns within 3s refund 10% + 0.25% per lethality of R's cooldown"], ["Bami's Cinder", "Immolate: 15 magic per second to enemies for 3s after dealing or taking damage"], ["Bandlepipes", "Fanfare: slowing or immobilizing a champion gives you and allies +30% attack speed (20% ranged holder) for 8s (4s ranged)"], ["Banshee's Veil", "Annul: the first enemy ability cast on you is blocked; ready again 40s after the last champion damage"], ["Bastionbreaker", "Shaped Charge: next ability damage to a champion deals 50 + 1.5 per lethality true (half ranged, 20s cooldown)"], ["Black Cleaver", "Carve: physical damage \u22126% armor per stack (5 stacks, 6s)"], ["Blackfire Torch", "Baleful Blaze: ability damage burns 20 + 2% AP magic per second for 3s; +4% AP per burning champion"], ["Blade of The Ruined King", "Mist's Edge: 9% (6% ranged) of the target's current health physical on-hit"], ["Bloodletter's Curse", "Vile Decay: champion ability magic damage \u22127.5% MR per stack (4 stacks, 6s)"], ["Bloodsong", "Spellblade: 100% base AD physical; champions hit take 8% (5% ranged) more damage for 4s"], ["Bloodthirster", "Ichorshield: life steal healing beyond max health becomes a shield (165, +15/level from 9)"], ["Bramble Vest", "Thorns: 10 magic to attackers and 40% Grievous Wounds"], ["Catalyst of Aeons", "Eternity: heals 25% of each cast's mana cost (max 20)"], ["Celestial Opposition", "Blessing of the Mountain: \u221235% (25% ranged) champion damage for 2s after being hit, then 18s cooldown"], ["Chainlaced Crushers", "Noxian Persistence: magic shield (8% bonus health) after champion magic damage (15s cooldown)"], ["Chempunk Chainsword", "40% Grievous Wounds on physical damage"], ["Cryptbloom", "Life From Death: takedowns within 3s of your damage heal you and allies 100 + 20% AP"], ["Cull", "Reap: 3 health on-hit"], ["Dark Seal", "Glory: 4 AP per stack (.stacks(), default 0); +2 kill / +1 assist in fights"], ["Dawncore", "First Light: 2% heal/shield power and 10 AP per 100% base mana regen"], ["Dead Man's Plate", "Shipwrecker: first attack of the fight discharges full Momentum: 40 + 100% base AD physical"], ["Death's Dance", "Ignore Pain: 30% (10% ranged) of physical and magic damage taken is delayed as true damage over 3s; Defy: takedowns cleanse it and heal 75% bonus AD over 2s"], ["Doran's Ring", "Drain: champions without mana heal 45% of the mana restore: 0.45 health per second, 0.9 for 5s after damaging a champion"], ["Doran's Shield", "Enduring Focus: after champion damage, regenerate 0.066 (0.05 ranged or area) health per 1% missing health per second for 8s"], ["Dream Maker", "Dream Bubbles: healing or shielding an ally gives it \u2212X damage on the next hit taken and +X magic damage on its next hit (every 8s)"], ["Dusk and Dawn", "Spellblade: 75% base AD + 10% AP magic, heals 10% AP + 3% bonus health, applies on-hit again after 0.2s"], ["Echoes of Helia", "Soul Siphon: 30% of damage dealt stored (cap by level); healing or shielding an ally releases it as healing"], ["Eclipse", "Ever Rising Moon: 2 hits within 2s: 8% (5% ranged) max health physical and a 150 + 40% bonus AD shield (half ranged) for 2s (6s cooldown)"], ["Edge of Night", "Annul: the first enemy ability cast on you is blocked; ready again 40s after the last champion damage"], ["Elixir of Iron", "Consumed before the fight: +300 health, +25% tenacity (item text)"], ["Elixir of Sorcery", "Consumed before the fight: +50 AP; damaging a champion deals 25 true damage (5s per champion) (item text)"], ["Elixir of Wrath", "Consumed before the fight: +30 AD; 12% physical vamp against champions (item text)"], ["Endless Hunger", "Famine: 5 + 13% bonus AD haste (10% ranged, item text); Feast: 15% omnivamp for 8s after a takedown"], ["Essence Reaver", "Spellblade: 125% base AD + crit-scaled physical (mana refund not simulated)"], ["Executioner's Calling", "40% Grievous Wounds on physical damage"], ["Experimental Hexplate", "+30 ultimate haste; Overdrive: +50%/35% attack speed for 8s after casting R (30s cooldown)"], ["Fated Ashes", "Inflame: ability damage burns 5 magic per second for 3s"], ["Fiendhunter Bolts", "+30 ultimate haste; Opening Barrage: after R, next 3 attacks +50% attack speed and crit for 80% (a would-be crit deals full crit + 15% true)"], ["Force of Nature", "Steadfast: stacks from champion magic damage (1/s) and immobilizes (+2), 7s; at 8 stacks +70 MR"], ["Frozen Heart", "Winter's Caress: enemy champions' attack speed \u221220%"], ["Gluttonous Greaves", "Slay: 0.6% omnivamp per takedown stack (.stacks(), grows in fights)"], ["Guardian Angel", "Rebirth: 4s stasis then 50% base health on lethal damage"], ["Guinsoo's Rageblade", "30 magic on-hit; +8% attack speed per attack (4 stacks, 4s); fully stacked, every 3rd attack applies on-hit twice"], ["Haunting Guise", "Madness: +2%/s damage in champion combat, up to 6%"], ["Health Potion", "Consume: 120 health over 15s (drunk by fighters below 50%, one potion)"], ["Heartsteel", "Colossal Consumption: after 3s near a champion, the next attack deals 70 + 6% max health physical and grants 10% of it as max health (30s per target); earlier gains via .stacks()"], ["Hexdrinker", "Lifeline: 110\u2013280 magic shield (75% ranged) for 2.5s below 30%"], ["Hexoptics C44", "Magnification: up to +10% attack damage from distance (assumed at the attacker's attack range)"], ["Hextech Alternator", "Revved: damaging a champion deals 65 magic (40s cooldown)"], ["Hextech Gunblade", "Lightning Bolt (active): 175\u2013253 + 30% AP magic to the target (60s)"], ["Hextech Rocketbelt", "Supersonic (active): 100 + 10% AP magic (50s), counts as a dash"], ["Hollow Radiance", "Immolate: 15 + 1% bonus health magic per second to enemies for 3s after dealing or taking damage; takedowns erupt for 4\u00d7 that"], ["Horizon Focus", "Hypershot: ability damage from an ability with 600+ range marks the target 6s (+10% damage), other enemies 3s"], ["Hubris", "Eminence: takedowns within 3s give 12 + 3 per stack AD for 90s"], ["Hullbreaker", "Skipper: every 5th attack deals 120% base AD + 5% max health physical (\u00d70.7 ranged)"], ["Iceborn Gauntlet", "Spellblade: 150% base AD physical"], ["Immortal Path", "Slay stacks as Gluttonous Greaves; +4% damage above 50% health, +12% healing and shielding received below 50%"], ["Immortal Shieldbow", "Lifeline: 400\u2013700 shield (80% ranged) for 3s when damage would drop you below 30% (90s)"], ["Imperial Mandate", "+20 ability haste on immobilizing abilities; immobilized champions take 7% more damage for 4s"], ["Jak'Sho, The Protean", "Voidborn Resilience: +30% bonus armor and MR after 5s of champion combat"], ["Kaenic Rookern", "Magebane: magic shield of 15% max health (assumed up at the start; again after 15s without magic damage)"], ["Knight's Vow", "Sacrifice: takes 14% of the Worthy ally's damage (above 30% health) and heals 12% of the ally's champion damage"], ["Kraken Slayer", "Bring It Down: every 3rd attack (stacks last 4s) deals 150\u2013200 physical (80% ranged), up to +75% by target missing health"], ["Liandry's Torment", "Torment: ability damage burns 1% max health every 0.5s for 3s; Suffering: +2%/s damage up to 6%"], ["Lich Bane", "Spellblade: 75% base AD + 45% AP magic, empowered attack +50% attack speed"], ["Locket of the Iron Solari", "Devotion: 290\u2013360 shield to allies decaying over 2.5s"], ["Lord Dominik's Regards", "Giant Slayer: up to 15% more damage from the target's bonus health (max at 1500)"], ["Luden's Echo", "Echo: ability damage fires 6 echoes: 75 + 5% AP to the target and one per extra enemy, +20% per unused echo on the target (12s cooldown)"], ["Malignance", "+20 ultimate haste; Hatefog: R damage leaves a 3s zone: 60 + 5% AP magic per second and \u221210 MR"], ["Manamune", "Awe: AD = 2% max mana; Manaflow mana from .stacks()"], ["Maw of Malmortius", "Lifeline: 200 + 150% bonus AD magic shield (75% ranged) for 3s below 30%, then 10% omnivamp for the fight"], ["Mejai's Soulstealer", "Glory: 5 AP per stack (.stacks(), default 0), +10% move speed at 10+; +4 kill / +2 assist in fights"], ["Mikael's Blessing", "Purify: heals an ally 100\u2013250 (cleanse not simulated)"], ["Moonstone Renewer", "Starlit Grace: heals on allies chain 30%, shields 35% to another ally"], ["Morellonomicon", "40% Grievous Wounds on magic damage"], ["Mortal Reminder", "40% Grievous Wounds on physical damage"], ["Nashor's Tooth", "15 + 15% AP magic on-hit"], ["Navori Flickerblade", "Transcendence: each attack cuts remaining basic ability cooldowns by 15%"], ["Oblivion Orb", "40% Grievous Wounds on magic damage"], ["Overlord's Bloodmail", "Tyranny: 2.5% bonus health as AD; Retribution: up to 12% of AD from missing health (full at 70% missing), live in fights"], ["Plated Steelcaps", "Plating: \u221210% basic attack damage taken"], ["Profane Hydra", "Cleave 40% AD (20% ranged) to other enemies; active 80% AD physical to all enemies"], ["Protoplasm Harness", "Lifeline: below 30%, gain bonus health for 5s and heal over 5s"], ["Rabadon's Deathcap", "Magical Opus: +30% AP"], ["Randuin's Omen", "Resilience: critical strikes deal 30% less damage to you"], ["Rapid Firecannon", "Energized: 40 magic on-hit (range bonus irrelevant: everyone is in range)"], ["Ravenous Hydra", "Cleave 40% AD (20% ranged) to other enemies; active 80% AD physical to all enemies; life steal applies"], ["Recurve Bow", "15 physical on-hit"], ["Redemption", "Intervention: heals allies 150\u2013350 and deals 10% max health true damage to enemies after 2.5s"], ["Refillable Potion", "2 charges of 100 health over 12s (drunk by fighters below 50%)"], ["Riftmaker", "Void Infusion AP from bonus health; Void Corruption +2%/s damage up to 8%, then 10%/6% omnivamp"], ["Rod of Ages", "Timeless stacks (.stacks(), default 0): 10 health, 30 mana, 3 AP each, +1 level at 10; Eternity: heals 25% of each cast's mana cost (max 20)"], ["Runaan's Hurricane", "Wind's Fury: each attack fires bolts at up to 2 other enemies for 65% AD physical with on-hit damage"], ["Rylai's Crystal Scepter", "Rimefrost slow: counts as slowing for Bandlepipes and Solstice Sleigh (movement not simulated)"], ["Scout's Slingshot", "Bullseye: damaging a champion deals 40 magic (40s cooldown, \u22121s per attack)"], ["Seeker's Armguard", "Time Stop: 2.5s stasis, once"], ["Serpent's Fang", "Shield Reaver: shields the target gains are 50% (35% ranged) weaker for 3s; existing shields cut on first hit"], ["Serylda's Grudge", "armor pen stat; Bitter Cold slow (movement not simulated)"], ["Shadowflame", "Cinderbloom: magic and true damage to targets below 40% health deal 20% more"], ["Sheen", "Spellblade: 100% base AD physical on the next attack (10s window, 1.5s cooldown after the empowered attack)"], ["Solstice Sleigh", "Going Sledding: slowing or immobilizing a champion gives you and the most wounded ally bonus health for 2.5s (30s)"], ["Spear of Shojin", "Dragonforce: +25 basic ability haste; Focused Will: ability damage stacks +3% (1.5% ranged) ability and passive damage, 4 stacks, 6s"], ["Spirit Visage", "+25% healing and shielding received (and Doran's Shield regen)"], ["Staff of Flowing Water", "Rapids: healing or shielding an ally gives both 40 AP and 15 ability haste for 6s"], ["Statikk Shiv", "Energized (15 stacks per attack): 60 magic chain lightning to the target and up to 3\u20136 more enemies (on-hit to them)"], ["Sterak's Gage", "Claws that Catch: +50% base AD; Lifeline: shield of 60% bonus health decaying over 4.5s when damage would drop you below 30%"], ["Stormrazor", "Energized: 100 magic on-hit"], ["Stormsurge", "Stormraider: 25% of a champion's max health within 2.5s applies Squall: 125 + 10% AP magic 2s later (30s cooldown); hits all enemies if the target dies first"], ["Stridebreaker", "Cleave 40% AD (20% ranged) to other enemies; active 80% AD physical to all enemies"], ["Sundered Sky", "Lightshield Strike: first attack on a champion crits for 80% of crit damage and heals 90% base AD (45% ranged) + 4% missing health (10s per target); overheal becomes bonus health for 8s"], ["Sunfire Aegis", "Immolate: 20 + 1.5% bonus health magic per second to enemies for 3s after dealing or taking damage"], ["Swiftmarch", "Noxian Fervor: 5% of move speed as adaptive force"], ["Tear of the Goddess", "Manaflow mana from .stacks() (mana itself is not simulated)"], ["Terminus", "30 + 10% bonus AD + 10% AP magic on-hit; Juxtaposition: Light hits +armor/MR, Dark hits +10% armor and magic pen, 3 stacks each, 5s"], ["The Collector", "Death: executes champions left below 5% health"], ["Thornmail", "Thorns: 20 + 10% bonus armor magic to attackers and 40% Grievous Wounds"], ["Tiamat", "Cleave 40% AD (20% ranged) to other enemies; active 75% AD physical to all enemies"], ["Titanic Hydra", "Cleave: 1% max health (0.5% ranged) physical on-hit, 3% to other enemies; active empowers the next attack (4% / 9%)"], ["Trinity Force", "Spellblade: 200% base AD physical"], ["Unending Despair", "Anguish: every 4s in champion combat, 3% bonus health magic to all enemies and heal 250% of the damage dealt"], ["Verdant Barrier", "Annul: the first enemy ability cast on you is blocked; ready again 60s after the last champion damage"], ["Voltaic Cyclosword", "Energized (also triggered by ability damage): 9% (7% ranged) current health physical and +15/12 lethality for 4s"], ["Warden's Mail", "Rock Solid: each basic attack's damage taken \u221215 (at most 20%)"], ["Warmog's Armor", "Vitality: +12% item health; Heart: 1.5% max health every 0.5s after 8s without damage (needs 2000 bonus health)"], ["Whispering Circlet", "Harmony: heal/shield power = 0.5% bonus mana; Manaflow mana from .stacks()"], ["Winter's Approach", "Awe: health = 15% bonus mana; Manaflow mana from .stacks()"], ["Wit's End", "45 magic on-hit"], ["Yun Tal Wildarrows", "Practice Makes Lethal: crit stacks (.stacks(), default 0) grow 0.4%/0.2% per attack up to 25%; Flurry: 30% attack speed for 6s (30s cooldown, \u22121s per attack, \u22122s per crit)"], ["Zaz'Zak's Realmspike", "Void Explosion: ability damage to a champion explodes 0.5s later: 10 + 15% AP + 3% max health magic (10s cooldown)"], ["Zeke's Convergence", "+15 ultimate haste; Frostfire Tempest: after R, 30 magic damage per second to enemies for 5s (45s cooldown)"], ["Zhonya's Hourglass", "Time Stop: 2.5s stasis (used by fighters below 30% health; add Zhonyas to a combo to press it)"]], "itemGaps": ["Boots of Swiftness: slow resist has no effect (item slows are not modelled)", "Cappa Juice: does nothing", "Control Ward: vision only", "Cosmic Drive: move speed has no effect (item slows are not modelled)", "Crimson Lucidity: its on-summoner-cast move speed has no effect; its summoner haste only shortens summoner cooldowns (x.Flash.cooldown)", "Doran's Helm: minion damage only", "Gustwalker Hatchling: companion assumed not evolved, and its bonus is move speed", "Ionian Boots of Lucidity: its summoner spell haste only shortens summoner cooldowns (x.Flash.cooldown); fights use each summoner at most once", "Lost Chapter: mana is not simulated", "Mercurial Scimitar: Quicksilver cleanses every crowd control except airborne as soon as it lands (perfect play; wiki CC table); the +50% move speed has no effect", "Mosstomper Seedling: companion assumed not evolved (freshly bought), no champion effect", "Phage: move speed has no effect (item slows are not modelled)", "Phantom Dancer: ghosting has no effect (item slows are not modelled)", "Quicksilver Sash: Quicksilver cleanses every crowd control except airborne as soon as it lands (perfect play; wiki CC table)", "Scorchclaw Pup: companion assumed not evolved (freshly bought), no champion effect", "Shattered Armguard: stasis already used", "Shurelya's Battlesong: active move speed has no effect (item slows are not modelled)", "Umbral Glaive: Nightstalker needs being unseen (no vision in the simulator), never triggers", "World Atlas: gold only", "Youmuu's Ghostblade: move speed and ghosting have no effect (not modelled)"], "tags": ["ally_buff", "aoe", "attack_steroid", "blind", "blink", "charm", "crit", "damage_reduction", "dash", "disarm", "dot", "execute", "fear", "global", "ground", "hardcc", "heal", "invuln", "knockback", "knockup", "lifesteal", "mobile", "pct_max_health", "pct_missing_health", "pull", "root", "shield", "silence", "skillshot", "sleep", "slow", "speedup", "stasis", "stealth", "stun", "summon", "suppress", "targeted", "taunt", "terrain", "true_damage", "untargetable", "vision"], "appUrl": "https://claude.ai/artifact/VXYh5axTfjEK7XEU11Xx1k"}</script>
+<script>
+(() => {
+  let D = {};
+  try { D = JSON.parse(document.getElementById("docdata").textContent); } catch (_) {}
+  const put = (id, label, arr) => { const el = document.getElementById(id); if (!el || !arr) return; el.innerHTML = ""; const b = document.createElement("b"); b.textContent = label + " "; el.append(b, document.createTextNode(arr.join(" · "))); };
+  put("runes-stat", "Change stats:", D.statRunes);
+  put("runes-fight", "Act in fights:", D.fightRunes);
+  put("runes-na", "No combat effect:", D.naRunes);
+  put("runes-other", "Not modelled:", D.otherRunes);
+  put("items-gaps", "", D.itemGaps);
+  const tb = document.getElementById("items-notes");
+  if (tb && D.itemNotes) for (const [n, note] of D.itemNotes){ const tr = document.createElement("tr"), a = document.createElement("td"), b = document.createElement("td"); a.textContent = n; b.textContent = note; tr.append(a, b); tb.append(tr); }
+  put("taglist", "", D.tags);
+  const p = document.getElementById("patch"); if (p && D.patch) p.textContent = D.patch;
+  if (D.appUrl) document.getElementById("applink").href = D.appUrl;
+})();
+</script>

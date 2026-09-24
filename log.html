@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rift Logic Debates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDF0F4; --surface:#FFFFFF; --surface-2:#E4E9F0; --ink:#0B1426; --muted:#53607A; --line:#CBD3DF;
+  --gold:#8C6A1F; --teal:#04766E; --teal-soft:#DDF1EE; --red:#B3263A; --red-soft:#F7E1E4; --amber:#9A5B00; --amber-soft:#F8ECD6;
+  --a:#2B5FB8; --b:#A23B72; --ref:#04766E; --skep:#9A5B00; --orch:#53607A; --syn:#6B3FA0;
+  --display:"Cinzel", Georgia, serif; --sans:"IBM Plex Sans", system-ui, sans-serif; --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#081221; --surface:#0E1B30; --surface-2:#13243D; --ink:#E9E3D2; --muted:#93A0B8; --line:#22354F;
+    --gold:#C8AA6E; --teal:#35C9B9; --teal-soft:#0F2E33; --red:#F0707C; --red-soft:#3A1720; --amber:#E7B062; --amber-soft:#35270F;
+    --a:#7FA8F0; --b:#E48BBE; --ref:#35C9B9; --skep:#E7B062; --orch:#93A0B8; --syn:#B79AF0;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#081221; --surface:#0E1B30; --surface-2:#13243D; --ink:#E9E3D2; --muted:#93A0B8; --line:#22354F;
+  --gold:#C8AA6E; --teal:#35C9B9; --teal-soft:#0F2E33; --red:#F0707C; --red-soft:#3A1720; --amber:#E7B062; --amber-soft:#35270F;
+  --a:#7FA8F0; --b:#E48BBE; --ref:#35C9B9; --skep:#E7B062; --orch:#93A0B8; --syn:#B79AF0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);padding-inline:clamp(16px,3vw,40px);padding-block:24px 60px}
+.wrap{max-width:1100px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px 24px;border-bottom:1px solid var(--line);padding-bottom:14px}
+h1{font:700 clamp(24px,3.4vw,34px)/1.1 var(--display);letter-spacing:.05em;margin:0}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);margin:4px 0 0;max-width:70ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+select,button{font:500 13px var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.live{font:12px var(--mono);color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--teal)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.entries{display:grid;gap:10px}
+.e{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--role,var(--line));border-radius:8px;padding:12px 14px;display:grid;gap:6px}
+.e.new{animation:flash 1.8s ease-out}
+@keyframes flash{from{box-shadow:0 0 0 3px var(--gold)}to{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.e.new{animation:none}}
+.head{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.time{font:12px var(--mono);color:var(--muted)}
+.role{font:600 12px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--role)}
+.title{font-weight:600}
+.f{display:grid;grid-template-columns:86px minmax(0,1fr);gap:2px 10px;font-size:14px}
+.f dt{font:600 11.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.f dd{margin:0;overflow-wrap:anywhere}
+.f a{color:var(--gold);font-family:var(--mono);font-size:13px}
+.verdict{font:600 11px var(--sans);letter-spacing:.1em;padding:2px 7px;border-radius:999px;margin-right:6px}
+.v-ok{background:var(--teal-soft);color:var(--teal)}.v-no{background:var(--red-soft);color:var(--red)}.v-j{background:var(--amber-soft);color:var(--amber)}
+.chat{display:grid;gap:14px}
+.msg{max-width:min(760px,92%);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:grid;gap:6px;border-top:3px solid var(--role)}
+.msg.right{justify-self:end}
+.msg .head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.msg .to{color:var(--muted);font-size:13px}
+.msg .body{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px}
+.msg .body a{color:var(--gold);font-family:var(--mono);font-size:13px}
+.tag{font:600 10.5px var(--sans);letter-spacing:.08em;padding:1px 6px;border-radius:999px;background:var(--amber-soft);color:var(--amber)}
+pre.doc{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font:13px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.empty{color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:16px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c);margin-right:6px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Rift Logic <span>Debates</span></h1>
+      <p class="sub">Follow the debate as it happens: the agents' arguments to each other, and the evidence notebook of every check they ran and what the engine returned. Refreshes every few seconds.</p>
+    </div>
+    <div class="bar">
+      <label class="live" for="q"><span class="dot"></span>Question</label>
+      <select id="q"></select>
+      <span class="live" id="status">loading…</span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="tabs" role="tablist">
+      <button type="button" data-tab="conversation.md" aria-pressed="true">Conversation</button>
+      <button type="button" data-tab="log" aria-pressed="false">Evidence notebook</button>
+      <button type="button" data-tab="ledger.md" aria-pressed="false">Ledger</button>
+      <button type="button" data-tab="question.md" aria-pressed="false">Question</button>
+      <button type="button" data-tab="verdict.md" aria-pressed="false">Verdict</button>
+    </div>
+    <div class="tabs" id="roles"></div>
+    <button type="button" id="order" aria-pressed="false">Newest first</button>
+  </div>
+  <div class="legend">
+    <span style="--c:var(--a)">Advocate A</span><span style="--c:var(--b)">Advocate B</span><span style="--c:var(--ref)">Referee</span>
+    <span style="--c:var(--skep)">Skeptic</span><span style="--c:var(--syn)">Synthesiser</span><span style="--c:var(--orch)">Orchestrator</span>
+  </div>
+  <div id="view"></div>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const roleVar = r => /advocate a/i.test(r) ? "--a" : /advocate b/i.test(r) ? "--b" : /referee/i.test(r) ? "--ref" : /skeptic/i.test(r) ? "--skep" : /synth/i.test(r) ? "--syn" : "--orch";
+  let tab = "conversation.md", slug = null, seen = new Set(), newestFirst = false, roleFilter = null, lastText = "";
+  try { newestFirst = localStorage.getItem("debates.newest") === "1"; } catch (_) {}
+  $("order").setAttribute("aria-pressed", String(newestFirst));
+  $("roles").hidden = true;
+
+  async function listQuestions(){
+    const r = await fetch("reasoning/", {cache:"no-store"}); const html = await r.text();
+    const slugs = [...html.matchAll(/href="([a-z0-9-]+)\/"/g)].map(m => m[1]).filter(s => !s.startsWith("_"));
+    const sel = $("q"); const cur = sel.value;
+    sel.replaceChildren(...slugs.map(s => Object.assign(document.createElement("option"), {value:s, textContent:s})));
+    if (slugs.includes(cur)) sel.value = cur; else if (slugs.length) sel.value = slugs[slugs.length-1];
+    slug = sel.value || null;
+  }
+  function linkChecks(text){
+    return esc(text).replace(/((?:checks\/)?[ab]?-?\d*-?[\w.-]*\.(?:rl|out))/g, m => {
+      const path = m.startsWith("checks/") ? m : "checks/" + m;
+      return `<a href="reasoning/${slug}/${path}" target="_blank" rel="noopener">${m}</a>` + (m.endsWith(".rl") ? ` <a href="reasoning/${slug}/${path.replace(/\.rl$/,".out")}" target="_blank" rel="noopener">(output)</a>` : "");
+    });
+  }
+  function parseLog(text){
+    const parts = text.split(/\n(?=### )/).filter(p => p.startsWith("### "));
+    return parts.map(p => {
+      const [head, ...rest] = p.split("\n");
+      const m = head.replace(/^###\s*/, "").split(" · ");
+      const body = rest.join("\n").trim();
+      const fields = []; let cur = null;
+      for (const line of body.split("\n")){
+        const fm = line.match(/^(Why|Check|Result|Takeaway|Note|Claim|Status)\s*:\s*(.*)$/i);
+        if (fm){ cur = {k: fm[1], v: fm[2]}; fields.push(cur); }
+        else if (cur) cur.v += "\n" + line; else { cur = {k:"Note", v: line}; fields.push(cur); }
+      }
+      return {id: head, time: m[0] || "", role: m[1] || "", title: m.slice(2).join(" · "), fields};
+    });
+  }
+  function badge(v){
+    if (/^\s*(PROVED|VERIFIED|HOLDS|CONFIRMED)/i.test(v)) return `<span class="verdict v-ok">${esc(v.match(/^\s*\w+/)[0].toUpperCase())}</span>` + linkChecks(v.replace(/^\s*\w+\s*[—:-]?\s*/, ""));
+    if (/^\s*(REFUTED|FAILS|WRONG|REJECTED)/i.test(v)) return `<span class="verdict v-no">${esc(v.match(/^\s*\w+/)[0].toUpperCase())}</span>` + linkChecks(v.replace(/^\s*\w+\s*[—:-]?\s*/, ""));
+    return linkChecks(v);
+  }
+  function renderLog(text){
+    let es = parseLog(text);
+    const roles = [...new Set(es.map(e => e.role))];
+    $("roles").replaceChildren(...["All", ...roles].map(r => { const b = document.createElement("button"); b.type="button"; b.textContent=r; b.setAttribute("aria-pressed", String((roleFilter||"All")===r)); b.onclick=()=>{ roleFilter = r==="All"?null:r; renderLog(lastText); }; return b; }));
+    if (roleFilter) es = es.filter(e => e.role === roleFilter);
+    if (newestFirst) es = es.slice().reverse();
+    if (!es.length){ $("view").innerHTML = `<div class="empty">No log entries yet.</div>`; return; }
+    const fresh = seen.size > 0;
+    $("view").innerHTML = `<div class="entries">${es.map(e => {
+      const isNew = fresh && !seen.has(e.id);
+      const judg = e.fields.some(f => /^check$/i.test(f.k) && /judg/i.test(f.v));
+      return `<article class="e${isNew?" new":""}" style="--role:var(${roleVar(e.role)})">
+        <div class="head"><span class="time">${esc(e.time)}</span><span class="role">${esc(e.role)}</span><span class="title">${esc(e.title)}</span>${judg?'<span class="verdict v-j">JUDGEMENT</span>':""}</div>
+        <dl class="f">${e.fields.map(f => `<dt>${esc(f.k)}</dt><dd>${/^result$/i.test(f.k) ? badge(f.v) : linkChecks(f.v)}</dd>`).join("")}</dl></article>`;
+    }).join("")}</div>`;
+    for (const e of parseLog(text)) seen.add(e.id);
+  }
+  function renderChat(text){
+    const parts = text.split(/\n(?=## )/).filter(p => p.startsWith("## "));
+    if (!parts.length){ $("view").innerHTML = `<div class="empty">The conversation starts once both opening cases are in.</div>`; return; }
+    const fresh = seen.size > 0;
+    let msgs = parts.map(p => { const [head, ...rest] = p.split("\n"); const m = head.replace(/^##\s*/, "").split(" · "); const [who, to] = (m[1]||"").split(" → "); return {id: head, time: m[0], who: who||"", to: to||"", body: rest.join("\n").trim()}; });
+    if (newestFirst) msgs = msgs.slice().reverse();
+    $("view").innerHTML = `<div class="chat">${msgs.map(x => {
+      const right = /advocate b|skeptic/i.test(x.who);
+      const body = linkChecks(x.body).replace(/\b(judgement|model-limit)\b/gi, '<span class="tag">$1</span>');
+      return `<article class="msg${right?" right":""}${fresh && !seen.has(x.id)?" e new":""}" style="--role:var(${roleVar(x.who)})">
+        <div class="head"><span class="time">${esc(x.time||"")}</span><span class="role">${esc(x.who)}</span><span class="to">to ${esc(x.to)}</span></div>
+        <div class="body">${body}</div></article>`; }).join("")}</div>`;
+    for (const x of msgs) seen.add(x.id);
+  }
+  async function refresh(){
+    if (!slug) { $("view").innerHTML = `<div class="empty">No questions yet.</div>`; return; }
+    const file = tab === "log" ? "log.md" : tab;
+    try {
+      const r = await fetch(`reasoning/${slug}/${file}`, {cache:"no-store"});
+      const text = r.ok ? await r.text() : "";
+      $("status").textContent = `updated ${new Date().toLocaleTimeString()}`;
+      if (text === lastText) return;
+      lastText = text;
+      if (tab === "log") renderLog(text);
+      else if (tab === "conversation.md") renderChat(text);
+      else $("view").innerHTML = text ? `<pre class="doc">${linkChecks(text)}</pre>` : `<div class="empty">${file} doesn't exist yet.</div>`;
+    } catch (e) { $("status").textContent = "can't reach the local server"; }
+  }
+  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => {
+    tab = b.dataset.tab; lastText = "";
+    document.querySelectorAll("[data-tab]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    $("roles").hidden = tab !== "log"; $("order").hidden = !(tab === "log" || tab === "conversation.md"); seen = new Set(); refresh();
+  });
+  $("order").onclick = () => { newestFirst = !newestFirst; $("order").setAttribute("aria-pressed", String(newestFirst)); try { localStorage.setItem("debates.newest", newestFirst ? "1" : "0"); } catch (_) {} lastText = ""; refresh(); };
+  $("q").onchange = () => { slug = $("q").value; seen = new Set(); lastText = ""; refresh(); };
+  listQuestions().then(refresh);
+  setInterval(refresh, 4000);
+  setInterval(listQuestions, 30000);
+})();
+</script>
+</body>
+</html>
