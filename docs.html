@@ -469,7 +469,8 @@ print(r.damage, r.time, r.killed, r.steps);</pre>
         <tr><td>r.healed  r.shielded</td><td>Healing and shielding done by the performer (lifesteal, Sundered Sky, Eclipse, item actives…).</td></tr>
         <tr><td>{ProfaneHydra, Q, AA}</td><td>An item with an active can be a step: it is pressed at that point (Tiamat and the Hydras, Stridebreaker, Gunblade, Rocketbelt, Zhonya's, Redemption, Locket, Mikael's, Actualizer, potions…). Damaging actives are only used when listed; in <code>fight()</code> fighters press them whenever they're ready.</td></tr>
         <tr><td>c.size()  c.add(W)  c.steps</td><td>Combo length, extending it, the sequence as text.</td></tr>
-        <tr><td>{Q, E, P, W, E, P}</td><td><code>P</code> applies the passive's damage formula once (e.g. Katarina picking up a dagger). Its trigger is assumed to happen; the assumptions say so. Passives without a damage formula are skipped with a note.</td></tr>
+        <tr><td>{Q, E, P, W, E, P}</td><td><code>P</code> applies the passive's damage formula once (e.g. Katarina picking up a dagger). Its trigger is assumed to happen; the assumptions say so. Katarina's <code>P</code> needs a Dagger on the ground: it waits for the next one to land (Q: 1 s after the blade strikes; W: 1.25 s after the toss; wiki) and is skipped when none was thrown. Passives without a damage formula are skipped with a note.</td></tr>
+        <tr><td>Syndra</td><td>A <code>W</code> step grabs a Dark Sphere on the ground, so after <code>Q</code> it waits for the sphere to appear (0.6 s); with no sphere at all a minion is assumed. The thrown sphere stays on the ground. <code>R</code> counts spheres at its press, including one still forming ("summoned very shortly before", wiki) but not one held by W or being pushed by E, so it waits (up to 1 s) for such spheres to land, as a player maximising damage would. With 40+ Splinters of Wrath (level 9 by default) Dark Sphere holds 2 charges: her level-11 max-damage combo is <code>x.combo("Max damage (2 Q charges)")</code> = {Q, W, Q, E, R, Q}.</td></tr>
       </tbody></table></div>
       <p>Each step happens as soon as it can: an ability when it's off cooldown (casts lock the champion for 0.25 s), an auto attack when the attack timer allows. Every step hits; the assumptions list says so.</p>
       <div class="tscroll"><table><tbody>
@@ -479,7 +480,7 @@ print(r.damage, r.time, r.killed, r.steps);</pre>
       <h3>Combo library</h3>
       <p>Commonly cited combos from champion guides (Mobalytics, the League wiki and other guide sites), stored as step sequences with their source links in <code>data/combos.json</code>. Only the sequence is kept; when a combo is used, the working names its sources.</p>
 <pre>print(Syndra(11).combos);                  <span class="c">// the library combo names</span>
-Combo c = Akali(11).combo("Full combo");   <span class="c">// a library combo as a Combo</span>
+Combo c = Akali(11).combo("Full all-in"); <span class="c">// a library combo as a Combo</span>
 print(Akali(11).perform(c + AA, vs: Dummy(hp: 3000)).damage);</pre>
       <div class="tscroll"><table><tbody>
         <tr><td>x.combos</td><td>The names of x's library combos (the working lists each one's steps and when to use it).</td></tr>

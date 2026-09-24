@@ -1883,7 +1883,7 @@ function simulate(sidesIn, T, simNotes, fo){
     const chan = p.delayKind==="channel" ? (p.delay||0) : 0;   // a channel after the cast (Karthus R): lands when it completes
     if (mode==="cast" || a.dash || p.delivery==="self" || !tgt || (!a.parts.length && !(a.cc||[]).length && !(a.later||[]).length)) return ct + (mode==="cast" ? 0 : chan);
     const tr = noPos ? (p.fixedTravel || p.minTravel || 0) : flightTime(p, d0);
-    return ct + tr + (mode==="travel" || a.channel ? 0 : (p.delay||0));
+    return ct + tr + (mode==="travel" || a.channel ? 0 : (p.delay||0)) + (km && km.landAdd ? km.landAdd(u, a, tgt, d0) : 0);   // a kit's own flight (Syndra W's throw)
   }
   // effects at the press of any cast (backlog 25: they don't wait for the landing): Spellblade, mana-spent heals, ultimate procs
   function castStart(u, a, t){
@@ -2245,6 +2245,7 @@ function simulate(sidesIn, T, simNotes, fo){
   const kitShadowsAt = (u, t) => (u.kit.shadows||[]).filter(s=>s.until>t);
   // Kai'Sa Plasma (wiki Second Skin; game data P): each application deals base + per existing stack (up to 4); the 5th stack ruptures
   function kitPlasma(u, x, t, k){ if (!x.alive) return; const P=CALC.champs.Kaisa.P, ctx={S:P, rank:1, st:u.st, flags:u.flags};
+    x.kaisaPlasmaAt={by:u, t};   // combo audit 2026-09-24: Killer Instinct needs a champion affected by Plasma in the last 4 s (wiki Kaisa_R)
     const pl=x.plasma && x.plasma.by===u && x.plasma.until>t ? x.plasma : {by:u, n:0, until:0}, before=pl.n;
     deal(u,x,evalCalc(ctx,"pbasedamage").v + evalCalc(ctx,"pcurrentperstackdamage").v*Math.min(dvOf(P,"pmaxstacks",1)||4, before),"magic",t,"onhit","Plasma");
     if (before+k >= 5){ x.plasma=null; const pct=evalCalc(ctx,"pexecutepercentage").v; deal(u,x,pct*Math.max(0,x.max-x.hp),"magic",t,"proc",`Plasma rupture (${fmt(pct*100)}% missing health)`); }
@@ -2351,7 +2352,18 @@ function simulate(sidesIn, T, simNotes, fo){
       const v=evalCalc({S, rank:rankOf(u.c,"E"), st:u.st, flags:new Set()}, "daggercooldownreduction").v;
       if ((u.cd.E||0) > t){ u.cd.E=Math.max(t, u.cd.E - v); say(t, `  dagger picked up: Shunpo cooldown −${fmt(v)}s`); }
       simNotes.add("Katarina: picking up a Dagger (P step) reduces Shunpo's cooldown by the tooltip's daggercooldownreduction");
-    } },
+    },
+      /* combo audit 2026-09-24 (wiki Katarina_Q, Katarina_W, Katarina passive): a Dagger lands 1 s after Bouncing Blade strikes its
+         first target, or 1.25 s after Preparation tosses it, and disappears after 4 s on the ground; "Katarina may not slash until
+         it has [landed]". perform(): a P step (pick-up) waits for a landed Dagger and uses it; with none thrown it is skipped. */
+      pressCast(u, a, tgt, t){ const D=(u.kit.daggers ||= []);
+        if (a.slot==="Q" && tgt){ const at=t+landOf(u, a, tgt, gap(u,tgt))+1; D.push({at, until:at+4}); }
+        if (a.slot==="W"){ const at=t+((a.p && a.p.delay) ?? 1.25); D.push({at, until:at+4}); } },
+      step(u, step, tgt, t, log){ if (step!=="P") return false; const D=(u.kit.daggers||[]).filter(d=>d.until>t).sort((x,y)=>x.at-y.at); u.kit.daggers=D;
+        if (!D.length){ log({skipped:"no Dagger thrown (Q or W) to pick up"}); return "logged"; }
+        if (D[0].at>t+1e-9){ if (u.scriptWait){ simNotes.add(`Katarina P (perform()): waits for the Dagger to land (Q: 1 s after it strikes; W: 1.25 s) — she can't slash before it lands (wiki)`); return "wait"; }
+          log({skipped:"the Dagger hasn't landed yet"}); return "logged"; }
+        D.shift(); return false; } },
     /* ---- range-disengage debate fixes (2026-09-23) ---- */
     Ivern: {
       shieldAtCast:["E"],   // backlog 25: Triggerseed shields at once; its burst lands after the 2 s delay
@@ -2430,18 +2442,45 @@ function simulate(sidesIn, T, simNotes, fo){
       // that lands before the Q does (E pressed right after it) sees the sphere that will be there
       pressCast(u, a, tgt, t){ const K=u.kit, n=kitStacks(u.c), P=CALC.champs.Syndra.P, t0=t;
         if (a.slot==="Q"){
-          K.spheres=(K.spheres||[]).filter(s=>s.until>t); K.spheres.push({from:t0+((a.p && a.p.delay) ?? 0.6), until:t0+((a.p && a.p.delay) ?? 0.6)+(dvOf(a.S,"sphereduration",a.rank)||6), x:!u.script && tgt ? (tgt.xS ?? tgt.x) : null});
+          K.spheres=(K.spheres||[]).filter(s=>s.until>t); K.spheres.push({pressT:t0, from:t0+((a.p && a.p.delay) ?? 0.6), until:t0+((a.p && a.p.delay) ?? 0.6)+(dvOf(a.S,"sphereduration",a.rank)||6), x:!u.script && tgt ? (tgt.xS ?? tgt.x) : null});
           if (n >= (dvOf(P,"q1upgradethreshold",1)||40)){   // Transcendent: Dark Sphere holds 2 charges; recharge = its cooldown, 1.25 s between casts (wiki Dark Sphere)
             const cd=abCd(u,a), max=dvOf(a.S,"upgrade1maxammo",a.rank)||2, A=K.ammo ||= {n:max, at:null};
             while (A.at!=null && t>=A.at-1e-9){ A.n++; A.at = A.n<max ? A.at+cd : null; }
             A.n--; if (A.at==null) A.at=t0+cd;
             u.cd.Q = A.n>0 ? t0+1.25 : A.at;
-            simNotes.add(`${u.name} Q: ${fmt(n)} Splinters of Wrath (≥ 40): ${max} charges, one every ${fmt(cd)}s, 1.25 s between casts (wiki Dark Sphere)`); } }
+            simNotes.add(`${u.name} Q: ${fmt(n)} Splinters of Wrath (≥ 40): ${max} charges, one every ${fmt(cd)}s, 1.25 s between casts (wiki Dark Sphere; the recharge starts when a charge is spent and runs while she has fewer than ${max})`); } }
+        /* combo audit 2026-09-24 (wiki Syndra_W): Force of Will grabs a Dark Sphere that is on the ground (else a minion or monster,
+           assumed at hand), refreshes its 6 s, holds it and throws it; the damage lands when it lands (throw flight: kit landAdd).
+           The sphere then stays on the ground where it lands (the refresh is "only on the first cast, not when it is thrown"). */
+        if (a.slot==="W"){ const s=(K.spheres||[]).find(s=>s.from<=t+1e-9 && s.until>t && !(s.heldUntil>t) && !(s.pushUntil>t));
+          const fly=CHAMP_MECH.Syndra.landAdd(u, a, tgt, tgt ? gap(u,tgt) : 0);
+          if (s){ s.heldUntil=t+fly; s.until=Math.max(s.until, t+6); if (tgt && !u.script) s.x=tgt.xS ?? tgt.x;
+            simNotes.add(`${u.name} W: grabs a Dark Sphere on the ground (its 6 s refresh) and throws it; it lands with the damage and stays on the ground as a sphere (wiki Syndra_W); R can't take it while it is held or in flight (wiki Syndra_R)`); }
+          else simNotes.add(`${u.name} W: no Dark Sphere on the ground to grab: a minion or non-epic monster within reach is assumed (wiki Syndra_W: she grabs the nearest sphere, minion or monster)`); }
+        /* combo audit 2026-09-24 (wiki Syndra_E): every sphere on the ground, or appearing before the slowest wave passes, is pushed
+           950 units at 2000/s (0.475 s) from when the wave reaches it; Unleashed Power doesn't pick up a sphere being pushed (wiki
+           Syndra_R notes), and the push delays its expiry. perform(): every sphere is in the cone (perfect aim). */
+        if (a.slot==="E"){ const ct=(a.p && a.p.castTime) ?? 0.25, noPos=u.script && !u.scriptTravel, d=tgt && !noPos ? gap(u,tgt) : 0, slow=t0+ct+Math.min(700, u.script ? 700 : d)/1100;
+          for (const s of (K.spheres||[])){ if (!(s.until>t0) || s.from>slow+1e-9 || s.heldUntil>t0+ct) continue;
+            const hit=Math.max(s.from, t0+ct+Math.min(700,d)/2500), end=hit+950/2000; s.pushUntil=Math.max(s.pushUntil||0, end); s.until=Math.max(s.until, end); } }
+        // R (wiki Syndra_R: "takes place at the start of the cast time"): the spheres are counted at the press (KIT sim, syndraRSpheres)
+        if (a.slot==="R"){ const live=syndraRSpheres(K, t).slice(0,4); K.rTaken=live; K.rUsed=3+live.length; }
       },
+      // throw flight of W (combo audit 2026-09-24): no wiki value; the ability's only projectile speed in the game files is SyndraW
+      // missileSpeed 1450, taken as the throw speed over the distance to the target (perform() without distance: positions ignored)
+      landAdd(u, a, tgt, d0){ return a.slot==="W" && tgt && !(u.script && !u.scriptTravel) ? Math.max(0, d0)/1450 : 0; },
+      /* perform() (combo audit 2026-09-24): a player maximising damage waits a moment — W for a Dark Sphere still forming (Q then W at
+         once: it appears 0.6 s after the Q), R for spheres she is throwing (W) or pushing (E) that land within 1 s, so R takes them. */
+      step(u, step, tgt, t, log){ if (!u.scriptWait) return false; const K=u.kit, a=u.abAll[step]; if (!a || (u.cd[step]||0)>t) return false;
+        if (step==="W"){ const S=K.spheres||[], now=S.some(s=>s.from<=t+1e-9 && s.until>t && !(s.heldUntil>t) && !(s.pushUntil>t));
+          if (!now && S.some(s=>s.from>t && s.until>t && !(s.heldUntil>t))){ simNotes.add(`${u.name} W (perform()): waits for the Dark Sphere to appear before grabbing it (0.6 s after its Q)`); return "wait"; } }
+        if (step==="R"){ const live=syndraRSpheres(K, t).length, soon=(K.spheres||[]).filter(s=>s.until>t && ((s.heldUntil>t+1e-9 && s.heldUntil<=t+1) || (s.pushUntil>t+1e-9 && s.pushUntil<=t+1))).length;
+          if (live<4 && soon>0){ simNotes.add(`${u.name} R (perform()): waits for the Dark Spheres being thrown or pushed to land (up to 1 s) so Unleashed Power takes them (wiki Syndra_R: it doesn't take a held or pushed sphere)`); return "wait"; } }
+        return false; },
       onCast(u, a, tgt, t){ const K=u.kit, n=kitStacks(u.c), P=CALC.champs.Syndra.P, t0=a.land ? a.land.pressT : t;   // t0: the press (backlog 25: onCast runs when the cast lands)
-        if (a.slot==="R"){ const used=3+Math.min(4, (K.spheres||[]).filter(s=>s.from<=t && s.until>t).length);
-          K.spheres=[]; for (let i=0;i<used;i++) K.spheres.push({from:t, until:t+6, x:!u.script && tgt ? (tgt.xS ?? tgt.x) : null});    // the spheres stay on the ground for 6 s (wiki)
-          simNotes.add(`${u.name} R: 3 conjured spheres plus the live Dark Spheres (up to 4) from earlier Q casts in this fight`); }
+        if (a.slot==="R"){ const taken=K.rTaken||[], used=K.rUsed ?? 3; K.rTaken=null; K.rUsed=null;
+          K.spheres=(K.spheres||[]).filter(s=>!taken.includes(s)); for (let i=0;i<used;i++) K.spheres.push({pressT:t, from:t, until:t+6, x:!u.script && tgt ? (tgt.xS ?? tgt.x) : null});    // the spheres stay on the ground for 6 s (wiki)
+          simNotes.add(`${u.name} R: 3 conjured spheres plus up to 4 Dark Spheres counted at the press: on the ground or still forming (wiki: "a sphere summoned very shortly before" is used), not one held by W or being pushed by E`); }
         if (a.slot==="E"){ a.ccAll=a.ccAll||a.cc;
           /* wiki Syndra_E (Syndra-Zed gap G6): the wave knocks back (400 units, airborne) with no stun; only an enemy hit by a pushed Dark
              Sphere is stunned (1.25 s). A sphere counts when it is (or will be) on the ground as the slowest wave passes (wiki: extra
@@ -2518,6 +2557,10 @@ function simulate(sidesIn, T, simNotes, fo){
         return {bonus:[{v:E.v*m, type:"physical", what:`Blunt Force Trauma${m>1.0001?` ×${fmt(m)}`:""}`}]}; },
     },
     Kaisa: {
+      /* combo audit 2026-09-24 (wiki Kaisa_R): "An enemy champion within range and affected by Plasma is required to cast this
+         ability" — affected = a stack applied or consumed within the last 4 s. perform(): an R step with no such target is skipped. */
+      castable:(u, a, tgt, t)=>{ if (a.slot!=="R" || !tgt) return true; const m=tgt.kaisaPlasmaAt; return m && m.by===u && t-m.t<=4+1e-9 ? true : "Killer Instinct needs a champion affected by Plasma in the last 4 s (her attacks or W)"; },
+      step(u, step, tgt, t, log){ if (step!=="R" || !u.abAll.R || (u.cd.R||0)>t) return false; const why=CHAMP_MECH.Kaisa.castable(u,u.abAll.R,tgt,t); if (why===true) return false; log({skipped:why}); return "logged"; },
       onHit(u, x, t, o){ if (o.basic && o.primary){ kitPlasma(u, x, t, 1); if ((u.cd.E||0)>t) u.cd.E=Math.max(t, u.cd.E-0.5); } },   // Supercharge: −0.5 s per attack (wiki)
       onCast(u, a, tgt, t){
         if (a.slot==="E"){ const as=[0.4,0.5,0.6,0.7,0.8][a.rank-1]||0.4;   // wiki Supercharge 40–80% (not in the exported game data)
@@ -4045,7 +4088,7 @@ function simulate(sidesIn, T, simNotes, fo){
       if (folded) log({note:`counted in the first ${s} step`});
       else { log({note:"no damage modelled"}); simNotes.add(`${u.name} ${s} recast: the engine has no model of this recast (it deals no damage in the combo; any reposition is ignored)`); }
       u.si++; return; } }
-    { const km=CHAMP_MECH[u.c.champ], h=km && km.step ? km.step(u, step, tgt, t, log) : false; if (h){ if (h!=="logged") log({}); u.si++; return; } }   // champion kits: recasts, gates
+    { const km=CHAMP_MECH[u.c.champ], h=km && km.step ? km.step(u, step, tgt, t, log) : false; if (h==="wait") return; if (h){ if (h!=="logged") log({}); u.si++; return; } }   // champion kits: recasts, gates ("wait": the step waits, like a cooldown)
     const a=u.abAll[step];
     if (!a){ log({skipped: step==="P" ? "this passive has no damage formula in the game data" : "not learned or no data"}); u.si++; return; }
     if (a.passiveOnly){ log({skipped:"passive, toggle or ammo ability (cooldown 0 in the data)"}); u.si++; return; }
@@ -4522,6 +4565,11 @@ const kitOptsOf = c => (c.opts && c.opts.stacks) || {};
 function kitStacks(c){ const k=KIT[c.champ]; if (!k || !k.stacks) return 0; const v=kitOptsOf(c)["@stacks"]; return v!=null ? v : k.stacks.dflt(c); }
 function kitEvolved(c, st){ const k=KIT[c.champ]; if (!k || !k.evolved) return ""; const v=kitOptsOf(c)["@evolved"]; return v!=null ? v : k.evolved.dflt(c, st || stats(c)); }
 const kitSpec = (c, slot) => { const k=KIT[c.champ]; return k && k[slot] ? k[slot] : null; };
+/* Syndra's Dark Spheres Unleashed Power takes at time t (combo audit 2026-09-24, wiki Syndra_R notes): live ones and one "summoned
+   very shortly before" (a Q pressed, still forming); not one held by Force of Will or in flight after its throw, nor one being
+   pushed by Scatter the Weak. Sphere: {pressT, from (on the ground), until, x, heldUntil (W: grabbed until the throw lands),
+   pushUntil (E: pushed until it lands)}. */
+function syndraRSpheres(K, t){ return (K.spheres||[]).filter(s=>s.until>t && (s.pressT ?? s.from)<=t+1e-9 && !(s.heldUntil>t+1e-9) && !(s.pushUntil>t+1e-9)); }
 function kitCtx(c, slot, rank, st, flags, o, u){
   const C=CALC.champs[c.champ]||{}, S=C[slot]||{}, fl=flags||new Set();
   const ev = (key, S2, r) => evalCalc({S:S2||S, rank:r ?? rank, st, flags:fl}, key);
@@ -4549,7 +4597,7 @@ const KIT = {
       else x.note(`${fmt(x.stacks)} Splinters of Wrath: below ${th}, no bonus true damage`);
       return r; }},
     R: {opts:{spheres:{min:3, max:7, dflt:3, alias:"count", what:"spheres (3 conjured + up to 4 live ones grabbed)"}},
-      sim:(u)=>({spheres: 3 + Math.min(4, (u.kit.spheres||[]).filter(s=>s.from<=u.kitT && s.until>u.kitT).length)}),
+      sim:(u)=>({spheres: 3 + Math.min(4, syndraRSpheres(u.kit, u.kitT).length)}),
       parts(x){ const n=x.o.spheres; if (x.stacks >= (dvOf(x.P,"rupgradethreshold",1)||100)) x.note(`Transcendent (${fmt(x.stacks)} Splinters): executes below 15% maximum health (fight()/perform())`);
         return [scale(x.part("damagecalc","magic"), n, "spheres")]; }},
   },
