@@ -1,0 +1,175 @@
+{
+  "directoryListing": false,
+  "symlinks": false,
+  "redirects": [
+    {
+      "source": "/.*",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/.*/**",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/**/.*",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/**/.*/**",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/node_modules",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/node_modules/**",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/reasoning",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/reasoning/**",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/*.template.html",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/*.template",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/package.json",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/package-lock.json",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/railway.json",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/serve.json",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/links.json",
+      "destination": "/__not_found__",
+      "type": 302
+    }
+  ],
+  "headers": [
+    {
+      "source": "**",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+        }
+      ]
+    },
+    {
+      "source": "docs.artifact.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-3gSkY8amdQMYPDWLEakyjYTCWlFQci2CV1VqtAoirjI=' 'sha256-7lri9Kd/bta45uNqsFtveCz1b64J02punoo00W46QqA=' 'sha256-OELJkicxAruboIY+fCIDYUuR3H6hqlQ1ZFFklmjJHNw='"
+        }
+      ]
+    },
+    {
+      "source": "docs.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-7lri9Kd/bta45uNqsFtveCz1b64J02punoo00W46QqA=' 'sha256-OELJkicxAruboIY+fCIDYUuR3H6hqlQ1ZFFklmjJHNw=' 'sha256-yGG2c1ewhSXZOqFNLpsWHCeNk1PAkK2X6xk6avqvYtg='"
+        }
+      ]
+    },
+    {
+      "source": "draft.artifact.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-91HzRR6JWL4WveELPhud81VM3kDTjssMdJ9xB+3qLbk='"
+        }
+      ]
+    },
+    {
+      "source": "draft.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-c9PUK0zgeYOw9o7gN4or3CoTYhjs24rIkF/BWfqNZkQ='"
+        }
+      ]
+    },
+    {
+      "source": "index.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-8h8o1YyXCEf89Dozy9wE6fcHej6BwqXB65oodmHnhpU=' 'sha256-KwUNy/gFtviST0W5hAvFUgK7+13Ye7hquRVFQdZkA3Q=' 'sha256-MhvuxiaJF2OI6k6NMF8cmRmWIav9j9D61wEGLggJPRc=' 'sha256-lktVngnNCy/jYpDJKMihFEskka9xEeDGfYSS8HtHtK8='"
+        }
+      ]
+    },
+    {
+      "source": "log.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-WqxhtgG9UTtQ2boL7t6f0iDfhHPxY5DwlIonMFs0hJw='"
+        }
+      ]
+    },
+    {
+      "source": "riftlogic.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-8h8o1YyXCEf89Dozy9wE6fcHej6BwqXB65oodmHnhpU=' 'sha256-KwUNy/gFtviST0W5hAvFUgK7+13Ye7hquRVFQdZkA3Q=' 'sha256-MhvuxiaJF2OI6k6NMF8cmRmWIav9j9D61wEGLggJPRc=' 'sha256-lktVngnNCy/jYpDJKMihFEskka9xEeDGfYSS8HtHtK8='"
+        }
+      ]
+    }
+  ]
+}

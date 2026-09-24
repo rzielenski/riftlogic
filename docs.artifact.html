@@ -172,7 +172,7 @@ td:only-child{color:var(--ink)}
       <pre>node tools/rl.js program.rl           <span class="c"># full working for every result</span>
 node tools/rl.js program.rl --brief   <span class="c"># one line per result</span>
 echo 'print(Syndra(11).Q.damage);' | node tools/rl.js -</pre>
-      <p>The exit code is 0 when every <code>assert</code> and <code>prove</code> held, and 1 when anything was refuted or errored, so programs can be used as checks.</p>
+      <p>The exit code is 0 when every <code>assert</code> and <code>prove</code> held, 1 when anything was refuted or errored, and 3 if the engine itself crashed, so programs can be used as checks. <code>--max-ms=60000</code> adds a time limit (the editor uses 3 seconds while you type, 10 seconds for Run or <code>Ctrl/⌘ + Enter</code>); <code>--usage</code> prints how much of each limit below the program used.</p>
       <p><b>Imports</b> (command line only): <code>import "../lib.rl";</code> at the top of a file pulls in another program's functions, rules, variables and data corrections. Paths are relative to the importing file, each file is imported once, and the imported file's own <code>assert</code>/<code>print</code>/<code>prove</code> output is not shown. The reasoning workspace (<code>reasoning/</code>) uses this to share scenario comps and rules between questions.</p>
     </section>
 
@@ -210,7 +210,7 @@ assert(canKill(a, tank, 5), "Syndra kills Garen in 5 seconds");</pre>
       <h2>Types and values</h2>
       <div class="tscroll"><table>
         <thead><tr><th>Type</th><th>What it holds</th></tr></thead><tbody>
-        <tr><td>int double float</td><td>Numbers.</td></tr>
+        <tr><td>int double float</td><td>Numbers. Dividing by zero, or any result that isn't a number (<code>sqrt(-1)</code>), is an error. Infinity is a value (<code>timeToKill</code> when the target survives) and prints as <code>infinity</code>.</td></tr>
         <tr><td>bool string</td><td><code>true</code>/<code>false</code>; text.</td></tr>
         <tr><td>Champion</td><td>A champion at a level, with items, runes, ability ranks and fight settings.</td></tr>
         <tr><td>Ability</td><td>One of a champion's abilities: <code>a.Q</code>. Keeps a reference to its champion.</td></tr>
@@ -247,7 +247,19 @@ bool oneShots(Champion c, Champion t) { return burstOn(c, t) >= t.hp; }
 for (Champion c : blue) if (c.is(Mage)) mages++;
 for (int i = 0; i &lt; 5; i++) { … }
 while (x &lt; 10) { … }             <span class="c">// break and continue work as usual</span></pre>
-      <p>Functions can be declared anywhere at the top level and called before their declaration. Parameters need types; a function with a return type other than <code>void</code> must return. Programs are stopped after about three million steps, which catches endless loops.</p>
+      <p>Functions can be declared anywhere at the top level and called before their declaration. Parameters need types; a function with a return type other than <code>void</code> must return. <code>break</code> and <code>continue</code> outside a loop are errors.</p>
+      <p id="limits"><b>Limits.</b> So that a runaway program ends with an error instead of freezing the page or running out of memory, every run has these limits (the same in the editor and on the command line):</p>
+      <ul>
+        <li>3,000,000 steps (“program stopped after 3,000,000 steps — infinite loop?”); the program stops.</li>
+        <li>200 nested function calls (endless recursion), and brackets or blocks nested too deeply to read.</li>
+        <li>A list, TeamComp or Combo holds at most 100,000 values (“a list can hold at most 100,000 values …”); that statement fails.</li>
+        <li>2,000,000 values created in one run: list and TeamComp elements (copies included; assigning a list copies it), champion copies and combo steps. A list that copies itself into itself doubles every round and hits this after about twenty rounds; the program stops.</li>
+        <li>10,000 results (<code>print</code>, <code>assert</code>, <code>prove</code>); the program stops.</li>
+        <li><code>perform</code> plays combos of up to 10,000 steps; a fight lasts at most 120 seconds.</li>
+        <li>Strings up to 1,000,000 characters.</li>
+        <li>The working under one result is cut after 5,000 lines, and after 200,000 lines in the whole program (a note marks the cut); the values are unaffected.</li>
+        <li>Time (for example a loop of fights): in the editor 3 seconds while you type and 10 seconds for Run or <code>Ctrl/⌘ + Enter</code>; none on the command line unless <code>--max-ms=</code> is given.</li>
+      </ul>
     </section>
 
     <section id="output">
@@ -268,12 +280,12 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
       <h2>Champion</h2>
       <h3>Making and changing</h3>
       <div class="tscroll"><table><tbody>
-        <tr><td>Syndra(11)</td><td>A champion at level 11 (1–18).</td></tr>
+        <tr><td>Syndra(11)</td><td>A champion at level 11 (1–18; any other level is an error). <code>defaultLevel = 11;</code> sets the level of a bare <code>Syndra</code>.</td></tr>
         <tr><td>a.with(Ludens, burst, Electrocute)</td><td>A copy with more items, item sets or runes.</td></tr>
         <tr><td>a.at(16)</td><td>A copy at another level.</td></tr>
         <tr><td>a.items.add(x) / a.items.remove(x)</td><td>Change items in place.</td></tr>
         <tr><td>a.runes.add(Conqueror) / a.runes.remove(x)</td><td>Change runes in place.</td></tr>
-        <tr><td>a.level = 13;  a.Q.rank = 3;</td><td>Settable. Unset ranks are the highest possible at the level (basic abilities ⌈level/2⌉ up to 5; ultimate at 6, 11, 16).</td></tr>
+        <tr><td>a.level = 13;  a.Q.rank = 3;</td><td>Settable. Unset ranks follow a skill order: one point in each basic ability first, then max them in <code>a.skillOrder</code> order (default <code>"QEW"</code>), never above ⌈level/2⌉; the ultimate at 6, 11 and 16. At level 11 that is Q5 W1 E3 R2.</td></tr>
       </tbody></table></div>
       <h3>Stats</h3>
       <div class="tscroll"><table><tbody>
@@ -295,7 +307,7 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
         <tr><td>a.evolved = {Q, E};  a.evolved</td><td>Evolved or augmented abilities: Kai'Sa's Second Skin (default from her stats: Q at 100 AD from items and growth, W at 100 AP, E at 100% attack speed from items and growth), Viktor's Hex Core augments (default none: they cost Hex Fragments from kills). Reading it gives the abilities in use, e.g. "QE".</td></tr>
         <tr><td>a.stacks(Heartsteel, 400)</td><td>A copy of a with stacks earned before the fight: Heartsteel health, Mejai's / Dark Seal Glory, Hubris, Yun Tal, Rod of Ages, Gluttonous Greaves / Immortal Path, Manaflow mana. Runes too: <code>a.stacks(LegendAlacrity, 10)</code>, Legend: Haste / Bloodline, Ultimate Hunter, Overgrowth, <code>DarkHarvest</code> (souls), <code>ManaflowBand</code> (bonus mana). Without it an item counts as freshly bought and a rune as a fresh game (0 stacks), as in the practice tool; the assumptions say which.</td></tr>
         <tr><td>a.is(Mage)  a.has(stun)</td><td>Class and ability-tag checks.</td></tr>
-        <tr><td>a.cdOf(tag)  a.cdmaxOf(tag)  a.rangeOf(tag)</td><td>Rank-1 cooldown, max-rank cooldown or range of whichever ability has the tag (shortest cooldown, longest range).</td></tr>
+        <tr><td>a.cdOf(tag)  a.cdmaxOf(tag)  a.rangeOf(tag)</td><td>Rank-1 cooldown, max-rank cooldown or range of whichever ability has the tag (shortest cooldown, longest range). An error if no ability has it (check <code>a.has(tag)</code> first).</td></tr>
         <tr><td>a.threatRange</td><td>Longest reach of any damaging ability or attack.</td></tr>
         <tr><td>a.gapClose  a.closeGap(d)</td><td>Total dash and blink distance; seconds to cover d units using dashes then walking.</td></tr>
         <tr><td>a.hitbox</td><td>The champion's gameplay radius, used in dodge checks: the game files' character record (<code>overrideGameplayCollisionRadius</code>), else 65. Most champions 65; large ones 80 (Cho'Gath, Malphite, Sion, …), small ones 55 (Teemo, Fizz, Lulu, …), Ivern 70, Warwick 74.75 (65 + his innate 15% size). Size effects (Cho'Gath's Feast, Nasus R, Zac's health, …) aren't simulated; the assumptions mention them.</td></tr>
@@ -662,8 +674,10 @@ prove beats(Fizz, Syndra);</pre>
   if (tb && D.itemNotes) for (const [n, note] of D.itemNotes){ const tr = document.createElement("tr"), a = document.createElement("td"), b = document.createElement("td"); a.textContent = n; b.textContent = note; tr.append(a, b); tb.append(tr); }
   put("taglist", "", D.tags);
   const p = document.getElementById("patch"); if (p && D.patch) p.textContent = D.patch;
-  if (D.appUrl) document.getElementById("applink").href = D.appUrl;
-  if ("draftUrl" in D){ const dl = document.getElementById("draftlink"); if (D.draftUrl) dl.href = D.draftUrl; else dl.hidden = true; }
+  const safeUrl = u => typeof u === "string" && /^(https:\/\/|[\w-]+\.html$)/.test(u);      // no javascript:/data: links
+  const setLink = (el, u) => { el.href = u; if (/^https:/.test(u)) el.rel = "noopener noreferrer"; };
+  if (safeUrl(D.appUrl)) setLink(document.getElementById("applink"), D.appUrl);
+  if ("draftUrl" in D){ const dl = document.getElementById("draftlink"); if (safeUrl(D.draftUrl)) setLink(dl, D.draftUrl); else dl.hidden = true; }
 })();
 </script>
 

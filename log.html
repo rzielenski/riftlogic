@@ -134,25 +134,39 @@ pre.doc{margin:0;background:var(--surface);border:1px solid var(--line);border-r
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const roleVar = r => /advocate a/i.test(r) ? "--a" : /advocate b/i.test(r) ? "--b" : /referee/i.test(r) ? "--ref" : /skeptic/i.test(r) ? "--skep" : /synth/i.test(r) ? "--syn" : "--orch";
   let tab = "conversation.md", slug = null, seen = new Set(), newestFirst = false, roleFilter = null, lastText = "";
   try { newestFirst = localStorage.getItem("debates.newest") === "1"; } catch (_) {}
   $("order").setAttribute("aria-pressed", String(newestFirst));
   $("roles").hidden = true;
 
+  // Debates live in ../reasoning, which only the local dev server exposes (the public site blocks it).
+  // Question slugs come from the directory listing, else from reasoning/INDEX.md; neither → a notice, no polling.
+  let available = true;
   async function listQuestions(){
-    const r = await fetch("reasoning/", {cache:"no-store"}); const html = await r.text();
-    const slugs = [...html.matchAll(/href="([a-z0-9-]+)\/"/g)].map(m => m[1]).filter(s => !s.startsWith("_"));
+    let slugs = [];
+    try {
+      const r = await fetch("reasoning/", {cache:"no-store"});
+      if (r.ok) slugs = [...(await r.text()).matchAll(/href="([a-z0-9-]+)\/"/g)].map(m => m[1]);
+      if (!slugs.length){ const i = await fetch("reasoning/INDEX.md", {cache:"no-store"}); if (i.ok) slugs = [...(await i.text()).matchAll(/\|\s*`([a-z0-9-]+)`\s*\|/g)].map(m => m[1]); }
+    } catch (_) {}
+    slugs = [...new Set(slugs)].filter(s => /^[a-z0-9][a-z0-9-]*$/.test(s));
+    available = slugs.length > 0;
+    if (!available){ $("status").textContent = "offline"; $("view").innerHTML = `<div class="empty">The debate logs are only available when Rift Logic runs locally (<code>python3 -m http.server --bind 127.0.0.1</code> in <code>web/</code>).</div>`; return; }
     const sel = $("q"); const cur = sel.value;
     sel.replaceChildren(...slugs.map(s => Object.assign(document.createElement("option"), {value:s, textContent:s})));
     if (slugs.includes(cur)) sel.value = cur; else if (slugs.length) sel.value = slugs[slugs.length-1];
     slug = sel.value || null;
   }
-  function linkChecks(text){
-    return esc(text).replace(/((?:checks\/)?[ab]?-?\d*-?[\w.-]*\.(?:rl|out))/g, m => {
-      const path = m.startsWith("checks/") ? m : "checks/" + m;
-      return `<a href="reasoning/${slug}/${path}" target="_blank" rel="noopener">${m}</a>` + (m.endsWith(".rl") ? ` <a href="reasoning/${slug}/${path.replace(/\.rl$/,".out")}" target="_blank" rel="noopener">(output)</a>` : "");
+  // escaped text with check files linked; tags=true also marks judgement/model-limit (one pass, so a tag can never
+  // land inside a link's href)
+  function linkChecks(text, tags){
+    const re = tags ? /((?:checks\/)?[ab]?-?\d*-?[\w.-]*\.(?:rl|out))|\b(judgement|model-limit)\b/gi : /((?:checks\/)?[ab]?-?\d*-?[\w.-]*\.(?:rl|out))/g;
+    return esc(text).replace(re, (m, file, tag) => {
+      if (tag) return `<span class="tag">${tag}</span>`;
+      const path = encodeURI(m.startsWith("checks/") ? m : "checks/" + m), base = `reasoning/${encodeURIComponent(slug)}/`;
+      return `<a href="${base}${path}" target="_blank" rel="noopener noreferrer">${m}</a>` + (m.endsWith(".rl") ? ` <a href="${base}${path.replace(/\.rl$/,".out")}" target="_blank" rel="noopener noreferrer">(output)</a>` : "");
     });
   }
   function parseLog(text){
@@ -200,13 +214,14 @@ pre.doc{margin:0;background:var(--surface);border:1px solid var(--line);border-r
     if (newestFirst) msgs = msgs.slice().reverse();
     $("view").innerHTML = `<div class="chat">${msgs.map(x => {
       const right = /advocate b|skeptic/i.test(x.who);
-      const body = linkChecks(x.body).replace(/\b(judgement|model-limit)\b/gi, '<span class="tag">$1</span>');
+      const body = linkChecks(x.body, true);
       return `<article class="msg${right?" right":""}${fresh && !seen.has(x.id)?" e new":""}" style="--role:var(${roleVar(x.who)})">
         <div class="head"><span class="time">${esc(x.time||"")}</span><span class="role">${esc(x.who)}</span><span class="to">to ${esc(x.to)}</span></div>
         <div class="body">${body}</div></article>`; }).join("")}</div>`;
     for (const x of msgs) seen.add(x.id);
   }
   async function refresh(){
+    if (!available) return;
     if (!slug) { $("view").innerHTML = `<div class="empty">No questions yet.</div>`; return; }
     const file = tab === "log" ? "log.md" : tab;
     try {
@@ -217,7 +232,7 @@ pre.doc{margin:0;background:var(--surface);border:1px solid var(--line);border-r
       lastText = text;
       if (tab === "log") renderLog(text);
       else if (tab === "conversation.md") renderChat(text);
-      else $("view").innerHTML = text ? `<pre class="doc">${linkChecks(text)}</pre>` : `<div class="empty">${file} doesn't exist yet.</div>`;
+      else $("view").innerHTML = text ? `<pre class="doc">${linkChecks(text)}</pre>` : `<div class="empty">${esc(file)} doesn't exist yet.</div>`;
     } catch (e) { $("status").textContent = "can't reach the local server"; }
   }
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => {
@@ -228,7 +243,7 @@ pre.doc{margin:0;background:var(--surface);border:1px solid var(--line);border-r
   $("order").onclick = () => { newestFirst = !newestFirst; $("order").setAttribute("aria-pressed", String(newestFirst)); try { localStorage.setItem("debates.newest", newestFirst ? "1" : "0"); } catch (_) {} lastText = ""; refresh(); };
   $("q").onchange = () => { slug = $("q").value; seen = new Set(); lastText = ""; refresh(); };
   listQuestions().then(refresh);
-  setInterval(refresh, 4000);
+  setInterval(() => { if (available) refresh(); }, 4000);
   setInterval(listQuestions, 30000);
 })();
 </script>
