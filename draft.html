@@ -95,7 +95,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .pslot.filled{cursor:grab;touch-action:none}
 .pslot.dragging{opacity:.5;cursor:grabbing}
 .rl{display:grid;justify-items:center;gap:2px;font:600 9.5px/1 var(--sans);letter-spacing:.05em;color:var(--muted)}
-.rl svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6}
+.rl svg{width:20px;height:20px;fill:currentColor}
+.seg .rolebtn{display:inline-grid;place-items:center;padding:4px 8px}
+.seg .rolebtn svg{width:18px;height:18px;fill:currentColor}
 .pslot.filled{border-style:solid;border-color:var(--line);background:var(--surface)}
 .pslot .ph{width:44px;height:44px;border-radius:5px;background:var(--inset);display:grid;place-items:center;color:var(--faint);font:500 11px/1 var(--mono);overflow:hidden}
 .pslot .nm{min-width:0;display:grid;gap:3px}
@@ -200,7 +202,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover}
   .mid{height:min(78vh,640px)}
   .below{grid-template-columns:minmax(0,1fr)}
   .pslot{grid-template-columns:22px 36px minmax(0,1fr);min-height:46px;gap:6px}
-  .rl svg{width:14px;height:14px}
+  .rl svg{width:16px;height:16px}
   .pslot .ph{width:36px;height:36px}
   .bslot{width:26px;height:26px}.bans{gap:3px}.bans .gap{width:3px}
   .sep{display:none}
@@ -428,12 +430,16 @@ function portrait(c){
 }
 const colDots = c => c.col ? Object.entries(c.col).sort((a, b) => b[1] - a[1]).map(([k]) => h("i", {class: "dot", style: `background:var(--m${k})`, title: COLS.find(x => x[0] === k)[1]})) : [];
 const SVGNS = "http://www.w3.org/2000/svg";
-const ROLE_ICON = [                                     // line glyphs: top lane corner, jungle claw, mid diagonal, bot lane corner, support shield
-  "M3.5 14.5v-11h11", "M5 15c0-5 2-9 6-12M9 15c0-3 1.5-6 4-8M3 11c1-2 2-3.5 4-5", "M3.5 14.5l11-11M3.5 9.5l5 5M9.5 3.5l5 5", "M3.5 14.5h11v-11", "M9 2.5l5.5 2v4.2c0 3.6-2.6 5.6-5.5 6.8-2.9-1.2-5.5-3.2-5.5-6.8V4.5z"];
+const ROLE_ICON = [                                     // Riot's position icons (Community Dragon rcp-fe-lol-static-assets/svg/position-*.svg); [path, dim]
+  [["M21,14H14v7h7V14Zm5-3V26L11.014,26l-4,4H30V7.016Z", true], ["M4 4 L4.003 28.045 L9 23 L9 9 L23 9 L28.045 4.003 L4 4Z", false]],
+  [["M25,3c-2.128,3.3-5.147,6.851-6.966,11.469A42.373,42.373,0,0,1,20,20a27.7,27.7,0,0,1,1-3C21,12.023,22.856,8.277,25,3ZM13,20c-1.488-4.487-4.76-6.966-9-9,3.868,3.136,4.422,7.52,5,12l3.743,3.312C14.215,27.917,16.527,30.451,17,31c4.555-9.445-3.366-20.8-8-28C11.67,9.573,13.717,13.342,13,20Zm8,5a15.271,15.271,0,0,1,0,2l4-4c0.578-4.48,1.132-8.864,5-12C24.712,13.537,22.134,18.854,21,25Z", false]],
+  [["M30,12.968l-4.008,4L26,26H17l-4,4H30ZM16.979,8L21,4H4V20.977L8,17,8,8h8.981Z", true], ["M25 4 L4 25 L4 30 L9 30 L30 9 L30 4 L25 4Z", false]],
+  [["M13,20h7V13H13v7ZM4,4V26.984l3.955-4L8,8,22.986,8l4-4H4Z", true], ["M29.997 5.955 L25 11 L25 25 L11 25 L5.955 29.997 L30 30 L29.997 5.955Z", false]],
+  [["M26,13c3.535,0,8-4,8-4H23l-3,3,2,7,5-2-3-4h2ZM22,5L20.827,3H13.062L12,5l5,6Zm-5,9-1-1L13,28l4,3,4-3L18,13ZM11,9H0s4.465,4,8,4h2L7,17l5,2,2-7Z", false]]];
 function roleIcon(r){
-  const s = document.createElementNS(SVGNS, "svg"); s.setAttribute("viewBox", "0 0 18 18"); s.setAttribute("aria-hidden", "true");
-  const p = document.createElementNS(SVGNS, "path"); p.setAttribute("d", ROLE_ICON[r]); p.setAttribute("stroke-linecap", "round"); p.setAttribute("stroke-linejoin", "round");
-  s.append(p); return s;
+  const s = document.createElementNS(SVGNS, "svg"); s.setAttribute("viewBox", "0 0 34 34"); s.setAttribute("aria-hidden", "true");
+  for (const [d, dim] of ROLE_ICON[r]){ const p = document.createElementNS(SVGNS, "path"); p.setAttribute("d", d); p.setAttribute("fill-rule", "evenodd"); if (dim) p.setAttribute("opacity", ".45"); s.append(p); }
+  return s;
 }
 
 /* ---------- team themes (heuristic): LS colour profile + archetype mix of the locked picks ---------- */
@@ -566,9 +572,9 @@ function renderTeam(side){
         if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")){ e.preventDefault(); const to = p + (e.key === "ArrowUp" ? -1 : 1); moveSlot(side, p, to); const n = document.querySelector(`.pslot[data-side="${side}"][data-p="${to}"]`); n && n.focus(); }
         else if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget){ e.preventDefault(); target = target === k ? null : k; render(); }
       }},
-      h("div", {class: "rl", title: POS[p]}, roleIcon(p), h("span", {}, POSS[p])),
-      h("div", {class: "ph"}, ch ? portrait(ch) : `P${a.n}`),
-      h("div", {class: "nm"}, ch ? h("b", {}, ch.name) : h("i", {}, k === cur ? "picking…" : `pick ${a.n}`),
+      h("div", {class: "rl", title: POS[p], "aria-label": POS[p]}, roleIcon(p)),
+      h("div", {class: "ph"}, ch ? portrait(ch) : ""),
+      h("div", {class: "nm"}, ch ? h("b", {}, ch.name) : h("i", {}, k === cur ? "picking…" : `${a.s}${a.n}`),
         ch ? h("small", {class: ch.share[p] < 0.1 ? "off" : null, title: "Share of this champion's solo-queue games in this role"}, `${pct(ch.share[p])} ${POS[p].toLowerCase()}`) : null));
     slotDrop(el, k); slotPointer(el, side, p); return el;
   });
@@ -587,7 +593,7 @@ function renderTurn(){
   }
   const a = q[k];
   box.replaceChildren(...[
-    h("b", {class: a.s}, `${SIDE[a.s]} ${a.t} ${a.n}`), target != null ? h("span", {class: "why"}, "editing a slot · Esc to cancel") : null,
+    h("b", {class: a.s}, a.t === "pick" ? `${a.s}${a.n}` : `${SIDE[a.s]} ban ${a.n}`), target != null ? h("span", {class: "why"}, "editing a slot · Esc to cancel") : null,
     S.fearless ? h("span", {class: "why"}, `game ${S.game}`) : null,
     a.t === "ban" ? h("button", {type: "button", class: "btn ghost", onclick: skipBan}, "Skip ban") : null,
     S.timer ? h("span", {class: "clock", id: "clock"}, "") : null, steps].filter(Boolean));
@@ -613,8 +619,8 @@ const tiles = C.map(c => {
 });
 const emptyEl = h("div", {class: "empty"}, "No champion matches.");
 $("grid").append(...tiles, emptyEl);
-$("rolef").append(...["All", ...POSS].map((p, r) => h("button", {type: "button", "aria-pressed": String(r === 0), title: r ? POS[r - 1] : "All roles",
-  onclick: e => { roleF = r - 1; for (const b of $("rolef").children) b.setAttribute("aria-pressed", String(b === e.currentTarget)); renderGrid(); }}, p)));
+$("rolef").append(...["All", ...POSS].map((p, r) => h("button", {type: "button", class: r ? "rolebtn" : null, "aria-pressed": String(r === 0), title: r ? POS[r - 1] : "All roles", "aria-label": r ? POS[r - 1] : "All roles",
+  onclick: e => { roleF = r - 1; for (const b of $("rolef").children) b.setAttribute("aria-pressed", String(b === e.currentTarget)); renderGrid(); }}, r ? roleIcon(r - 1) : p)));
 $("colf").append(...COLS.map(([k, n]) => h("button", {type: "button", class: "pipbtn", style: `background:var(--m${k})`, "aria-pressed": "false", title: `${n} (LS colour)`, "aria-label": `${n} (LS colour)`,
   onclick: e => { colF.has(k) ? colF.delete(k) : colF.add(k); e.currentTarget.setAttribute("aria-pressed", String(colF.has(k))); renderGrid(); }})));
 function visible(c){
