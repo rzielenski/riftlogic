@@ -8066,7 +8066,7 @@ function dashInfo(c, slot){
 }
 /* Player skill in fight()/fights() (x.skill, fight(…, skill: n | {side1, side2}), default 70): the defender's reaction time for
    skillshot/area dodges (skillDodged in simulate). Hyperbolic so that 100 → 0.10 s, 70 → 0.25 s and 0 → never (Infinity). */
-const SKILL_DEFAULT = 70;
+const SKILL_DEFAULT = (typeof globalThis !== "undefined" && typeof globalThis.RL_SKILL_DEFAULT === "number") ? globalThis.RL_SKILL_DEFAULT : 70;   // tools/rl.js --skill=N (A/B re-checks; 0 = perfect aim)
 function skillReaction(s){ return !(s>0) ? Infinity : 0.1 + 0.35*(100-Math.min(100, s))/s; }
 /* canDodge(…, opt): opt.ms overrides the defender's move speed (fight(): its current, slowed speed); JS callers only */
 function canDodge(def, ab, named, opt){
