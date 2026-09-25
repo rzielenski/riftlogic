@@ -1082,12 +1082,19 @@ function simulate(sidesIn, T, simNotes, fo){
     if (hit.refl) melReflect(own, u, a, t, atk);
     return {w}; }
   // perfect play: x raises a ready wall that would stop it just as it arrives (Yasuo W, Mel W by hand; Samira W is cast, slashes included)
-  function raiseWall(u, a, x, t, verdict){ const W=WALLS[x.c.champ]; if (!W || x.passive || x.script || !x.alive || inStasis(x,t) || !canCast(x,t)) return null;
-    for (const s of Object.keys(W)){ const b=x.abAll[s]; if (W[s].kind==="braum" || !b || (x.cd[s]||0)>t+1e-9 || enShort(x,b,t)) continue;
+  // P6 F4 (Braum E unified with the wall object): Braum raises Unbreakable the same way, for a projectile aimed at himself (DECISIONS 34:
+  // it still hits him, the first hit's damage −100%, then 35–55% less: the kit's rDR) or at an ally he stands in front of (intercepted)
+  function raiseWall(u, a, x, t, verdict){
+    const ux=u.xS ?? u.x, xx=x.xS ?? x.x, braum=y=>y!==x && y.side===x.side && y.alive && WALLS[y.c.champ] && Object.values(WALLS[y.c.champ]).some(w=>w.kind==="braum") && ((y.xS ?? y.x)-ux)*(xx-(y.xS ?? y.x)) > 0;
+    for (const y of [x, ...U.filter(braum)]){ const r=raiseOwn(u, a, y, t, verdict, y!==x); if (r) return r; }
+    return null; }
+  function raiseOwn(u, a, x, t, verdict, braumOnly){ const W=WALLS[x.c.champ]; if (!W || x.passive || x.script || !x.alive || inStasis(x,t) || !canCast(x,t)) return null;
+    for (const s of Object.keys(W)){ const b=x.abAll[s]; if ((braumOnly && W[s].kind!=="braum") || !b || (x.cd[s]||0)>t+1e-9 || enShort(x,b,t)) continue;
       const pw={...wallSpecOf(x.c.champ, s, b.rank), x:(x.xS ?? x.x)+face(x)*(RAD(x)+1)}; if (!pw.key) continue; const r=verdict(pw); if (!r.b) continue;
       let w;
       if (b.parts.length){ const n=walls.length; cast(x, b, u, t); w=walls.length>n ? walls[walls.length-1] : null; }
       else { refresh(x,t); abNums(x,b); x.cd[s]=t+abCd(x,b); say(t, `${x.name} casts ${s} as ${u.name}'s ${a.slot} arrives (perfect reaction)`); w=addWall(x, s, t);
+        if (W[s].kind==="braum"){ const km=CHAMP_MECH[x.c.champ]; if (km && km.onCast) km.onCast(x, b, u, t); }   // P6 F4: Unbreakable's damage reduction (kit rDR) with the wall
         if (b.shield) shield(x, x, b.shield, W[s].reflects ? (dvOf(b.S,"duration",b.rank)||0.75) : b.shieldDur, t, s); }
       if (!w) continue; w.from=-Infinity;   // raised in time (perfect play)
       simNotes.add(`${x.name} ${s}: raised just as an enemy projectile ability it stops arrives (perfect reaction), if ready`);
@@ -1915,7 +1922,7 @@ function simulate(sidesIn, T, simNotes, fo){
     if (a.p && a.p.charge && tgt) u.nextAct=Math.max(u.nextAct, t+land);   // a charged cast (Xerath Q): charging and the release lockout hold the caster
     if (chan){ u.nextAct=Math.max(u.nextAct, t+ct+chan); u.nextAA=Math.max(u.nextAA, t+ct+chan); }   // a channel after the cast (Karthus R): he does nothing else meanwhile
     // until P.end death cancels it; crowd control only once its channel has started (P.chanFrom; wiki Cast time, item 28)
-    const P={slot:a.slot, end:t+ct+chan, chanFrom: inTable(CHARGE_CAST, u.c.champ, a.slot) ? t : chan ? t+ct : null, charge: inTable(CHARGE_CAST, u.c.champ, a.slot), done:false, cancelled:false}, step=u.curStep ?? null;
+    const P={slot:a.slot, end:t+ct+chan+(inTable(CHARGE_CAST, u.c.champ, a.slot) && a.p && a.p.charge ? chargeTime(a.p, a.dash ? Infinity : d0) : 0), chanFrom: inTable(CHARGE_CAST, u.c.champ, a.slot) ? t : chan ? t+ct : null, charge: inTable(CHARGE_CAST, u.c.champ, a.slot), done:false, cancelled:false}, step=u.curStep ?? null;
     if (chan && ct >= dt/2-1e-9) events.push({at:t+ct, fn:(tt)=>{ if (P.cancelled || P.done || !u.alive) return;   // stunned or silenced as the channel starts
       const s=unstopOn(u,tt); if ((locked(u,tt) || !canCast(u,tt)) && !(s && s.slot===a.slot)){ P.cancelled=true; say(tt, `  ${u.name}'s ${a.slot} channel can't start (the caster is disabled as its cast time ends): it doesn't land`); } }});
     // unstoppable abilities (UNSTOPPABLE, item 28): the immunity window, from the press or the dash's start until the landing
@@ -2050,6 +2057,7 @@ function simulate(sidesIn, T, simNotes, fo){
         // P4: a projectile wall between u and x stops it (wallStop); Braum E intercepts a single-target one (it hits him instead) and
         // stops a pass-through one at him (the targets behind take nothing; he is hit if he's in the list)
         { const wb=wallStop(u,a,x,t); if (wb){ if (!wb.intercept || a.aoe || !wb.intercept.alive) return; x=wb.intercept; } }
+        { const kd=!x.pet && CHAMP_MECH[x.c.champ]; if (kd && kd.untargetableTo && kd.untargetableTo(x, u, t, a)) return; }   // P6 F4: untargetable to this caster only (Gwen W, DECISIONS 22)
         // P3: spell shields per hit (shieldHit): "all" blocks the cast on x, "one" one hit (cut), "cc" its crowd control, "dmg" its damage
         const sh=shieldHit(u,a,x,t); if (sh==="all") return; hitAny=true;
         const cut = sh==="one" ? oneHitCut(u,a) : null, keep = cut && cut.n ? 1-1/cut.n : 1, noDmg = sh==="dmg";
@@ -2085,7 +2093,7 @@ function simulate(sidesIn, T, simNotes, fo){
       if (hitAny) enOnHit(u, a, t);   // energy restores on a damaging cast (Kennen E, Shen Q/E; item 24)
     }
     if (!a.parts.length && (tgt || (a.p && a.p.delivery==="self")) && (a.immob || a.slows || (a.cc && a.cc.length))){ say(t, `${u.name}${L && L.deferred ? `'s ${a.slot} lands` : ` casts ${a.slot}`}`); a.saidAt=t;
-      for (let x of hitList(u,a,tgt,t,L)){ if (L && L.voided && x===tgt) continue; { const wb=wallStop(u,a,x,t); if (wb){ if (!wb.intercept || a.aoe || !wb.intercept.alive) continue; x=wb.intercept; } } { const sh=shieldHit(u,a,x,t); if (sh && sh!=="dmg") continue; } passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
+      for (let x of hitList(u,a,tgt,t,L)){ if (L && L.voided && x===tgt) continue; { const wb=wallStop(u,a,x,t); if (wb){ if (!wb.intercept || a.aoe || !wb.intercept.alive) continue; x=wb.intercept; } } { const kd=!x.pet && CHAMP_MECH[x.c.champ]; if (kd && kd.untargetableTo && kd.untargetableTo(x, u, t, a)) continue; } { const sh=shieldHit(u,a,x,t); if (sh && sh!=="dmg") continue; } passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
     else if (!a.parts.length && !a.heal && !a.shield && !a.quiet && !(L && L.deferred)) say(t, `${u.name} casts ${a.slot}`);
     if (km && km.afterCast) km.afterCast(u, a, ktg, t);
     a.land=null;
@@ -2734,6 +2742,12 @@ function simulate(sidesIn, T, simNotes, fo){
       attack(u, tgt, t){ const D=u.kit.discharge; if (D && D.until>t){ u.kit.discharge=null; return {replace:{v:D.v, type:"magic", what:"Discharge (Q empowered attack)"}}; } return null; },
     },
     Gwen: {
+      // P6 F4 (Hallowed Mist, DECISIONS 22): is Gwen untargetable to att at t? Only while she is in the mist and att's centre is outside it
+      untargetableTo(u, att, t){ const M=u.kit.mist; if (!M || !(M.until>t) || att.side===u.side) return false;
+        const gx=u.xS ?? u.x; if (Math.abs(gx-M.cx) > M.r+1e-6){ if (M.moved) return false; M.cx=gx; M.moved=true; }   // the mist follows her once (wiki)
+        if (Math.abs((att.xS ?? att.x)-M.cx) <= M.r+1e-6) return false;
+        say(t, `  ${u.name} is in Hallowed Mist: untargetable to ${att.name}, who is outside it (${fmt(Math.abs((att.xS ?? att.x)-M.cx))} > ${fmt(M.r)} from its centre; DECISIONS 22)`); return true; },
+      dodgeAttack(u, att, t){ return CHAMP_MECH.Gwen.untargetableTo(u, att, t); },
       onHit(u, x, t, o){ if (!o.basic) return;
         const v=evalCalc({S:CALC.champs.Gwen.P, rank:1, st:u.st, flags:u.flags}, "percenthealth1000cuts").v*x.max;
         deal(u,x,v,"magic",t,"onhit","A Thousand Cuts");
@@ -2744,7 +2758,11 @@ function simulate(sidesIn, T, simNotes, fo){
         if (a.slot==="Q"){ u.kit.snippy=null; simNotes.add(`${u.name} Q: 1 snip plus one per Snippy stack from attacks in the last 6 s (up to 4), then the final snip; target in the centre`); }
         if (a.slot==="W"){ const r=evalCalc({S:a.S, rank:a.rank, st:u.st, flags:u.flags},"totalresists").v, dur=dvOf(a.S,"zoneduration",a.rank)||4;
           addBuff(u,"gwenW",t+dur,{bonusarmor:r, bonusmr:r},t); say(t, `  ${u.name}: Hallowed Mist +${fmt(r)} armor and MR for ${fmt(dur)}s`);
-          simNotes.add(`${u.name} W: +${fmt(r)} armor and MR for 4 s (assumed: the fight stays in the mist); untargetability from outside the mist is not modelled`); }
+          // P6 F4 (wiki Hallowed Mist: untargetable "to all enemies ... outside of the mist" for 4 s, radius 480 cr; DECISIONS 22: an
+          // attacker is inside/outside by where it is when its effect LANDS): the mist stays where it was cast; if she leaves it, it
+          // moves to her once (wiki), then she can leave it for good
+          u.kit.mist={cx:u.xS ?? u.x, r:(a.p && a.p.radius)||480, until:t+dur, moved:false};
+          simNotes.add(`${u.name} W: Hallowed Mist — +${fmt(r)} armor and MR for 4 s, and untargetable to enemies whose centre is outside the ${fmt(u.kit.mist.r)} mist when their attack or ability lands (DECISIONS 22); enemies inside hit her normally (damage from kit follow-up hits and damage over time isn't checked)`); }
         if (a.slot==="E"){ const S=a.S, ctx={S, rank:a.rank, st:u.st, flags:u.flags};
           const as=evalCalc(ctx,"bonusattackspeed").v, v=evalCalc(ctx,"onhitdamage").v;
           addBuff(u,"gwenE",t+(dvOf(S,"buffduration",a.rank)||4),{bonusAS:as>2?as/100:as},t);
@@ -2835,9 +2853,33 @@ function simulate(sidesIn, T, simNotes, fo){
         return {bonus:[{v, type:"magic", what:"Daredevil Impulse"}]}; },
       onCast(u, a, tgt, t){ kitStyle(u, a.slot, t);
         if (a.slot==="E"){ addBuff(u,"samiraE",t+(dvOf(a.S,"attackspeedduration",a.rank)||5),{bonusAS:dvOf(a.S,"bonusattackspeed",a.rank)||0},t); }
-        if (a.slot==="W" && tgt){ for (const p of a.parts) kitLater(u, tgt, t+(dvOf(a.S,"slashduration",a.rank)||0.75), p, "W second slash"); }
-        if (a.slot==="R" && tgt){ for (let i=1;i<10;i++) for (const p of a.parts) kitLater(u, tgt, t+0.2*i, p, `R shot ${i+1}/10`);
-          u.kit.style={n:0, until:-1, last:null}; simNotes.add(`${u.name} R: 10 shots over 2 s, all at the one target; needs 6 Style stacks (one per hit of a different kind than the previous)`); } },
+        /* P6 F4 (wiki Blade Whirl: "The first slash occurs immediately and the second one occurs after the duration" (0.75 s); radius
+           325 er around Samira, who can move; "Casting Inferno Trigger will end Blade Whirl early", "Entering stasis will also end Blade
+           Whirl early" (no second slash then); "Spell shield will block the damage from one slash"): the second slash hits every enemy
+           within 325 + its hitbox of her at 0.75 s, each asked blockedHit() (a shield that blocked the first slash is spent) */
+        if (a.slot==="W"){ const W={at:t+(dvOf(a.S,"slashduration",a.rank)||0.75), s0:u.stasisUntil, cut:false}, r=(a.p && a.p.radius)||325, parts=a.parts.map(p=>({...p})), step=u.curStep ?? null;
+          u.kit.samiraW=W; u.nextAA=Math.max(u.nextAA, W.at); u.cd.Q=Math.max(u.cd.Q||0, W.at);   // "Samira cannot basic attack nor cast Flair during Blade Whirl" (wiki)
+          events.push({at:W.at, fn:(tt)=>{ if (!u.alive || W.cut || u.kit.samiraW!==W) return;
+            if (u.stasisUntil > W.s0 + 1e-9){ say(tt, `  ${u.name}'s Blade Whirl ended early (stasis): no second slash`); return; }
+            for (const x of enemiesOf(u,tt)){ if (gap(u,x) > r+RAD(x)+1e-6) continue; if (blockedHit(u,a,x,tt,"the second slash of")) continue;
+              for (const p of parts) kitDealNow(u, x, tt, p, "W second slash", step); } }});
+          simNotes.add(`${u.name} W: the second slash 0.75 s after the first hits enemies within 325 (+ hitbox) of her then; casting R or entering stasis first cancels it (wiki)`); }
+        /* P6 F4 (wiki Inferno Trigger: 10 shots over 2 s at enemies within 600 (cr) of Samira, 2800/s missiles; projectile = true; "Spell
+           shield will block the damage of one shot"; ends on cast-inhibiting crowd control or disarm): shot 1 is the cast itself
+           (resolveCast), shots 2–10 leave 0.2 s apart at every enemy whose centre is within 600 then; each is a projectile: an enemy
+           untargetable when it arrives isn't hit, walls stop it (Braum E takes it), a ready spell shield blocks one (blockedHit) */
+        if (a.slot==="R"){ const W=u.kit.samiraW;
+          if (W && !W.cut && W.at>t+1e-9){ W.cut=true; for (const w of walls) if (w.owner===u && w.slot==="W" && w.until>t) w.until=t; say(t, `  ${u.name}: Inferno Trigger ends Blade Whirl early (no second slash)`); }
+          const R=(a.p && a.p.radius)||600, spd=(a.p && a.p.speed)||2800, parts=a.parts.map(p=>({...p})), step=u.curStep ?? null, t0=pressOf(a,t), id={}; u.kit.samiraR=id;
+          for (let i=1;i<10;i++) events.push({at:Math.max(t, t0+0.2*i), fn:(tt)=>{ if (!u.alive || u.kit.samiraR!==id) return;
+            if (!canCast(u,tt) || ccOn(u,tt,"disarm")){ u.kit.samiraR=null; say(tt, `  ${u.name}'s Inferno Trigger ends (crowd control): no more shots`); return; }
+            for (const x of enemiesOf(u,tt)){ const g=gap(u,x); if (g > R+1e-6) continue;
+              const fly=(u.script && !u.scriptTravel) ? 0 : g/spd, what=`R shot ${i+1}/10`;
+              const hit=(t2)=>{ if (!x.alive || !u.alive || inStasis(x,t2)) return; let y=x;
+                { const wb=wallStop(u,a,x,t2); if (wb){ if (!wb.intercept || !wb.intercept.alive) return; y=wb.intercept; } }
+                if (blockedHit(u,a,y,t2,"one shot of")) return; for (const p of parts) kitDealNow(u, y, t2, p, what, step); };
+              if (fly < dt/2) hit(tt); else events.push({at:tt+fly, fn:hit}); } }});
+          u.kit.style={n:0, until:-1, last:null}; simNotes.add(`${u.name} R: 10 shots over 2 s (0.2 s apart) at every enemy within 600 of her (centre, wiki cr), 2800/s projectiles: untargetability, walls and spell shields stop single shots; stunned, silenced or disarmed she stops; needs 6 Style stacks (one per hit of a different kind than the previous)`); } },
       castable:(u, a, tgt, t)=>{ if (a.slot!=="R") return true; const S=u.kit.style; return S && S.until>t && S.n>=6 ? true : "needs 6 Style stacks"; },
       step(u, step, tgt, t, log){ if (step!=="R") return false; const S=u.kit.style; if (S && S.until>t && S.n>=6) return false;
         log({skipped:`needs 6 Style stacks (has ${S && S.until>t ? S.n : 0})`}); return "logged"; },
@@ -3092,6 +3134,58 @@ function simulate(sidesIn, T, simNotes, fo){
       attack(u, tgt, t, mult){ const H=u.kit.hyper; if (!H || !(H.until>t) || H.n<=0) return null; H.n--;
         aaTimer(u, t, 1/asOf(u, dvOf(CALC.champs.Jayce.forms.W,"percentincreasedas",1)||3.6));
         return {replace:{v:H.v*mult, type:"physical", what:"Hyper Charge attack"}}; },
+    },
+    /* P6 F3 (wiki Sett/Knuckle_Down): "empowers his next two basic attacks within 5 seconds to gain 50 bonus range and deal bonus
+       physical damage" (10–50 + 1% (+1–3% per 100 AD) of the target's maximum health each); "Knuckle Down resets Sett's basic attack
+       timer". The cast deals nothing itself (it had dealt one punch at the press) */
+    Sett: {
+      onCast(u, a, tgt, t){ if (a.slot!=="Q") return; u.kit.settQ={n:2, until:t+5}; u.nextAA=Math.min(u.nextAA, t); addBuff(u, "settQ", t+5, {range:50}, t);
+        simNotes.add(`${u.name} Q: Knuckle Down — his next 2 attacks within 5 s gain 50 range and deal the bonus (attack reset; wiki); the move speed toward enemies isn't modelled`); },
+      attack(u, tgt, t){ const Q=u.kit.settQ, A=u.abAll.Q; if (!Q || !(Q.until>t) || Q.n<=0 || !A) return null;
+        if (--Q.n<=0){ u.kit.settQ=null; const B=u.buffs.find(b=>b.id==="settQ"); if (B) B.until=Math.min(B.until, u.nextAA); }
+        return {bonus:(A.later||[]).map(p=>({v:(p.pctOf ? p.v*tgt.max : p.v)/2, type:p.type, what:"Knuckle Down punch"}))}; },
+    },
+    /* P6 F3: Illaoi's Tentacles (wiki Illaoi/Prophet_of_an_Elder_God + the Illaoi page's Tentacle pet): a slam deals 9–180 by level
+       (+110% AD, +40% AP) physical, +10–30% by Tentacle Smash rank (game data TentacleDamageTotal); each enemy takes 50% less per slam
+       that hit it in the last 0.66 s (at most 75% less); each slam that hits a champion heals her 5% of her missing health; "a single
+       spell shield can block all tentacle attacks that hit at the same time". Harsh Lesson (W) commands every Tentacle within 950 of
+       the target to slam it; Leap of Faith (R) summons one Tentacle per enemy champion hit for 8 s (up to 6), halves W's cooldown
+       and makes Tentacles attack in 0.5 s. fight() assumes one natural Tentacle beside the fight (on Summoner's Rift she can spawn one
+       from anywhere: wiki notes) and every Tentacle in range of the target; a normal slam lands 0.75 s after the command (no wiki
+       number: Tentacle Smash's 0.75 s cast, an assumption). Test of Spirit's Spirit / Vessel slams aren't modelled */
+    /* P6 F3 (wiki Rek'Sai/Void_Rush): after the 0.25 s cast she vanishes (untargetable, GRANT_NOTES) and "After 0.9 seconds … blinks to a
+       location near the target, becoming targetable again and emerging to pounce": the hit lands 1.15 s after the press whatever the
+       distance (the short pounce is counted as instant), not at 1400/s; "Void Rush will not deal damage if the target is untargetable
+       by the time Rek'Sai reaches them" (resolveCast skips a target in stasis / untargetable) */
+    RekSai: {
+      startCast(u, a, tgt, t, d0){ if (a.slot!=="R") return false; tgt = tgt || enemiesOf(u,t)[0]; if (!tgt) return false;
+        const land=t+(a.p && a.p.castTime || 0.25)+0.9, step=u.curStep ?? null;
+        u.nextAct=Math.max(u.nextAct, land); u.nextAA=Math.max(u.nextAA, land);
+        say(t, `${u.name} casts R on ${tgt.name}: vanishes after the cast and emerges beside ${tgt.name} at ${fmt(land)}s`);
+        simNotes.add(`${u.name} R: Void Rush lands 1.15 s after the press (0.25 s cast + 0.9 s vanished, wiki), whatever the distance; no damage if the target is untargetable then`);
+        events.push({at:land, fn:(tt)=>{ if (!u.alive) return;
+          if (!u.script && tgt.alive){ const dir=tgt.x===u.x ? face(u) : Math.sign(tgt.x-u.x); displace(u, tgt.x-dir*(RAD(u)+RAD(tgt)), 1e-3, tt, true); }
+          const prev=u.curStep; u.curStep=step; resolveCast(u, a, tgt, tt, d0, {started:true, deferred:true, castOk:true, pressT:t}); u.curStep=prev; }});
+        return true; },
+    },
+    Illaoi: {
+      init(u){ u.kit.tents=[{until:Infinity}]; },
+      // n Tentacles slam x at once: one spell shield blocks them all; each slam 50% less per slam on x in the last 0.66 s (min 25%)
+      slams(u, x, t, n, step){ if (!x.alive || !u.alive || inStasis(x,t)) return;
+        if (blockedHit(u, {slot:"P"}, x, t, "the Tentacle slams of")) return;
+        const Q=CALC.champs.Illaoi.Q, v=evalCalc({S:Q, rank:Math.max(0, rankOf(u.c,"Q")||0), st:u.st, flags:u.flags}, "spell.illaoiq:tentacledamagetotal").v;
+        for (let i=0;i<n && x.alive;i++){ const S=(x.illSlams||[]).filter(s=>s>t-0.66), m=Math.max(0.25, Math.pow(0.5, S.length)); x.illSlams=[...S, t];
+          kitDealNow(u, x, t, {v:v*m, type:"physical"}, `Tentacle slam${m<1?` (×${fmt(m)}: slams within 0.66 s)`:""}`, step);
+          if (!x.pet) heal(u, u, 0.05*Math.max(0, u.max-u.hp), t, "Tentacle"); } },
+      afterCast(u, a, tgt, t){ const K=u.kit; K.tents=(K.tents||[]).filter(x=>x.until>t);
+        if (a.slot==="R"){ const r=(a.p && a.p.radius)||500, n=Math.min(6, enemiesOf(u,t).filter(x=>!x.pet && gap(u,x)<=r+1e-6).length);
+          for (let i=0;i<n;i++) K.tents.push({until:t+8}); K.rUntil=t+8;
+          if (n) say(t, `  ${u.name}: Leap of Faith summons ${n} Tentacle${n>1?"s":""} for 8 s`); }
+        if (a.slot==="W" && tgt && tgt.alive && inReach(u,a,tgt)){ const n=K.tents.length, fast=K.rUntil>t, step=u.curStep ?? null;
+          if (fast && (u.cd.W||0)>t) u.cd.W=t+(u.cd.W-t)/2;
+          if (n) events.push({at:t+(fast?0.5:0.75), fn:(tt)=>CHAMP_MECH.Illaoi.slams(u, tgt, tt, n, step)}); }
+        if (a.slot==="Q" && tgt && tgt.alive && inReach(u,a,tgt)){ (tgt.illSlams ||= []).push(t); if (!tgt.pet) heal(u, u, 0.05*Math.max(0, u.max-u.hp), t, "Tentacle"); }
+        simNotes.add(`${u.name}: Tentacles — Harsh Lesson makes every Tentacle slam its target (0.75 s later, 0.5 s during Leap of Faith); one natural Tentacle assumed beside the fight, + one per champion hit by R for 8 s; slams on the same enemy within 0.66 s deal 50% less each (min 25%); each heals 5% missing health (wiki)`); },
     },
     // Twitch R (wiki Spray and Pray; game data BonusRange 300, BonusAD 30–60, Duration 6): a self-cast buff, not a 1200-range spell;
     // his hits are basic attacks at his attack range + 300 (edge range). The bolts' pierce through a line of enemies isn't modelled.
@@ -3455,13 +3549,18 @@ function simulate(sidesIn, T, simNotes, fo){
           if (d && d.per>0) for (let i=1;i<=Math.round(d.v/d.per);i++) events.push({at:t+i, fn:(tt)=>{ if (!u.alive) return; for (const x of enemiesOf(u,tt)) if (inside(x)){ (x.kitShred ||= {}).nasusE={until:tt+1, pct:sh}; kitLater(u, x, tt, {v:d.per, type:"magic"}, "E Spirit Fire tick"); } }});
           simNotes.add(`${u.name} E: Spirit Fire — the blast, then a tick every second for 5 s (game data; the wiki's total says 10) to enemies within 400 of the spot, and −${fmt(sh*100)}% armor while inside (+1 s)`); }
         if (a.slot==="W" && tgt){ const base=(dvOf(a.S,"slowbase",a.rank)||35)/100, per=(dvOf(a.S,"slowpertick",a.rank)||3)/100, dur=dvOf(a.S,"duration",a.rank)||5, mx=(dvOf(a.S,"maxslowtooltiponly",a.rank)||47)/100;
-          for (let k=1;k<dur;k++) events.push({at:t+k, fn:(tt)=>{ if (tgt.alive && u.alive) applyCC(u, {slot:"W", S:a.S, p:{}, cc:[{type:"slow", dur:dur-k, pct:Math.min(mx, base+per*k)}]}, tgt, tt, 0); }});
-          simNotes.add(`${u.name} W: Wither slows 35%, +${fmt(per*100)}% each second up to ${fmt(mx*100)}% (5 s); its attack-speed slow isn't modelled`); }
+          // P6 F4: the cripple (75% of the slow, wiki) grows with it: the one applied at the cast (KIT.Nasus.cc W) is raised each second
+          const asm=dvOf(a.S,"attackspeedslowmult",a.rank)||0.75;
+          for (let k=1;k<dur;k++) events.push({at:t+k, fn:(tt)=>{ if (tgt.alive && u.alive){ applyCC(u, {slot:"W", S:a.S, p:{}, cc:[{type:"slow", dur:dur-k, pct:Math.min(mx, base+per*k)}]}, tgt, tt, 0);
+            const cr=(tgt.cripples||[]).find(c=>c.nasusW===u && c.until>tt); if (cr){ cr.pct=Math.min(mx, base+per*k)*asm; refresh(tgt,tt); } } }});
+          simNotes.add(`${u.name} W: Wither slows 35%, +${fmt(per*100)}% each second up to ${fmt(mx*100)}% (5 s), and cripples ${fmt(asm*100)}% of that (attack speed, growing with it)`); }
+        if (a.slot==="W" && tgt) a.nasusWcr=new Set(tgt.cripples||[]);   // P6 F4: which cripple the cast adds (tagged in afterCast)
         if (a.slot==="R"){ const dur=dvOf(a.S,"duration",a.rank)||15, res=dvOf(a.S,"initialresistgain",a.rank)||40, cap=(dvOf(a.S,"maxdamagecap",a.rank)||240)/2;
           K.fury=t+dur; addBuff(u, "nasusR", t+dur, {bonushp:dvOf(a.S,"bonushealth",a.rank)||300, bonusarmor:res, bonusmr:res}, t);
           const per=evalCalc(ctx,"damagecalc").v/2;
           for (let i=1;i<=Math.round(dur*2);i++) events.push({at:t+0.5*i, fn:(tt)=>{ if (!u.alive) return; for (const x of enemiesOf(u,tt)) if (gap(u,x) <= 400+RAD(x)) kitLater(u, x, tt, {v:Math.min(cap, per*x.max), type:"magic"}, "R storm"); }});
           simNotes.add(`${u.name} R: Fury of the Sands 15 s — +${fmt(dvOf(a.S,"bonushealth",a.rank)||300)} health, +${fmt(res)} armor and MR; enemies within 400 take ${fmt(per*200)}% of their maximum health per second (every 0.5 s, at most 240 per second); Siphoning Strike's cooldown halved`); } },
+      afterCast(u, a, tgt, t){ if (a.slot==="W" && tgt && a.nasusWcr!=null){ const cr=(tgt.cripples||[]).find(c=>!a.nasusWcr.has(c)); if (cr) cr.nasusW=u; a.nasusWcr=null; } },   // P6 F4: the Wither cripple grows
     },
     Jax: {
       // Relentless Assault: +5–12.5% attack speed per attack (8 stacks, 2.5 s; all fall off together here); Grandmaster-at-Arms: every third attack
@@ -4005,6 +4104,26 @@ function simulate(sidesIn, T, simNotes, fo){
         simNotes.add(`${u.name}: Clockwork Windup — her attacks deal bonus magic, +15% per consecutive attack on the same target (up to 2 stacks, 4 s)`);
         return {bonus:[{v, type:"magic", what:`Clockwork Windup${W.n?` (${W.n} stack${W.n>1?"s":""})`:""}`}]}; },
     },
+    Brand: {
+      /* P6 F4 (wiki Blaze: his ability hits set enemies Ablaze for 4 s; Sear "Blaze Bonus: The target is stunned" only if it is Ablaze;
+         Conflagration: "The flame spreads to enemies near the primary target at the time of cast" within 300 (600 if the primary target
+         was Ablaze), as homing missiles at 900/s: DECISIONS 31, untargetability voids a flame in flight; a spell shield blocks it
+         (blockedHit)). Ablaze is tracked for these conditions only: its burn, stacks and detonation aren't modelled */
+      onCast(u, a, tgt, t){ const abl=x=>!!(x && x.brandAblaze && x.brandAblaze.by===u && x.brandAblaze.until>t);
+        if (a.slot==="Q"){ a.ccAll ??= a.cc||[]; a.cc = abl(tgt) ? a.ccAll : a.ccAll.filter(e=>e.type!=="stun");
+          if (!abl(tgt)) simNotes.add(`${u.name} Q: Sear stuns only an Ablaze target (wiki Blaze Bonus): the first Brand hit on a target doesn't stun`); }
+        if (a.slot==="E" && tgt && a.parts.length){ const R=abl(tgt) ? 600 : 300, cx=tgt.xS ?? tgt.x, parts=a.parts, step=u.curStep ?? null;
+          for (const x of enemiesOf(u,t)){ if (x===tgt || Math.abs((x.xS ?? x.x)-cx) > R+1e-6) continue;
+            const hit=(tt)=>{ if (!x.alive || !u.alive) return;
+              if (inStasis(x,tt)){ say(tt, `  ${x.name} is untargetable: Conflagration's spreading flame is voided in flight (DECISIONS 31)`); return; }
+              if (blockedHit(u,a,x,tt,"the spreading flame of")) return;
+              for (const p of parts) kitDealNow(u, x, tt, p, "E spread", step); x.brandAblaze={by:u, until:tt+4}; };
+            const fly=(u.script && !u.scriptTravel) ? 0 : Math.abs((x.xS ?? x.x)-cx)/((a.p && a.p.speed)||900);
+            if (fly < dt/2) hit(t); else events.push({at:t+fly, fn:hit}); }
+          simNotes.add(`${u.name} E: Conflagration spreads to enemies within ${R} of the target (600 if it was Ablaze) as homing flames at 900/s (wiki; DECISIONS 31)`); } },
+      afterCast(u, a, tgt, t){ if (a.slot==="Q" && a.ccAll) a.cc=a.ccAll;
+        if (["Q","W","E","R"].includes(a.slot) && tgt && a.parts.length) for (const x of hitList(u,a,tgt,t)) if (x.alive) x.brandAblaze={by:u, until:t+4}; },
+    },
     Lux: {
       // Illumination: her ability hits mark enemies (6 s); her next attack or Final Spark consumes the mark for bonus magic (Final Spark
       // then marks again, assumed)
@@ -4047,8 +4166,15 @@ function simulate(sidesIn, T, simNotes, fo){
       // Blast Shield: her next ability hit gives a shield of 10% of her maximum health (3 s); 16–12 s cooldown.
       // The Vault Breaker charge (1.25 s) and the 0.75 s before Cease and Desist's damage aren't modelled.
       init(u){ u.kit.bsAt=0; },
-      onCast(u, a, tgt, t){ if (a.slot==="E"){ u.kit.e={until:t+(dvOf(a.S,"attackbuffduration",a.rank)||6)}; u.nextAA=Math.min(u.nextAA, t); } },
-      afterCast(u, a, tgt, t){ if (tgt && tgt.alive && !tgt.pet && a.parts.length && inReach(u,a,tgt)) kitViShield(u, t); },
+      onCast(u, a, tgt, t){ if (a.slot==="E"){ u.kit.e={until:t+(dvOf(a.S,"attackbuffduration",a.rank)||6)}; u.nextAA=Math.min(u.nextAA, t); }
+        // P6 F4 (wiki Cease and Desist): the grab knocks up at once; the damage comes 0.75 s into the grab, not on an untargetable target
+        if (a.slot==="R" && tgt && a.parts.length && !u.script){ const dl=(a.p && a.p.delayDamage) || 0.75, parts=a.parts, step=u.curStep ?? null, x=tgt;
+          a.viParts=parts; a.parts=[];
+          events.push({at:t+dl, fn:(tt)=>{ if (!x.alive || !u.alive) return; if (inStasis(x,tt)){ say(tt, `  ${x.name} is untargetable: Cease and Desist deals no damage (wiki)`); return; }
+            for (const p of parts) kitDealNow(u, x, tt, p, "R", step); }});
+          simNotes.add(`${u.name} R: the knock-up (1.3 s) lands with the grab, the damage ${fmt(dl)} s later (wiki)`); } },
+      afterCast(u, a, tgt, t){ if (a.viParts){ a.parts=a.viParts; a.viParts=null; }
+        if (tgt && tgt.alive && !tgt.pet && a.parts.length && inReach(u,a,tgt)) kitViShield(u, t); },
       attack(u, tgt, t, mult){ const K=u.kit; let out=null;
         if (K.e && K.e.until>t){ K.e=null; const E=u.abAll.E; out={replace:{v:evalCalc({S:E.S, rank:E.rank, st:u.st, flags:u.flags},"totaldamagetooltip").v+u.st.ad*(mult-1), type:"physical", what:"Relentless Force"}}; if (!tgt.pet) kitViShield(u, t); }
         const W=u.abAll.W; if (W){ const D=tgt.viDent && tgt.viDent.by===u && tgt.viDent.until>t ? tgt.viDent : {by:u, n:0}; D.n++; D.until=t+(dvOf(W.S,"markerbuffduration",W.rank)||4); tgt.viDent=D;
@@ -4234,14 +4360,22 @@ function simulate(sidesIn, T, simNotes, fo){
       // Blood Rush); an axe unused for 5.75 s is lost. Blood Rush: +20–40% attack speed 3 s, move speed decaying over 1.5 s.
       // Whirling Death: the axes turn back on the first champion hit and hit it again on the way back.
       onCast(u, a, tgt, t){ const K=u.kit;
-        if (a.slot==="Q"){ const d=dvOf(a.S,"axeduration",a.rank)||5.75; K.axes=(K.axes||[]).filter(x=>x.until>t); if (K.axes.length<2) K.axes.push({ready:t, until:t+d}); else for (const x of K.axes) x.until=Math.max(x.until, t+d); }
+        if (a.slot==="Q"){ const d=dvOf(a.S,"axeduration",a.rank)||5.75; K.axes=(K.axes||[]).filter(x=>x.until>t && !(x.lostAt<=t)); if (K.axes.length<2) K.axes.push({ready:t, until:t+d}); else for (const x of K.axes) x.until=Math.max(x.until, t+d); }
         if (a.slot==="W"){ addBuff(u, "dravenW", t+(dvOf(a.S,"attackspeedduration",a.rank)||3), {bonusAS:dvOf(a.S,"attackspeed",a.rank)||0.4}, t);
           addBuff(u, "dravenWms", t+(dvOf(a.S,"movespeedduration",a.rank)||1.5), {mspct:dvOf(a.S,"movespeed",a.rank)||0.7}, t); const B=u.buffs.find(b=>b.id==="dravenWms"); if (B) B.decayFrom=t; }
         if (a.slot==="R" && tgt && a.parts.length){ const parts=a.parts, x=tgt, back=Math.max(0.25, gap(u,tgt)/2000), step=u.curStep ?? null;
-          events.push({at:t+back, fn:(tt)=>{ if (x.alive && !inStasis(x,tt)) for (const p of parts) kitDealNow(u, x, tt, p, "R Whirling Death (return)", step); }});
+          // P6 F3: a projectile wall that stopped the outgoing axes (up between them when it landed) leaves nothing to turn back
+          const u0={side:u.side, xS:u.xS ?? u.x}, x0=Object.create(x); x0.xS=x.xS ?? x.x;   // where both stood when it landed
+          events.push({at:t+back, fn:(tt)=>{ if (walls.some(w=>w.kind!=="braum" && wallBetween(w, u0, x0, t, 0))){ say(tt, `  ${u.name}'s R: the axes were stopped by a wall, so there is no return pass`); return; }
+            if (x.alive && !inStasis(x,tt)) for (const p of parts) kitDealNow(u, x, tt, p, "R Whirling Death (return)", step); }});
           simNotes.add(`${u.name} R: the axes turn back on the first champion hit and hit it again on the way back`); } },
-      attack(u, tgt, t){ const K=u.kit, Q=u.abAll.Q; if (!K.axes || !Q) return null; K.axes=K.axes.filter(x=>x.until>t); const A=K.axes.find(x=>x.ready<=t); if (!A) return null;
-        const back=t+1.4; A.ready=back; A.until=back+(dvOf(Q.S,"axeduration",Q.rank)||5.75); events.push({at:back, fn:(tt)=>{ if (u.alive && (u.cd.W||0)>tt) u.cd.W=tt; }});
+      // P6 F3 (wiki Draven/Spinning_Axe: "Spinning Axes may optically bypass Wind Wall and Blade Whirl but they will be destroyed upon
+      // collision"; Mel W destroys the axe without replicating it): the axe leaves with the attack (onAttack); an attack that never lands
+      // (stopped by a wall, target untargetable or dead) loses its axe. Braum E intercepting the attack still bounces it (it lands on him)
+      onAttack(u, tgt, t){ const K=u.kit; if (!K.axes || !u.abAll.Q) return; K.axes=K.axes.filter(x=>x.until>t && !(x.lostAt<=t));
+        const A=K.axes.find(x=>x.ready<=t); if (A){ A.ready=Infinity; A.lostAt=t+1.5; } },
+      attack(u, tgt, t){ const K=u.kit, Q=u.abAll.Q; if (!K.axes || !Q) return null; K.axes=K.axes.filter(x=>x.until>t && !(x.lostAt<=t)); const A=K.axes.find(x=>x.ready===Infinity && x.lostAt>t); if (!A) return null;
+        delete A.lostAt; const back=t+1.4; A.ready=back; A.until=back+(dvOf(Q.S,"axeduration",Q.rank)||5.75); events.push({at:back, fn:(tt)=>{ if (u.alive && (u.cd.W||0)>tt) u.cd.W=tt; }});
         simNotes.add(`${u.name} Q: Spinning Axe — each axe empowers an attack and is caught 1.4 s later (perfect play; up to 2 axes), resetting Blood Rush`);
         return {bonus:[{v:evalCalc({S:Q.S, rank:Q.rank, st:u.st, flags:u.flags},"totaldamage").v, type:"physical", what:"Spinning Axe"}]}; },
     },
@@ -5082,6 +5216,9 @@ const KIT = {
       parts(x){ return [x.part("initialburstdamage","magic"), {...scale(x.part("subsequentburstdamage","magic"), x.o.ticks, "ticks"), later:"ticks", per:x.part("subsequentburstdamage","magic").v}]; }},
   },
   Gwen: {
+    // P6 F4 (wiki Hallowed Mist: untargetable to enemies outside the 480 (cr) mist; DECISIONS 22): canDodge's using: Gwen.W counts only
+    // against an attacker outside the mist when its effect lands (dodgeAction, phys.untargetableOutside)
+    phys(c, slot, p){ if (slot==="W") p.untargetableOutside = p.radius || 480; },
     P: {parts(x){ return [{...x.part("percenthealth1000cuts","magic",null,x.P,1), pctOf:"max", label:"A Thousand Cuts: 1% (+0.6% per 100 AP) maximum health"}]; }},
     Q: {opts:{snips:{min:1, max:5, dflt:5, what:"small snips before the final one (1 + one per Snippy stack; 5 = four attacks first)"},
               center:{bool:true, dflt:true, what:"the target in the centre (50% true damage, A Thousand Cuts on every snip)"}},
@@ -5163,6 +5300,11 @@ const KIT = {
   Yasuo: {
     stacks: {name:"Gathering Storm", max:2, dflt:()=>0, why:"Steel Tempest hits in the last 6 s; set 2 to start a fight or combo with Q3 (the tornado) ready"},
     statsFinal:(c, st, notes, e)=>kitIntent(c, st, notes, e, CALC.champs.Yasuo.P),
+    /* P6 F3 (wiki Template:Data_Yasuo/Steel_Tempest "Thrust Cast Time" 0.35 − 0.035 per 24% bonus attack speed, capped at 0.175 at 120%;
+       "Whirlwind Cast Time" the same, capped at 0.28 at 48%): the cast time from his bonus attack speed; with 2 Gathering Storm stacks
+       (.stacks = 2) the cast is the whirlwind's. The thrust hits at the end of the cast (no missile: calc phys speed 0) */
+    phys(c, slot, p){ if (slot!=="Q") return; const bas=Math.max(0, stats(c).bonusas||0), q3=kitStacks(c)>=2;
+      p.castTime=Math.max(q3 ? 0.28 : 0.175, 0.35-0.035*bas/0.24); p.castTimeSource=`wiki: 0.35 − 0.035 per 24% bonus attack speed (${fmt(100*bas)}%), ${q3?"whirlwind min 0.28":"thrust min 0.175"}`; },
     P: {none:"Way of the Wanderer has no damage; its Flow shield is modelled in fight()/perform()"},
     Q: {cd:(x)=>kitAsCd(x, 4, 0.6, 0.667), parts(x){ return [kitCrit(x, "totaldamage", "totaldamagecrit", "physical")]; }},
     E: {opts:{stacks:{min:0, max:4, dflt:0, what:"Ride the Wind stacks before this dash (+25% each; from other targets)"}},
@@ -5222,7 +5364,12 @@ const KIT = {
       parts(x){ const r=[x.part("initialdamage","physical")];
         if (x.o.recast) r.push({...x.part("recastdamage","physical"), ampMissing:dvOf(x.S,"q2maxmissinghealthmod",x.rank)??1, ampCap:1, label:"Resonating Strike (recast; × (1 + the target's missing health share))", later:"recast"});
         return r; }},
-    cc: {E:(S,r)=>[{type:"slow", dur:4, pct:(dvOf(S,"slowamount",r)||0)/100, decay:true, src:{dur:"wiki", pct:"dv:SlowAmount"}, text:"Cripple (recast): slows enemies marked by Tempest, decaying over 4 seconds"}]},
+    cc: {E:(S,r)=>[{type:"slow", dur:4, pct:(dvOf(S,"slowamount",r)||0)/100, decay:true, src:{dur:"wiki", pct:"dv:SlowAmount"}, text:"Cripple (recast): slows enemies marked by Tempest, decaying over 4 seconds"}],
+      // P6 F3 (wiki Lee_Sin/Dragon's_Rage: "roots the target enemy champion over the cast time, then … knock them back up to 800 units
+      // over 0.8 seconds, rendering them airborne for 1 second"): the primary target is airborne 1 s (the 0.8 s is the travel); the 1 s
+      // knock-up is only for enemies it collides with (not modelled: one target)
+      R:(S,r)=>[{type:"root", dur:0.25, src:{dur:"wiki"}, text:"Dragon's Rage roots the target over the 0.25 s cast time"},
+        {type:"knockback", dist:800, dur:1, src:{dist:"wiki", dur:"wiki"}, text:"knocked back up to 800 units over 0.8 s, airborne for 1 second"}]},
   },
   Jayce: {
     Q: {opts:{cannon:{bool:true, dflt:false, what:"Mercury Cannon's Shock Blast instead of the hammer's To the Skies!"}, gate:{bool:true, dflt:true, what:"(cannon) Shock Blast through Acceleration Gate (+40%)"}},
@@ -5245,7 +5392,39 @@ const KIT = {
           return r; }
         return [{...x.part("damage","magic"), label:"Transform (to hammer): bonus magic damage on the next attack", later:"attack"}]; }},
     cc: {Q:(S,r)=>[{type:"slow", dur:dvOf(S,"slowduration",r)||2, pct:Math.abs(dvOf(S,"slow",r)||0), src:{dur:"dv:SlowDuration", pct:"dv:Slow"}, text:"To the Skies!: slows enemies for 2 seconds"}],
-         E:(S,r)=>[{type:"knockback", dist:dvOf(S,"knockbackdistance",r)||600, dur:dvOf(S,"knockbackduration",r)||0.35, src:{dist:"dv:KnockbackDistance", dur:"dv:KnockbackDuration"}, text:"Thundering Blow: knocks the target back 600 units"}]},
+         // P6 F3 (wiki Jayce/Thundering_Blow "Jayce roots the target enemy over the cast time"): the 0.25 s root, then the knock-back
+         E:(S,r)=>[{type:"root", dur:0.25, src:{dur:"wiki"}, text:"Thundering Blow roots the target over the 0.25 s cast time"},
+           {type:"knockback", dist:dvOf(S,"knockbackdistance",r)||600, dur:dvOf(S,"knockbackduration",r)||0.35, src:{dist:"dv:KnockbackDistance", dur:"dv:KnockbackDuration"}, text:"Thundering Blow: knocks the target back 600 units"}]},
+  },
+  /* ---- P6 batch F3 (2026-09-25, groups g05 + g11): kit entries from the live wiki and data/interactions/<Champ>.json ---- */
+  // Knuckle Down: the bonus rides his next 2 attacks (CHAMP_MECH.Sett); .damage is both punches
+  Sett: {
+    Q: {parts(x){ return [{...scale(x.part("basedamage","physical"), 2, "punches"), label:"Knuckle Down: bonus on his next 2 attacks", later:"attack"},
+      {...scale(x.part("maxhealthdamagecalc","physical"), 2, "punches"), label:"Knuckle Down: % of the target's maximum health on 2 attacks", later:"attack"}]; }},
+    // Facebreaker's 1 s stun needs "at least one enemy on each side" (wiki Sett_E): never on fight()'s line, where every enemy is on
+    // one side of him, so only the pull and the 70% slow apply
+    cc: {E:(S)=>((S&&S.cc)||[]).filter(e=>e.type!=="stun")},
+  },
+  // Radiant Volley (wiki Mel/Radiant_Volley): "Initial Explosion Magic Damage 60 to 160 (+55% AP)", then "Magic Damage per Subsequent
+  // Explosion 5 to 13 (+5% AP)" for each of the other bolts ("Number of Bolts 6 to 10"; game data ExplosionCount); a spell shield
+  // blocks one explosion: the first (phys.shieldHits "first")
+  Mel: {
+    Q: {parts(x){ const n=x.dv("explosioncount")||6;
+      return [{...x.part("initialexplosiondamage","magic"), label:"Radiant Volley: the first explosion"}, {...scale(x.part("totalexplosiondamage","magic"), n-1, "later explosions"), label:`Radiant Volley: the other ${fmt(n-1)} explosions`}]; }},
+  },
+  // Mark of the Storm (wiki Kennen/Mark_of_the_Storm): the third mark stuns 1.25 s (0.5 s again within 6 s; fight(): passiveMarks)
+  Kennen: {
+    cc: {P:(S)=>[{type:"stun", dur:dvOf(S,"stunduration",1)||1.25, src:{dur:"dv:StunDuration"}, text:"the third Mark of the Storm stuns for 1.25 seconds (0.5 s if stunned by it in the last 6 s)"}]},
+  },
+  // Paranoia (wiki Nocturne/Paranoia): "nearsighting them for 6 seconds" (every enemy champion)
+  Nocturne: {
+    cc: {R:[{type:"nearsight", dur:6, src:{dur:"wiki"}, text:"Paranoia nearsights every enemy champion for 6 seconds"}]},
+  },
+  // Spray and Pray (wiki Twitch/Spray_and_Pray): his attacks become bolts in a line (120 wide er, 5000/s) "aimed at the target's location
+  // at the START of the windup" (data/interactions/Twitch.json R): the bolt leaves when his attack windup ends (phys.launchAt); the
+  // R cast itself has no cast time
+  Twitch: {
+    phys(c, slot, p){ if (slot!=="R") return; const st=stats(c); p.launchAt=attackTiming(c.champ, st, st.ranged).windup; },
   },
   Tristana: {
     statsFinal(c, st, notes){ const v=evalCalc({S:CALC.champs.Tristana.P, rank:1, st, flags:new Set()}, "bonuspassiverange").v;
@@ -5270,6 +5449,11 @@ const KIT = {
         return [{...p, ampBelow:{pct:dvOf(x.S,"critthreshold",x.rank)??0.5, amp}, label:"Elemental Wrath (Terrain)"}]; }},
     W: {parts(x){ return [{...x.part("onhitdamage","magic"), label:"Terrashape passive: bonus magic on each attack and basic-ability hit while holding an element", later:"onhit"}]; }},
     R: {parts(x){ return [x.part("damage","physical"), {...x.part("missinghealthdamagerock","physical"), pctOf:"max", label:"10% of the target's maximum health"}]; }},
+    /* P6 F4 (wiki Supreme Display of Talent: the windblast "knocks back enemies hit by 375 units"; the shockwave "across any River or Brush
+       it passes through, as well as around the borders of Terrain it reaches" stuns): the export had the conditions the wrong way round
+       (the knockback terrain-only, the stun on every hit). Here the knockback always applies and the stun needs river/brush/terrain,
+       which the 1-D line doesn't have (cond: left out of fight()) */
+    cc: {R:(S)=>((S && S.cc) || []).map(e=>{ const x={...e}; if (x.type==="knockback") delete x.cond; else if (x.type==="stun") x.cond="terrain"; return x; })},
   },
   Jhin: {
     // Whisper (wiki): attack speed fixed at 0.625 × (1 + 3% per level growth); bonus attack speed and crit give AD instead:
@@ -5420,6 +5604,11 @@ const KIT = {
   /* ---- champion audit batch 3 (2026-09-24): the most-played champions in solo queue without a test file (draft_stats.json);
      live wiki Template:Data_<Champ>/<slot> and the game files (data/raw/cdragon_bins); game files win where they disagree ---- */
   Nautilus: {
+    /* P6 F4 (wiki Riptide: three waves at 0, 0.297 and 0.561 s after the 0.25 s cast, radii 0–350 / 215–465 / 350–590, centred (cr);
+       data/interactions/Nautilus.json E): not a ring expanding at a speed; a target at d is first hit by the first wave whose outer radius
+       covers it (flightTime, phys.waves). canDodge then asks the defender to leave the whole 590 before that first wave (conservative:
+       outrunning the later waves isn't modelled) */
+    phys(c, slot, p){ if (slot!=="E") return; p.speed=0; p.waves=[[350, 0], [465, 0.297], [590, 0.561]]; p.speedNote="three waves (wiki), not an expanding ring"; },
     // Staggering Blow (wiki; game data P BonusDamage 8 + 6 per level = 14–116, RootDuration 0.75 +0.25 at 6/11/16): bonus PHYSICAL
     // damage and a root on his attack, once per target every 6 s
     P: {parts(x){ return [{...x.part("bonusdamage","physical",null,x.P,1), label:"Staggering Blow: bonus physical on an attack (once per target every 6 s)", later:"attack"}]; }},
@@ -5466,6 +5655,9 @@ const KIT = {
     Q: {opts:{detonation:{bool:true, dflt:true, what:"the detonation (2 s later, 0.2 s if the round hits terrain)"}},
       parts(x){ const r=[x.part("totaldamage","physical")]; if (x.o.detonation) r.push({...x.part("totaldetonationdamage","physical"), label:"detonation", later:"delay"}); return r; }},
     E: {parts(x){ return [{label:`Quickdraw (no damage: dash, attack reset, reloads a shell, True Grit +${fmt(x.dv("armorperstack")||0)} armor per stack)`, v:0, s:"0", type:"physical", later:"buff"}]; }},
+    // P6 F4 (wiki Smoke Screen: enemies inside are nearsighted for 4 s; data/interactions/Graves.json W cc nearsight 4): the export's
+    // slow plus the nearsight (fight(): no vision on the 1-D line, so it only counts as impairing, e.g. for Cheap Shot)
+    cc: {W:(S)=>[...((S && S.cc) || []), {type:"nearsight", dur:4, src:{dur:"wiki"}, text:"Smoke Screen: nearsighted 4 s inside the smoke"}]},
   },
   Jinx: {
     P: {none:"Get Excited! has no damage: a takedown gives 175% decaying move speed and +25% total attack speed per stack for 6 s (fight())"},
@@ -5627,7 +5819,10 @@ const KIT = {
     R: {opts:{seconds:{min:0, max:15, dflt:15, what:"seconds the target stays in the storm (15 s = the whole duration)"}},
       parts(x){ const p=x.part("damagecalc","magic"); x.note("the storm deals at most 240 per second (fight())");
         return [{...scale(p, x.o.seconds, "seconds"), pctOf:"max", label:`storm: ${fmt(p.v*100)}% of maximum health per second × ${x.o.seconds} s`, later:"aura", per:p.v}]; }},
-    cc: {W:(S,r)=>[{type:"slow", dur:dvOf(S,"duration",r)||5, pct:(dvOf(S,"slowbase",r)||35)/100, src:{dur:"dv:Duration", pct:"dv:SlowBase"}, text:"Wither slows 35%, +3–15% each second (fight())"}]},
+    // P6 F4 (wiki Wither: "slowing them by 35% and crippling them by 75% of that amount, both increasing every second"; game data
+    // AttackSpeedSlowMult 0.75; data/interactions/Nasus.json W cc cripple 5 s): the cripple grows with the slow (fight(): CHAMP_MECH)
+    cc: {W:(S,r)=>[{type:"slow", dur:dvOf(S,"duration",r)||5, pct:(dvOf(S,"slowbase",r)||35)/100, src:{dur:"dv:Duration", pct:"dv:SlowBase"}, text:"Wither slows 35%, +3–15% each second (fight())"},
+         {type:"cripple", dur:dvOf(S,"duration",r)||5, pct:(dvOf(S,"slowbase",r)||35)/100*(dvOf(S,"attackspeedslowmult",r)||0.75), src:{dur:"dv:Duration", pct:"dv:SlowBase × AttackSpeedSlowMult"}, text:"and cripples 75% of the slow (attack speed), growing with it (fight())"}]},
   },
   Jax: {
     P: {none:"Relentless Assault has no damage: each attack gives +5% to 12.5% attack speed by level (game data AttackSpeedPerStack), 8 stacks, 2.5 s (fight())"},
@@ -5878,7 +6073,14 @@ const KIT = {
     Q: {opts:{isolated:{bool:true, dflt:true, what:"the target is isolated (no other enemy within 375: ×2.1)"}}, sim:()=>({isolated:true}),
       parts(x){ return [x.o.isolated ? {...x.part("spell.khazixq:isodamage","physical"), label:"Taste Their Fear (isolated target, ×2.1)"} : x.part("spell.khazixq:basedamage","physical")]; }},
     R: {parts(x){ return [{label:"Void Assault (no damage: invisible, then Unseen Threat)", v:0, s:"0", type:"physical", later:"stealth"}]; }},
-    cc: {W:(S,r,c)=>kitEvolved(c).includes("W") ? [{type:"slow", pct:(dvOf(S,"slowpercentage",r)||40)/100, dur:dvOf(S,"slowduration",r)||2.25, src:{pct:"dv:SlowPercentage", dur:"dv:SlowDuration"}, text:"Evolved Spike Racks slows 40% (60% isolated) for 2.25 s"}] : []},
+    // P6 F4 (wiki Unseen Threat; game data P SlowAmount, SlowDuration): the empowered attack slows 25% for 2 s (fight(): CHAMP_MECH attack); for .ccDuration on P
+    cc: {P:()=>{ const P=CALC.champs.Khazix.P; return [{type:"slow", pct:dvOf(P,"slowamount",1)||0.25, dur:dvOf(P,"slowduration",1)||2, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"Unseen Threat: his next attack on a champion slows 25% for 2 s"}]; },
+         W:(S,r,c)=>kitEvolved(c).includes("W") ? [{type:"slow", pct:(dvOf(S,"slowpercentage",r)||40)/100, dur:dvOf(S,"slowduration",r)||2.25, src:{pct:"dv:SlowPercentage", dur:"dv:SlowDuration"}, text:"Evolved Spike Racks slows 40% (60% isolated) for 2.25 s"}] : []},
+  },
+  Vex: {
+    /* P6 F4 (wiki Doom 'n Gloom: Doom-empowered abilities "fear enemies hit for 0.75 to 1.5" by level (1/6/9/13); game data P
+       FearDuration, the same breakpoints): for .ccDuration on P. fight() has no Doom model (the empowered ability isn't tracked) */
+    cc: {P:(S,r,c)=>[{type:"fear", dur:evalCalc({S:CALC.champs.Vex.P, rank:1, st:stats(c), flags:new Set()}, "fearduration").v||0.75, src:{dur:"dv:FearDuration"}, text:"Doom: her next ability fears 0.75/1/1.25/1.5 s (levels 1/6/9/13)"}]},
   },
   Shen: {
     P: {none:"Ki Barrier has no damage: a shield after his abilities (fight())"},
@@ -6016,6 +6218,17 @@ const KIT = {
     cc: {E:(S,r)=>[{type:"slow", pct:(dvOf(S,"slowamount",r)||90)/100, dur:dvOf(S,"ccduration",r)||1.75, src:{pct:"dv:SlowAmount", dur:"dv:CCDuration"}, text:"slowed 1.75 s (rooted instead when empowered: fight())"}]},
   },
   Vi: {
+    /* P6 F4 (wiki Vault Breaker: no cast time for the release; the dash range grows from 250 to 725 over the 1.25 s charge; data/interactions/
+       Vi.json Q range 250–725 "by charge 0–1.25 s", charge up to 4 s): the game file's 0.484 s was the charge lock; the charge is now
+       phys.charge (+19 units every 0.05 s = 475 over 1.25 s): .arrival / canDodge charge just enough to reach the target, fight()
+       charges fully (the ×2.5 damage it deals) before the dash (dashInfo) */
+    /* P6 F4 (wiki Cease and Desist: "Upon approaching within 300 units of the target, she ... grabs them over 1.05 seconds, knocking them
+       up for 1.3 seconds and dealing physical damage after 0.75 seconds into the grab duration"; data/interactions/Vi.json R delay null):
+       the knock-up lands with the grab, so R's landing (.arrival, canDodge) has no 0.75 s delay; fight() deals the damage 0.75 s after
+       the grab (CHAMP_MECH.Vi). Her speed ramp from 800 and the 300-unit grab range aren't modelled (800/s over the whole distance) */
+    phys(c, slot, p){
+      if (slot==="Q"){ p.castTime=0; p.castTimeSource="wiki: none (the release)"; p.charge={base:250, per:19, step:0.05, init:0, max:725}; }
+      if (slot==="R" && p.delay){ p.delayDamage=p.delay; p.delay=0; } },
     P: {none:"Blast Shield has no damage: her next ability hit shields her for 10% of her maximum health (3 s; 16–12 s cooldown, −4 s per Denting Blows; fight())"},
     // Vault Breaker charged 1.25 s: ×2.5 (game data MaxDamageMult); the charge time itself isn't modelled in fight()
     Q: {opts:{charged:{bool:true, dflt:true, what:"charged the full 1.25 s (×2.5)"}},
@@ -6098,7 +6311,10 @@ const KIT = {
     E: {parts(x){ return [{label:"Unbreakable (no damage: blocks the first hit, then less damage taken)", v:0, s:"0", type:"physical", later:"buff"}]; }},
     // Glacial Fissure: the first target knocked up 0.6 → 1–2 s by distance (game data MinKnockup, MaxKnockup); the field slows 40–60% (game
     // data MoveSpeedMod) while inside, taken as the field's 4 s (SlowZoneDuration)
-    cc: {R:(S,r)=>[{type:"knockup", dur:dvOf(S,"maxknockup",r)||2, durMin:dvOf(S,"minknockup",r)||0.6, src:{dur:"dv:MaxKnockup", durMin:"dv:MinKnockup"}, text:"knocked up 0.6 s, more farther away"},
+    // P6 F4 (wiki Concussive Blows "stun them for 1.25 to 1.75 seconds" at levels 1/7/13; game data P StunDuration): the 4th stack's stun
+    // (fight(): kitBraumStack); for .ccDuration on P
+    cc: {P:(S,r,c)=>[{type:"stun", dur:evalCalc({S:CALC.champs.Braum.P, rank:1, st:stats(c), flags:new Set()}, "stunduration").v||1.25, src:{dur:"dv:StunDuration"}, text:"Concussive Blows: the 4th stack stuns 1.25/1.5/1.75 s (levels 1/7/13)"}],
+         R:(S,r)=>[{type:"knockup", dur:dvOf(S,"maxknockup",r)||2, durMin:dvOf(S,"minknockup",r)||0.6, src:{dur:"dv:MaxKnockup", durMin:"dv:MinKnockup"}, text:"knocked up 0.6 s, more farther away"},
          {type:"slow", pct:(dvOf(S,"movespeedmod",r)||60)/100, dur:dvOf(S,"slowzoneduration",r)||4, src:{pct:"dv:MoveSpeedMod", dur:"dv:SlowZoneDuration"}, text:"slowed by the ice field (taken as its 4 s)"}]},
   },
   MonkeyKing: {
@@ -6219,6 +6435,11 @@ const KIT = {
     cc: {E:(S,r)=>[{type:"slow", pct:dvOf(S,"slowamount",r)||0.6, dur:dvOf(S,"slowduration",r)||2, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"slowed 35–60% for 2 s by the splash"}]},
   },
   Sivir: {
+    /* P6 F3 (wiki Template:Data_Sivir/Boomerang_Blade cast time "0.25 × (1 − 0.5 per 100% bonus attack speed), capped at 60% reduction at
+       120%"; "the technical minimum cast time is 0.1875 reached at 99.8% bonus attack speed" (tick rounding, live)): the cast time from
+       her bonus attack speed */
+    phys(c, slot, p){ if (slot!=="Q") return; const bas=Math.max(0, stats(c).bonusas||0);
+      p.castTime=Math.max(0.1875, 0.25*(1-0.5*Math.min(1.2, bas))); p.castTimeSource=`wiki: 0.25 × (1 − 0.5 × ${fmt(100*bas)}% bonus attack speed), live minimum 0.1875`; },
     // Boomerang Blade: the same damage on the way out and back (each enemy once per pass; wiki Total ×2); game data TotalDamage (with the
     // 40% crit scaling)
     Q: {opts:{passes:{min:1, max:2, dflt:2, what:"passes that hit the target (out and back)"}}, sim:()=>({passes:2}),
@@ -6579,7 +6800,7 @@ const EMPOWER_NEXT = {
      invulnFar     {from, until, beyond}: invulnerable only to enemy champions farther than `beyond` (Xin Zhao R) */
 /* Caster windows that the kits set themselves (the generic grant code in cast() skips them): Zed R, Pantheon E, Naafiri W and Olaf R,
    Fiora W in CHAMP_MECH; Lissandra R's stasis is only for a self-cast (fight() casts it on an enemy). */
-const KIT_OWN_GRANTS = new Set(["Zed.R","Pantheon.E","Naafiri.W","Olaf.R","Fiora.W","Lissandra.R"]);
+const KIT_OWN_GRANTS = new Set(["Zed.R","Pantheon.E","Naafiri.W","Olaf.R","Fiora.W","Lissandra.R","Gwen.W"]);   // Gwen.W (P6 F4): untargetable only to enemies outside the mist (CHAMP_MECH.Gwen)
 /* a grants window [start, end] (seconds from the press) as numbers, or null. The sheets write an end that depends on something as
    null (ends on an event: Kayn R) or {min, max, by}: by "rank" → the value at this rank; otherwise the documented lower bound (min;
    Maokai W "dash length / 1300": its dash code covers the real window). A null end takes GRANT_NOTES' `until` (a documented bound). */
@@ -7009,6 +7230,8 @@ function landTime(p, d){ return (p.flightFrom==="press" ? 0 : (p.launchAt ?? (p.
 /* The flight to a target d units away: a fixed-time missile (phys.fixedTravel: Zilean Q 0.45 s), a missile with a minimum flight
    (phys.minTravel: Corki Q 0.227 s), a dash with no missile (phys.dashSpeed: Poppy E, Wukong E), else the missile's own travel */
 function flightTime(p, d){ if (p.fixedTravel!=null) return p.fixedTravel;
+  // P6 F4: waves at fixed times, each reaching an outer radius (phys.waves [[outer, s after the cast], …]: Nautilus E): the first wave that covers d
+  if (p.waves){ const w=p.waves.find(w=>d <= w[0]+1e-6) || p.waves[p.waves.length-1]; return w[1]; }
   // P6 F2: a missile that always covers its (charged) range in p.rangeTravel s (Janna Q, wiki "Always travels for 1.25 seconds")
   if (p.rangeTravel) return p.rangeTravel * d / Math.max(1, p.charge ? Math.min(Math.max(d, p.charge.base), p.charge.max) : (p.range || d));
   if (p.flightFrom==="press" && p.pressMissile && !p.speed) return travelTime({...p, ...p.pressMissile}, travelDist({...p, ...p.pressMissile}, d));
@@ -7028,7 +7251,7 @@ function arrivalTime(c, slot, d, p0){
   const t = landTime(p, d);
   line(`${describePhys(`${label(c)}.${slot}`, p)}`);
   line(`  ${deliveryLine(c, p, d, tr, travel)}`);
-  const how = p.fixedTravel!=null ? (p.fixedTravel ? ` + ${fmt(p.fixedTravel)}s fixed flight` : "") : p.rangeTravel ? ` + ${fmt(tr)}s travel (it covers its ${p.charge?"charged ":""}range in ${fmt(p.rangeTravel)}s)` : !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
+  const how = p.fixedTravel!=null ? (p.fixedTravel ? ` + ${fmt(p.fixedTravel)}s fixed flight` : "") : p.waves ? ` + ${fmt(flightTime(p, d))}s for the first wave that reaches ${fmt(d)} (waves out to ${p.waves.map(w=>`${fmt(w[0])} at +${fmt(w[1])}s`).join(", ")}; wiki)` : p.rangeTravel ? ` + ${fmt(tr)}s travel (it covers its ${p.charge?"charged ":""}range in ${fmt(p.rangeTravel)}s)` : !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
   const ch = p.charge ? ` + ${fmt(chargeTime(p, d))}s charging to reach ${fmt(Math.min(d, p.charge.max))} (${fmt(p.charge.base)} + ${fmt(p.charge.per)} per ${fmt(p.charge.step)}s after ${fmt(p.charge.init)}s)` : "";
   if (p.flightFrom==="press"){ const M=p.pressMissile||p;
     line(`  launched at the key press (the ${fmt(p.castTime)}s cast time runs alongside): ${fmt(travel)} units at ${fmt(M.speed)}/s accelerating ${fmt(M.accel)}/s² to ${fmt(M.maxSpeed)} = ${fmt(tr)}s${p.delay?` + ${fmt(p.delay)}s`:""} = ${fmt(t)}s after the press`);
@@ -7061,7 +7284,9 @@ function dashInfo(c, slot){
   // F1: a blink that waits for its object to arrive (phys.blinkDelay: Zed W, the shadow flies 650 at 2500/s and the buffered recast
   // swaps "once it has been placed", wiki Zed_W)
   if (blink && p.blinkDelay && TR) TR.notes.add(`${label(c)}.${slot}: blinks ${fmt(p.blinkDelay)} s after the press (${p.blinkWhy||"phys.blinkDelay"})`);
-  return {dist, time: p.castTime + (blink ? (p.blinkDelay||0) : dist/speed), blink, castTime:p.castTime};
+  // P6 F4: a charged dash (phys.charge: Vi Q) charges to its full dash range before it starts (the charge counts as its cast time here)
+  const ch = p.charge ? chargeTime(p, dist) : 0;
+  return {dist, time: ch + p.castTime + (blink ? (p.blinkDelay||0) : dist/speed), blink, castTime:p.castTime + ch};
 }
 function canDodge(def, ab, named){
   if (!def || def.t!=="champ") throw new Error("canDodge(defender, ability, distance: …) needs a Champion first");
@@ -7100,7 +7325,7 @@ function canDodge(def, ab, named){
   const reveal = Math.min(revealOf(p), T), tp0 = reveal + react, win = T - reveal, avail = win - react;
   line(`  ${label(def)} can react from ${fmt(reveal)}s (${revealWhy(p)}); it ${G?"stuns":"lands"} ${fmt(win)}s later: ${fmt(win)}s − ${fmt(react)}s reaction = ${fmt(avail)}s to respond`);
   const ds=stats(def), Y=named.using;
-  const acts = Y ? (Y.t==="list" ? Y.items : [Y]).map(y=>dodgeAction(def, y, !!named.preBuff, ds, !!named.recast, a, d)) : [];
+  const acts = Y ? (Y.t==="list" ? Y.items : [Y]).map(y=>dodgeAction(def, y, !!named.preBuff, ds, !!named.recast, a, d, s)) : [];
   const fmtW = w => `${fmt(w.s)}–${Number.isFinite(w.e) ? fmt(w.e) : "…"}s`;
   // the hit lands: does its crowd control? (cc: true asks exactly that; otherwise the answer is the hit, with the CC note in the trace)
   const hit = why => { line(`  → ${why||"hit"}`); stormLine(def, a, s, p, d, HB, ds);
@@ -7154,6 +7379,12 @@ function canDodge(def, ab, named){
       const how = inF==="invalidated" ? `untargetable while it is in flight voids it (wiki; phys.inFlight)` : inF==="destroyed" ? `going untargetable destroys the inbound projectile (wiki Untargetable)` : `untargetable when it lands, so it isn't applied`;
       line(`  ${x.label}: untargetable ${fmtW(w)} after its press, from ${fmt(tp0 + w.s)}s ≤ ${fmt(T)}s: ${how} → dodged`); return true; }
     for (const x of acts) if (x.unseen && !x.unseen.pre && tp0 + x.unseen.s > (p.flightFrom==="press" ? 0 : (p.castTime||0)) + 1e-9) line(`  ${x.label}: unseen only after ${who} was cast; a point-and-click spell already cast still lands (set preBuff: true if ${label(def)} was already unseen)`);
+    // P6 F3, DECISIONS 21 (phys.leapTo "press": Jayce hammer Q): the leap lands where the target stood at the press and its area hits
+    // whoever is there on landing, so leaving that area (walking, Flash, a dash) before it lands dodges it
+    if (p.leapTo==="press"){ const R=p.leapRadius||p.radius||0, need=R+areaPad(p.radiusMode, HB), mv=bestMove(def, acts, ds, avail, null);
+      line(`  it leaps to where ${label(def)} stood at the press and hits a ${fmt(R)} radius there (DECISIONS 21): must move ${fmt(need)} units${p.radiusMode==="cr"?" (centred, DECISIONS 29)":` (${fmt(R)} + ${fmt(HB)} hitbox)`}; in ${fmt(avail)}s: ${mv.plan} → ${fmt(mv.dist)} units`);
+      if (mv.dist >= need - 1e-6){ line(`  → dodged: ${label(def)} isn't there when it lands`); return true; }
+      return hit(); }
     line(`  ${who} is point-and-click: once cast, walking can't dodge it`);
     return hit();
   }
@@ -7320,7 +7551,7 @@ function blockCheck(def, a, s, p, d, HB, acts, tp0, T, who, named){
   return null; }
 /* spell-shield items in using: (P4): Banshee's Veil and Edge of Night (Annul) — up before the fight, blocking the first ability */
 const SHIELD_ITEMS = {bansheesveil:"Banshee's Veil", edgeofnight:"Edge of Night"};
-function dodgeAction(def, y, preBuff, ds, recast, att, dist){
+function dodgeAction(def, y, preBuff, ds, recast, att, dist, atkSlot){
   if (y && (y.t==="item" || typeof y==="string")){
     const key = typeof y==="string" ? (/^\s*stop\s*watch\s*$/i.test(y) ? "seekersarmguard" : /zhonya/i.test(y) ? "zhonyashourglass" : /banshee/i.test(y) ? "bansheesveil" : /edge\s*of\s*night/i.test(y) ? "edgeofnight" : null) : y.key;
     if (key && SHIELD_ITEMS[key]){ const nm=SHIELD_ITEMS[key];
@@ -7360,6 +7591,13 @@ function dodgeAction(def, y, preBuff, ds, recast, att, dist){
     for (const w of x.void) bits.push(`${w.kind} ${fmt(w.s)}–${Number.isFinite(w.e)?fmt(w.e):"…"}s after its press${w.kind==="untargetable"&&!w.destroys?" (doesn't destroy projectiles already in flight)":""}`);
     for (const w of x.ccImm) bits.push(`${w.kind==="cc"?"crowd control":"displacement"} immune ${fmt(w.s)}–${Number.isFinite(w.e)?fmt(w.e):"…"}s`);
   } else if (tags.untargetable!==undefined || tags.invuln!==undefined){ x.void.push({kind:"untargetable", s:py.castTime||0, e:Infinity, destroys:true, fromTags:true}); bits.push(`untargetable after its ${fmt(py.castTime||0)}s cast (kb tag; no sheet window yet)`); }
+  // P6 F4 (phys.untargetableOutside, from KIT.<champ>.phys: Gwen W 480 cr): untargetable only to an attacker whose centre is outside the
+  // area when its effect lands (DECISIONS 22); a dash or blink ends next to the defender (inside), anything else lands from where it was cast
+  if (py.untargetableOutside && x.void.some(w=>w.kind==="untargetable")){ const R0=py.untargetableOutside, tg=(att && atkSlot && WORLD.champ(att.champ).slots[atkSlot]) ? WORLD.champ(att.champ).slots[atkSlot].tags : {},
+      ends=tg.dash!==undefined || tg.blink!==undefined, at = ends ? 0 : dist;
+    if (at==null || at <= R0+1e-6){ x.void=x.void.filter(w=>w.kind!=="untargetable");
+      bits.push(`but only to enemies outside its ${fmt(R0)} area (centre; DECISIONS 22): ${att ? `${label(att)}${atkSlot?`.${atkSlot}`:""} ${ends?"dashes or blinks in, inside it when it lands":`is ${fmt(dist)} units away, inside it`}` : "no attacker position given"}, so it doesn't help`); }
+    else bits.push(`to ${label(att)} only because it is ${fmt(dist)} units away, outside the ${fmt(R0)} area when its ${atkSlot||"ability"} lands (DECISIONS 22)`); }
   // P4: a spell shield (phys.grants.spellShield: Sivir E, Nocturne W; Morgana E has none, DECISIONS 17) and the projectile walls (WALLS)
   if (Gr && Gr.spellShield){ x.shield={s:winBound(Gr.spellShield[0]), e:winBound(Gr.spellShield[1], true)}; bits.push(`spell shield ${fmt(x.shield.s)}–${Number.isFinite(x.shield.e)?fmt(x.shield.e):"…"}s after its press`); }
   { const rk=Math.max(1, rankOf(def, y.slot)||1), WS=wallSpecOf(def.champ, y.slot, rk);
