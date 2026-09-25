@@ -1046,7 +1046,7 @@ function simulate(sidesIn, T, simNotes, fo){
       if (b.heal) heal(x,x,b.heal,t,`${s} spell shield block`); return true; }
     return false;
   }
-  /* P3 (interaction audit): spell shields per hit, from the ability's page (a.p.spellShield; SIM_INTERIM_P3 until P1 exports it).
+  /* P3 (interaction audit): spell shields per hit, from the ability's page (a.p.spellShield, calc.json phys).
      Returns null (nothing blocked) | "all" | "one" (one hit: the rest land) | "cc" (only the crowd control) | "dmg" (only the damage).
      A kit dealing later hits of its own asks blockedHit() per hit (P6). */
   function shieldHit(u,a,x,t){ const m=(a.p && a.p.spellShield) || "blocks";
@@ -6077,7 +6077,7 @@ const KIT = {
            {type:"slow", pct:kitAsheSlow(c, false), dur:dvOf(CALC.champs.Ashe.P,"slowduration",1)||2, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"Frost Shot's slow"}]},
   },
   Fizz: {
-    P: {none:"Nimble Fighter has no damage: every damage instance he takes is 4 (+1% AP) lower before resistances, at most 50% (not modelled yet: needs a pre-mitigation hook in fight())"},
+    P: {none:"Nimble Fighter has no damage: every damage instance he takes is 4 (+1% AP) lower before resistances, at most 50% (fight(): applied in deal() before resistances)"},
     // Seastone Trident: the active's bonus magic on his next attack (50–150 + 45% AP, game data ActiveDamage; attack reset), then 20–40
     // (+30% AP) on-hit for 5 s (OnHitBuffDamage); passive: his attacks bleed 30–90 (+25% AP) magic over 3 s (DoTDamage; fight())
     W: {parts(x){ return [{...x.part("activedamage","magic"), label:"Seastone Trident: his next attack's bonus (fight(): + the on-hit for 5 s; attacks bleed)", later:"attack"}]; }},
@@ -6429,11 +6429,8 @@ const EMPOWER_NEXT = {
   Garen:{Q:{win:4.5, reset:true}}, Darius:{W:{win:4, reset:true}}, Jax:{W:{win:10, reset:true}}, Leona:{Q:{win:6, reset:true}},
   Trundle:{Q:{win:7, reset:true}}, Kassadin:{W:{win:5, reset:true}}, Yorick:{Q:{win:5, reset:true}}, Volibear:{Q:{win:4, reset:true}},
 };
-/* ===== SIM_INTERIM_P3 (P3 of the interaction audit, 2026-09-24): RESIDUAL per-ability data for fight()/perform() =====
-   P1 now exports the sheets' fields into calc.json phys (which wins in physOf → simInterim: defaults < this table < P2's SIM_INTERIM
-   < calc.json phys). Only what the sheets have no field for stays here (outputs/interactions/P1_DIFF.md): shieldHits "first" (Ahri Q)
-   and "spheres" (Syndra R). Move them to the sheets' sim blocks and delete this table.
-   The phys fields fight() reads (the P1 names):
+/* P3 of the interaction audit (2026-09-24): the per-ability fields fight()/perform() read from calc.json phys (exported from the sheets'
+   sim blocks by src/ P1; the interim table SIM_INTERIM_P3 is gone):
      spellShield   how a spell shield (Banshee's, Edge of Night, Verdant Barrier, Sivir E, Nocturne W) meets the cast on one target:
                    "blocks" (default: the whole cast) | "not" (never blocked; the shield isn't used up) | "oneHit" (the shield takes one
                    hit / sphere / dagger / pass / tick, the rest land) | "ccOnly" (only the crowd control is blocked, the damage lands) |
@@ -6450,10 +6447,6 @@ const EMPOWER_NEXT = {
      grants        the caster's own windows, s from the press (where P2's table has none)
      untargetableDash:true  untargetable from the press until the dash arrives (the window depends on the distance)
      invulnFar     {from, until, beyond}: invulnerable only to enemy champions farther than `beyond` (Xin Zhao R) */
-const SIM_INTERIM_P3 = {
-  "Ahri.Q":{shieldHits:"first"},      // sheet: 'a shield blocks one pass, the other pass still hits' — the out pass (magic) is the first part
-  "Syndra.R":{shieldHits:"spheres"},  // wiki: 'Spell shield will only block the damage of a single sphere.' — the kit's sphere count
-};
 /* Caster windows that the kits set themselves (the generic grant code in cast() skips them): Zed R, Pantheon E, Naafiri W and Olaf R,
    Fiora W in CHAMP_MECH; Lissandra R's stasis is only for a self-cast (fight() casts it on an enemy). */
 const KIT_OWN_GRANTS = new Set(["Zed.R","Pantheon.E","Naafiri.W","Olaf.R","Fiora.W","Lissandra.R"]);
@@ -6487,7 +6480,7 @@ const GRANT_NOTES = {
    whole step: a hit resolving on the cast step doesn't land, and can't start or cancel First Strike. Zed R (Death Mark) and
    Pantheon E (Aegis Assault, modelled as untargetable) set theirs in their kits; the rest (no kit of their own) use this table:
      P3 (interaction audit, 2026-09-24): the hand table CAST_UNTARGETABLE (Fizz E, Vladimir W, Master Yi Q, Kayn R) is replaced by the
-   sheets' grants windows (a.p.grants: SIM_INTERIM / SIM_INTERIM_P3 until P1 exports them; castGrants in simulate) — which adds Ekko R,
+   sheets' grants windows (a.p.grants, calc.json phys; castGrants in simulate) — which adds Ekko R,
    Evelynn R, Xayah R, Camille R (from the press) and Shaco R, Rek'Sai R, Galio R (later windows); GRANT_NOTES keeps the lockouts.
    Not modelled: Elise's spider-form E (Rappel, untargetable at once for up to 1.95 s): fight() has no spider form.
    castStartSlot(champ): the champions with a window from the press act first in a step (lazily built: the interim tables are
@@ -6613,7 +6606,7 @@ function levelRangeBonus(c, slot){
 /* ===== SIM_INTERIM (P2 of the interaction audit, 2026-09-24): INTERIM per-ability data, DELETE when P1 lands =====
    Until src/interactions_export.py (P1) exports the sheets' typed `sim` blocks (data/interactions/<C>.json) into calc.json phys,
    this hand-copied table supplies the fields canDodge needs, with each sheet's wiki evidence in the sheet itself. physOf is the ONE
-   merge point: calc.json phys wins, then this table, then P3's SIM_INTERIM_P3 (region T). Field names are the P1 phys names:
+   merge point: calc.json phys wins, then this table (P3's SIM_INTERIM_P3 is deleted). Field names are the P1 phys names:
      hostile:false            the ability has no effect on enemies (heal / buff / ally / self): canDodge says "no enemy effect"
      reactFrom:"castEnd"      the aim follows the cursor during the cast (DECISIONS 27); otherwise every cast is seen from the press (28)
      cancelOn:[…]             what cancels a unit-targeted cast during its cast time (DECISIONS 3; default untargetable, stasis,
@@ -6670,9 +6663,8 @@ const SIM_INTERIM = (()=>{
     "Trundle.W Tryndamere.Q Tryndamere.R Twitch.Q Udyr.W Vayne.R Viego.E Xayah.W Yasuo.W Yunara.E Yunara.R Yuumi.W Yuumi.E "+
     "Zilean.W Zilean.R Zoe.R").split(" ")) T[k] = {...(T[k]||{}), hostile:false};
   return T; })();
-/* read accessor (one interim path, shared with P3): the interim fields for champ.slot, P2's over P3's */
-function simInterim(champ, slot){ const k=`${champ}.${slot}`, p3=(typeof SIM_INTERIM_P3!=="undefined" && SIM_INTERIM_P3[k]) || {};
-  return {...p3, ...(SIM_INTERIM[k]||{})}; }
+/* read accessor: the interim fields for champ.slot (P3's SIM_INTERIM_P3 is deleted: calc.json phys carries its fields) */
+function simInterim(champ, slot){ return {...(SIM_INTERIM[`${champ}.${slot}`]||{})}; }
 function physOf(c, slot){
   const S=CALC.champs[c.champ][slot]||{}, w=WORLD.champ(c.champ), sl=w.slots[slot]||{tags:{}};
   const p={speed:0, castTime:0.25, delay:0, ...simInterim(c.champ, slot), ...(S.phys||{})};
