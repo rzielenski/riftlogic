@@ -2598,6 +2598,18 @@ function simulate(sidesIn, T, simNotes, fo){
             simNotes.add(`${u.name} Q: Dragon Strike reaches the flag: he dashes to it and knocks up enemies on the way (0.75 s)`); }
           else { a.cc=a.ccAll.filter(e=>e.type!=="knockup"); simNotes.add(`${u.name} Q: Dragon Strike knocks up only when it reaches his Demacian Standard (E within 8 s)`); } }
         if (a.slot==="W" && a.shield){ const n=enemiesOf(u,t).filter(x=>!x.pet && gap(u,x) <= 600+RAD(x)).length; a.shield+=0.013*u.max*n; } },
+      /* F1 (wiki JarvanIV_R "leaps … to the target enemy champion's location over 0.35 seconds"; DECISIONS 13): the impact lands 0.35 s
+         (phys.fixedTravel) after the press, on the target wherever it went; a target that turns untargetable during the leap takes no
+         damage, but he still lands there and the arena forms; killed while leaping, nothing happens (wiki) */
+      startCast(u, a, tgt, t, d0){ if (a.slot!=="R" || u.script || !tgt) return false;
+        const lt=(a.p && a.p.fixedTravel)||0.35, land=t+lt, step=u.curStep ?? null, L={started:true, deferred:true, castOk:true, voided:false};
+        castStart(u, a, t); u.nextAct=Math.max(u.nextAct, land); u.nextAA=Math.max(u.nextAA, land);
+        say(t, `${u.name} casts R on ${tgt.name}: leaps onto ${tgt.name} over ${fmt(lt)}s`);
+        for (let k=0; k*dt < lt-1e-9; k++) events.push({at:t+k*dt, fn:(tt)=>{ if (L.voided || !tgt.alive || !inStasis(tgt,tt)) return;
+          L.voided=tt; say(tt, `  ${tgt.name} is untargetable during ${u.name}'s leap: Cataclysm deals ${tgt.name} no damage (the arena still forms, DECISIONS 13)`); }});
+        events.push({at:land, fn:(tt)=>{ if (!u.alive) return; const prev=u.curStep; u.curStep=step; resolveCast(u, a, tgt, tt, d0, L); u.curStep=prev; }});
+        simNotes.add(`${u.name} R: Cataclysm lands ${fmt(lt)} s after the press (the leap, wiki); an untargetable target takes no damage but the arena forms (DECISIONS 13)`);
+        return true; },
       afterCast(u, a, tgt, t){ if (a.slot==="Q"){ if (a.ccAll) a.cc=a.ccAll;
           if (tgt && tgt.alive && a.parts.length && inReach(u,a,tgt)) (tgt.kitShred ||= {}).j4Q={until:t+3, pct:dvOf(a.S,"basearshred",a.rank)||0.1}; }
         if (a.slot!=="R" || !tgt) return;
@@ -2762,6 +2774,9 @@ function simulate(sidesIn, T, simNotes, fo){
       castable:(u, a, tgt, t)=>{ if (a.slot!=="R" || !tgt) return true; const m=tgt.kaisaPlasmaAt; return m && m.by===u && t-m.t<=4+1e-9 ? true : "Killer Instinct needs a champion affected by Plasma in the last 4 s (her attacks or W)"; },
       step(u, step, tgt, t, log){ if (step!=="R" || !u.abAll.R || (u.cd.R||0)>t) return false; const why=CHAMP_MECH.Kaisa.castable(u,u.abAll.R,tgt,t); if (why===true) return false; log({skipped:why}); return "logged"; },
       onHit(u, x, t, o){ if (o.basic && o.primary){ kitPlasma(u, x, t, 1); if ((u.cd.E||0)>t) u.cd.E=Math.max(t, u.cd.E-0.5); } },   // Supercharge: −0.5 s per attack (wiki)
+      // P6 F2 (DECISIONS 12; wiki Supercharge evolved: "grants invisibility at the start of the cast time for 0.5 seconds"): invisible from the press
+      pressCast(u, a, tgt, t){ if (a.slot!=="E" || !kitEvolved(u.c, u.st).includes("E")) return; u.shroud={cast:t, from:t, until:t+0.5};
+        simNotes.add(`${u.name} E (evolved): invisible for 0.5 s from the start of the cast (wiki; no point-and-click spell or attack can target her meanwhile)`); },
       onCast(u, a, tgt, t){
         if (a.slot==="E"){ const as=[0.4,0.5,0.6,0.7,0.8][a.rank-1]||0.4;   // wiki Supercharge 40–80% (not in the exported game data)
           addBuff(u,"kaisaE",t+4,{bonusAS:as},t); simNotes.add(`${u.name} E: +${fmt(as*100)}% attack speed for 4 s at once (after the charge-up cast time: backlog 25; wiki value, one source)`); }
@@ -2900,11 +2915,14 @@ function simulate(sidesIn, T, simNotes, fo){
       onDealt(att, tgt, v, pre, type, t){ const M=tgt.zedMark; if (M && M.u===att && t<M.until && (type==="physical"||type==="magic")) M.stored+=pre; },
     },
     Akali: {
-      timing:{W:"own"},   // backlog 25: the shroud times itself from the press (invisible from 0.5 s: the 0.25 s cast + the smoke's flight)
+      timing:{W:"own"},   // backlog 25: the shroud times itself from the press (invisible from the press: sheet grants.invisible [0, …], F1)
+      // F1 (DECISIONS 36): Five Point Strike's missiles leave 75% into its level-scaled cast (phys.launchAt), not at its end
+      landAdd:(u, a)=>a.slot==="Q" && a.p && a.p.launchAt!=null ? a.p.launchAt-(a.p.castTime||0) : 0,
       /* viktor-akali gaps G1/G2/G4/G5/G7 (wiki Akali_W/E/R, Invisibility; checked 2026-09-24). fight() only (perform() keeps one E step =
          both casts and R scheduling its own recast):
          W  Twilight Shroud: +30–50% move speed decaying over 2 s and 100 energy over 0.4 s from the start of the cast (she can move during
-            it); invisible in the shroud from 0.5 s (0.25 s cast + the smoke bomb's 250 units at 1000/s; assumed: she stays in the shroud)
+            it); invisible in the shroud from the press (F1: data/interactions/Akali.json W grants.invisible [0, 5–7], wiki "its effects
+            begin at the start of the cast time"; was 0.5 s, the cast + the smoke's flight; assumed: she stays in the shroud)
             until it ends, except while dashing and for 1/0.9/0.825/0.725/0.625 s (levels 1/7/10/13/16) after each attack or cast.
             Cast when she needs the energy for Q, when the rotation puts W first, or to walk out of a Gravity Field in time.
          E  the throw flips her 400 units BACK from 0.15 s (1500/s); the shuriken leaves at 0.25 s and reaches 825 from where she stood;
@@ -2916,7 +2934,7 @@ function simulate(sidesIn, T, simNotes, fo){
       init(u){ if (u.script) return; for (const s of ["E","R"]){ const A=u.abAll[s]; if (A){ A.dash=false; A.blink=false; } }
         u.kit.en=200; u.kit.enT=0;
         simNotes.add(`${u.name}: energy 200 (+100 while the shroud lasts), +10 per second; Q costs ${fmt(akCost(u,"Q"))}, E 30; W restores 100 over 0.4 s (wiki Akali; game data)`);
-        simNotes.add(`${u.name} W: +${fmt(100*akWms(u))}% move speed decaying over 2 s and invisible in the shroud from 0.5 s after the cast (unless dashing or for ${fmt(akReveal(u))} s after an attack or cast); an invisible unit can't be targeted by attacks or point-and-click spells, but skillshots and areas hit her (wiki Invisibility; perfect aim, and she's assumed to stay inside the shroud: gap G15)`); },
+        simNotes.add(`${u.name} W: +${fmt(100*akWms(u))}% move speed decaying over 2 s and invisible in the shroud from the press (wiki: its effects begin at the start of the cast time) (unless dashing or for ${fmt(akReveal(u))} s after an attack or cast); an invisible unit can't be targeted by attacks or point-and-click spells, but skillshots and areas hit her (wiki Invisibility; perfect aim, and she's assumed to stay inside the shroud: gap G15)`); },
       castable(u, a, tgt, t){ if (u.script) return true; const K=u.kit;
         if (K.busyUntil>t) return "she is dashing or casting";
         if (a.slot==="E" && K.akE && K.akE.until>t) return "E is marked: the recast comes next";
@@ -2935,9 +2953,9 @@ function simulate(sidesIn, T, simNotes, fo){
       onCast(u, a, tgt, t){ if (u.script || a.slot!=="W") return; const K=u.kit;
         const ms=akWms(u), dur=dvOf(a.S,"movementspeedduration",a.rank)||2, sd=dvOf(a.S,"baseduration",a.rank)||5;
         addBuff(u,"akaliW",t+dur,{mspct:ms},t); const b=u.buffs.find(b=>b.id==="akaliW"); if (b) b.decayFrom=t;
-        u.shroud={cast:t, from:t+0.5, until:t+0.5+sd}; u.nextAct=t+dt; K.busyUntil=t+(a.p.castTime||0.25); u.nextAA=Math.max(u.nextAA, t+(a.p.castTime||0.25));
+        u.shroud={cast:t, from:t, until:t+sd}; u.nextAct=t+dt; K.busyUntil=t+(a.p.castTime||0.25); u.nextAA=Math.max(u.nextAA, t+(a.p.castTime||0.25));
         for (let i=1;i<=4;i++) events.push({at:t+0.1*i, fn:(tt)=>{ akEnergy(u,tt); K.en=Math.min(300, K.en+25); }});
-        say(t, `  ${u.name}: Twilight Shroud: +${fmt(100*ms)}% move speed decaying over ${fmt(dur)}s, +100 energy over 0.4s, invisible from ${fmt(t+0.5)}s to ${fmt(t+0.5+sd)}s (revealed ${fmt(akReveal(u))}s after each attack or cast, and while dashing)`); },
+        say(t, `  ${u.name}: Twilight Shroud: +${fmt(100*ms)}% move speed decaying over ${fmt(dur)}s, +100 energy over 0.4s, invisible from ${fmt(t)}s to ${fmt(t+sd)}s (revealed ${fmt(akReveal(u))}s after each attack or cast, and while dashing)`); },
       hitList(u, a, tgt, t){ return a.akHit ? (tgt && tgt.alive && !inStasis(tgt,t) ? [tgt] : []) : null; },
       act(u, tgt, t, cc, role){ akRingExit(u, t); if (!cc || !tgt) return false; const K=u.kit, W=u.abAll.W;
         // a Gravity Field she can't walk out of in time: R2 away from its centre, or E thrown at the target to flip back out of it
@@ -5096,9 +5114,20 @@ const KIT = {
   Kaisa: {
     evolved: {slots:"QWE", name:"Second Skin evolutions", why:"from stats: Q 100 AD from items and growth, W 100 AP, E 100% attack speed from items and growth (wiki Second Skin)",
       dflt:(c, st)=>{ const B=CALC.champs.Kaisa.base; return (st.bonusad + st.basead - B.ad >= 100 ? "Q" : "") + (st.ap >= 100 ? "W" : "") + (st.bonusas >= 1 ? "E" : ""); }},
+    /* P6 F2 (DECISIONS 12; wiki Template:Data_Kai'Sa/Supercharge "cast time = 1.2 /(1 + bonus attack speed/100). This is capped at
+       0.6 seconds"; game files 1.5): the cast time from her bonus attack speed; "Supercharge grants invisibility at the start of the
+       cast time for 0.5 seconds" only once E is evolved (Second Skin), so an unevolved E grants none */
+    phys(c, slot, p){ if (slot!=="E") return; const st=stats(c), bas=Math.max(0, st.bonusas||0);
+      p.castTime=Math.max(0.6, 1.2/(1+bas));
+      if (!kitEvolved(c, st).includes("E") && p.grants && p.grants.invisible){ p.grants={...p.grants}; delete p.grants.invisible; } },
     Q: {opts:{missiles:{min:1, max:12, dflt:x=>x.evolved.includes("Q")?12:6, what:"missiles on the one target (first full, the rest 25%)"}},
       parts(x){ const n=Math.min(x.o.missiles, x.evolved.includes("Q")?12:6), red=x.dv("extrahitreduction") ?? 0.25, one=x.part("totalindividualmissiledamage","physical");
         return [{...one, v:one.v*(1+red*(n-1)), s:`(${one.s}) × (1 + ${fmt(red)} × ${n-1})`, label:`${n} missiles on one target`}]; }},
+  },
+  KogMaw: {
+    /* P6 F2 (wiki Template:Data_Kog'Maw/Caustic_Spittle "cast time = Basic attack timer"; game files 0.25): Q's cast time is his
+       basic attack windup at his attack speed (wiki "Attack speed": attack time × windup %, as .windup) */
+    phys(c, slot, p){ if (slot!=="Q") return; const st=stats(c); p.castTime=attackTiming(c.champ, st, st.ranged).windup; p.castTimeSource="wiki: his attack windup"; },
   },
   Smolder: {
     stacks: {name:"Dragon Practice", max:Infinity, dflt:()=>0, buff:"{32bcea5d}", why:"stacks come from champion hits and Q kills; the practice tool starts at 0"},
@@ -6691,6 +6720,9 @@ function levelRangeBonus(c, slot){
   if (c.champ==="Tristana" && (slot==="E" || slot==="R") && !c.dummy){
     const v=evalCalc({S:CALC.champs.Tristana.P, rank:1, st:stats(c), flags:new Set()}, "bonuspassiverange").v;
     return v>0 ? {v, why:`Draw a Bead +${fmt(v)} (0 to 150 over levels 1–18, game data BonusPassiveRange; wiki: 550 to 700)`} : null; }
+  // F1: Infinite Duress leaps 250% of Warwick's move speed (wiki Warwick_R: "837.5 at 335"; at least 275); the data range is 0
+  if (c.champ==="Warwick" && slot==="R" && !c.dummy){ const ms=stats(c).ms||335, v=Math.max(275, 2.5*ms);
+    return {v, why:`Infinite Duress: 250% of move speed ${fmt(ms)} = ${fmt(v)} (wiki; at least 275)`}; }
   return null;
 }
 /* ===== SIM_INTERIM (P2 of the interaction audit, 2026-09-24): INTERIM per-ability data, DELETE when P1 lands =====
@@ -6762,14 +6794,22 @@ function physOf(c, slot){
   const rank=Math.max(1, (c.ranks && c.ranks[slot]!=null ? c.ranks[slot] : c.dummy ? 1 : rankOf(c, slot)) || 1);
   p.range = sl.range && sl.range.length ? (sl.range[rank-1] ?? sl.range[0]) : 0;
   { const rb=levelRangeBonus(c, slot); if (rb) p.range += rb.v; }
+  // F1: a cast time that scales with champion level (phys.castTimeByLevel, data/delivery_overrides.json; Akali Q: wiki 0.25/0.225/0.2/0.175
+  // at levels 1/6/11/16); its missiles leave `launch` s into it (75%, tick-rounded; DECISIONS 36): p.launchAt, read by landTime
+  if (p.castTimeByLevel){ const L=p.castTimeByLevel, lv=c.dummy ? 1 : (c.level||1); let i=0; L.levels.forEach((v,k)=>{ if (lv>=v) i=k; });
+    p.castTime=L.cast[i]; if (L.launch) p.launchAt=L.launch[i]; }
   // hits that are basic attacks (Twitch R): the target range is the attack range + the bonus (wiki "Twitch's attack range"), not the files' bolt travel
   if (p.attackRangeBonus!=null && !c.dummy) p.range = stats(c).range + p.attackRangeBonus;
   if (S.minRange){ p.minRange = S.minRange[rank] ?? S.minRange[1]; p.chargeTime = S.chargeTime; }
+  // P6 (F2): per-champion physics from its kit (KIT[champ].phys, region R2: Kai'Sa E's cast time from bonus attack speed and its
+  // evolved-only invisibility, Kog'Maw Q's attack-windup cast time); hand setPhysics below still wins
+  { const kp=KIT[c.champ] && KIT[c.champ].phys; if (kp && !c.dummy) kp(c, slot, p); }
   const ov = w.physOver && w.physOver[slot];
   const originText = p.origin;
   if (ov){ Object.assign(p, ov.v); if (ov.v.width!=null) p.halfWidth=ov.v.width/2; if (TR) TR.asm.add(`line ${ov.f.line}: ${ov.f.text}`);
     if (ov.v.origin!=null){ p.originDist=ov.v.origin; p.origin=originText||"another object"; p.originSet=true; }
-    if (ov.v.reveal!=null) p.revealAt=ov.v.reveal; }
+    if (ov.v.reveal!=null) p.revealAt=ov.v.reveal;
+    if (ov.v.castTime!=null) delete p.launchAt; }   // a cast time set by hand replaces the level-scaled launch (F1)
   // where the ability comes from (calc.json phys.delivery, from the game files' targeting type + data/delivery_overrides.json)
   if (!p.delivery) p.delivery = sl.tags.targeted!==undefined && !p.halfWidth ? "unit" : p.halfWidth ? "skillshot" : p.coneAngle ? "cone" : (p.radius && p.range) ? "placed" : "self";
   else if (!(ov && ov.v.delivery) && p.aim==="TargetOrLocation" && sl.tags.targeted!==undefined && p.delivery!=="remote") p.delivery="unit";
@@ -6952,11 +6992,14 @@ function delayNote(c, slot, p){
    One rule for .arrival, canDodge, fight() and perform() (fight() adds the per-kit exceptions in its landOf). */
 function abilityHits(c, slot){ const S=(CALC.champs[c.champ]||{})[slot]||{}, k=kitSpec(c, slot);
   return !!(S.main || (S.mainparts||[]).length || (S.cc||[]).length || (k && k.parts) || S.heal || S.shield); }
-// a missile that leaves at the key press (phys.flightFrom "press": Syndra R's spheres, DECISIONS 5) doesn't wait for the cast time
-function landTime(p, d){ return (p.flightFrom==="press" ? 0 : (p.castTime||0)) + chargeTime(p, d) + flightTime(p, d) + (p.delay||0); }
+// a missile that leaves at the key press (phys.flightFrom "press": Syndra R's spheres, DECISIONS 5) doesn't wait for the cast time;
+// one that leaves partway through it (p.launchAt: Akali Q at 75%, DECISIONS 36) leaves then
+function landTime(p, d){ return (p.flightFrom==="press" ? 0 : (p.launchAt ?? (p.castTime||0))) + chargeTime(p, d) + flightTime(p, d) + (p.delay||0); }
 /* The flight to a target d units away: a fixed-time missile (phys.fixedTravel: Zilean Q 0.45 s), a missile with a minimum flight
    (phys.minTravel: Corki Q 0.227 s), a dash with no missile (phys.dashSpeed: Poppy E, Wukong E), else the missile's own travel */
 function flightTime(p, d){ if (p.fixedTravel!=null) return p.fixedTravel;
+  // P6 F2: a missile that always covers its (charged) range in p.rangeTravel s (Janna Q, wiki "Always travels for 1.25 seconds")
+  if (p.rangeTravel) return p.rangeTravel * d / Math.max(1, p.charge ? Math.min(Math.max(d, p.charge.base), p.charge.max) : (p.range || d));
   if (p.flightFrom==="press" && p.pressMissile && !p.speed) return travelTime({...p, ...p.pressMissile}, travelDist({...p, ...p.pressMissile}, d));
   const tr = !p.speed && p.dashSpeed ? travelTime({...p, speed:p.dashSpeed}, d) : travelTime(p, travelDist(p, d));   // a dash covers the whole distance
   return p.minTravel ? Math.max(p.minTravel, tr) : tr; }
@@ -6974,13 +7017,15 @@ function arrivalTime(c, slot, d, p0){
   const t = landTime(p, d);
   line(`${describePhys(`${label(c)}.${slot}`, p)}`);
   line(`  ${deliveryLine(c, p, d, tr, travel)}`);
-  const how = p.fixedTravel!=null ? (p.fixedTravel ? ` + ${fmt(p.fixedTravel)}s fixed flight` : "") : !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
+  const how = p.fixedTravel!=null ? (p.fixedTravel ? ` + ${fmt(p.fixedTravel)}s fixed flight` : "") : p.rangeTravel ? ` + ${fmt(tr)}s travel (it covers its ${p.charge?"charged ":""}range in ${fmt(p.rangeTravel)}s)` : !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
   const ch = p.charge ? ` + ${fmt(chargeTime(p, d))}s charging to reach ${fmt(Math.min(d, p.charge.max))} (${fmt(p.charge.base)} + ${fmt(p.charge.per)} per ${fmt(p.charge.step)}s after ${fmt(p.charge.init)}s)` : "";
   if (p.flightFrom==="press"){ const M=p.pressMissile||p;
     line(`  launched at the key press (the ${fmt(p.castTime)}s cast time runs alongside): ${fmt(travel)} units at ${fmt(M.speed)}/s accelerating ${fmt(M.accel)}/s² to ${fmt(M.maxSpeed)} = ${fmt(tr)}s${p.delay?` + ${fmt(p.delay)}s`:""} = ${fmt(t)}s after the press`);
     if (TR) TR.notes.add(`${label(c)}.${slot}: the missile leaves at the key press and accelerates (DECISIONS 5; game files initial ${fmt(M.speed)}, accel ${fmt(M.accel)}, max ${fmt(M.maxSpeed)}): lands √(2d/${fmt(M.accel)}) s after the press`);
     return t; }
-  line(`  arrives at ${fmt(d)} units after ${fmt(p.castTime)}s cast${ch}${how}${p.delay?` + ${fmt(p.delay)}s ${p.delayKind==="missile_travel"?"flight time":p.delayKind==="arm"?"arming delay":p.delayKind==="channel"?"channel":p.delayKind==="lockout"?"release lockout":"appear-delay"}`:""} = ${fmt(t)}s from the start of the cast`);
+  line(`  arrives at ${fmt(d)} units after ${p.launchAt!=null ? `${fmt(p.launchAt)}s (launched partway through its ${fmt(p.castTime)}s cast, DECISIONS 36)` : `${fmt(p.castTime)}s cast`}${ch}${how}${p.delay?` + ${fmt(p.delay)}s ${p.delayKind==="missile_travel"?"flight time":p.delayKind==="arm"?"arming delay":p.delayKind==="channel"?"channel":p.delayKind==="lockout"?"release lockout":"appear-delay"}`:""} = ${fmt(t)}s from the start of the cast`);
+  // a documented inconsistent delay (Karthus Q 0.5–0.75 s, DECISIONS 9): the output says it's a range; the earliest is the value
+  if (p.delayMax!=null && p.delayMax>(p.delay||0) && /inconsistent|DECISIONS 9/i.test(p.delayBy||"")) line(`  its delay is a documented range ${fmt(p.delay||0)}–${fmt(p.delayMax)}s (wiki; DECISIONS 9), so it lands ${fmt(t)}–${fmt(t-(p.delay||0)+p.delayMax)}s after the press; ${fmt(t)}s (the earliest) is returned`);
   delayNote(c, slot, p);
   const who=`${label(c)}.${slot}`;
   if (TR && p.deliveryNote) TR.notes.add(`${who} (${p.delivery}): ${p.deliveryNote}`);
@@ -7002,7 +7047,10 @@ function dashInfo(c, slot){
   let speed = p.dashSpeed;
   if (!blink && !speed){ speed = 1200; if (TR) TR.notes.add(`${label(c)}.${slot}: dash speed isn't in the game data; assumed 1200 units/s (set with setPhysics(dashSpeed: …))`); }
   const dist = p.dashRange ?? p.range;
-  return {dist, time: p.castTime + (blink ? 0 : dist/speed), blink, castTime:p.castTime};
+  // F1: a blink that waits for its object to arrive (phys.blinkDelay: Zed W, the shadow flies 650 at 2500/s and the buffered recast
+  // swaps "once it has been placed", wiki Zed_W)
+  if (blink && p.blinkDelay && TR) TR.notes.add(`${label(c)}.${slot}: blinks ${fmt(p.blinkDelay)} s after the press (${p.blinkWhy||"phys.blinkDelay"})`);
+  return {dist, time: p.castTime + (blink ? (p.blinkDelay||0) : dist/speed), blink, castTime:p.castTime};
 }
 function canDodge(def, ab, named){
   if (!def || def.t!=="champ") throw new Error("canDodge(defender, ability, distance: …) needs a Champion first");
@@ -7028,7 +7076,7 @@ function canDodge(def, ab, named){
   if (p.kind==="self" && !selfArea){ line(`${describePhys(who,p)}; it isn't a projectile or area ability, so dodging doesn't apply`); return false; }
   if (d > reach + 1e-6){ line(`${describePhys(who,p)}`); line(`  ${fmt(d)} units is beyond its reach (${reachText}): dodged by standing still`); return true; }
   let T = arrivalTime(a, s, d, p);
-  if (p.delayMax!=null){ line(`  its delay is a documented range ${fmt(p.delay)}–${fmt(p.delayMax)}s (wiki; DECISIONS 9): a dodge counts only if it works at ${fmt(p.delay)}s, the earliest`);
+  if (p.delayMax!=null && /inconsistent|DECISIONS 9/i.test(p.delayBy||"")){ line(`  its delay is a documented range ${fmt(p.delay)}–${fmt(p.delayMax)}s (wiki; DECISIONS 9): a dodge counts only if it works at ${fmt(p.delay)}s, the earliest`);
     if (TR) TR.notes.add(`${who}: the wiki documents an inconsistent delay of ${fmt(p.delay)}–${fmt(p.delayMax)} s; canDodge uses ${fmt(p.delay)} s (DECISIONS 9)`); }
   // a stacking field (Viktor W, phys.stackStun): what must be dodged is the stun on the last stack, (stacks − 1) × every after it activates;
   // the defender only needs to be outside by then, and is slowed while inside the active field (viktor-akali G3)
