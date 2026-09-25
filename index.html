@@ -1568,6 +1568,15 @@ function simulate(sidesIn, T, simNotes, fo){
     if (!D || D.stopped || t<D.t0-1e-9 || t>D.t1-1e-9) return false;
     D.stopped=true; if (!displaced && x.move && !x.move.forced) x.move=null;
     say(t, `  ${x.name}'s ${D.slot} dash is stopped (${why}; wiki Dash): it doesn't land`); return true; }
+  // the unstoppable window of a cast pressed at t (ct: its cast time, land: its landing, both relative to t). Shared by cast() and the
+  // kits that resolve their own landing (startCast: Jarvan IV R, Rek'Sai R), which returned before it and lost the window (P8: J4 R's
+  // leap could then be knocked back on its landing step, and which of the two displacements won depended on the side order)
+  function unstopStart(u, a, t, ct, land){ const US=unstopOf(u, a); if (!US) return null;
+    u.unstop={imm:US.imm, slot:a.slot, why:US.why, from: US.from==="press" ? t : US.from==="dash" ? t+ct : t+US.from, until: US.fixedUntil!=null ? t+US.fixedUntil : t+Math.max(ct, land), fixed:US.fixedUntil!=null};
+    if (US.ccFor) u.ccImmuneUntil=Math.max(u.ccImmuneUntil||0, t+US.ccFor);   // Zaahen R: CC immune over the cast, then displacement immune
+    simNotes.add(`${u.name} ${a.slot}: unstoppable — ${US.why}; ${US.imm==="cc"?"immune to all crowd control":"immune to airborne, sleep and the special-cased suppressions; other crowd control still applies but can't stop it"} from ${US.from==="press"||US.from===0?"the press":US.from==="dash"?"the end of its cast time":`${fmt(US.from)} s after the press`} ${US.fixedUntil!=null?`until ${fmt(US.fixedUntil)} s after it`:"until it lands"}; spell shields still block it`);
+    if (US.from==="press" || US.from===0) unstopClean(u, t);
+    return US; }
   // an unstoppable window starting at t: crowd control it resists that landed earlier in the same step doesn't apply either
   // (everything in a step is simultaneous), and a same-step displacement doesn't beat its dash
   function unstopClean(u, t){ const s=unstopOn(u,t); if (!s) return;
@@ -2323,11 +2332,7 @@ function simulate(sidesIn, T, simNotes, fo){
     if (chan && ct >= dt/2-1e-9) events.push({at:t+ct, fn:(tt)=>{ if (P.cancelled || P.done || !u.alive) return;   // stunned or silenced as the channel starts
       const s=unstopOn(u,tt); if ((locked(u,tt) || !canCast(u,tt)) && !(s && s.slot===a.slot)){ P.cancelled=true; say(tt, `  ${u.name}'s ${a.slot} channel can't start (the caster is disabled as its cast time ends): it doesn't land`); } }});
     // unstoppable abilities (UNSTOPPABLE, item 28): the immunity window, from the press or the dash's start until the landing
-    const US=unstopOf(u, a);
-    if (US){ u.unstop={imm:US.imm, slot:a.slot, why:US.why, from: US.from==="press" ? t : US.from==="dash" ? t+ct : t+US.from, until: US.fixedUntil!=null ? t+US.fixedUntil : t+Math.max(ct, land), fixed:US.fixedUntil!=null};
-      if (US.ccFor) u.ccImmuneUntil=Math.max(u.ccImmuneUntil||0, t+US.ccFor);   // Zaahen R: CC immune over the cast, then displacement immune
-      simNotes.add(`${u.name} ${a.slot}: unstoppable — ${US.why}; ${US.imm==="cc"?"immune to all crowd control":"immune to airborne, sleep and the special-cased suppressions; other crowd control still applies but can't stop it"} from ${US.from==="press"||US.from===0?"the press":US.from==="dash"?"the end of its cast time":`${fmt(US.from)} s after the press`} ${US.fixedUntil!=null?`until ${fmt(US.fixedUntil)} s after it`:"until it lands"}; spell shields still block it`);
-      if (US.from==="press" || US.from===0) unstopClean(u, t); }
+    const US=unstopStart(u, a, t, ct, land);
     // the numbers at the press: another cast of this ability before this one lands recomputes a.parts (abNums)
     const snap={parts:a.parts, later:a.later, heal:a.heal, shield:a.shield, shieldN:a.shieldN};
     const L={started:false, castOk: tgt ? inReach(u,a,tgt) : false, pressT:t, land, deferred:false};
@@ -3011,6 +3016,7 @@ function simulate(sidesIn, T, simNotes, fo){
       startCast(u, a, tgt, t, d0){ if (a.slot!=="R" || u.script || !tgt) return false;
         const lt=(a.p && a.p.fixedTravel)||0.35, land=t+lt, step=u.curStep ?? null, L={started:true, deferred:true, castOk:true, voided:false};
         castStart(u, a, t); u.nextAct=Math.max(u.nextAct, land); u.nextAA=Math.max(u.nextAA, land);
+        unstopStart(u, a, t, (a.p && a.p.castTime) || 0, lt);   // P8: the leap keeps its displacement immunity through the landing step (wiki)
         say(t, `${u.name} casts R on ${tgt.name}: leaps onto ${tgt.name} over ${fmt(lt)}s`);
         for (let k=0; k*dt < lt-1e-9; k++) events.push({at:t+k*dt, fn:(tt)=>{ if (L.voided || !tgt.alive || !inStasis(tgt,tt)) return;
           L.voided=tt; say(tt, `  ${tgt.name} is untargetable during ${u.name}'s leap: Cataclysm deals ${tgt.name} no damage (the arena still forms, DECISIONS 13)`); }});
@@ -3022,7 +3028,9 @@ function simulate(sidesIn, T, simNotes, fo){
         if (a.slot!=="R" || !tgt) return;
         // he leaps onto the target champion (unit-targeted, wiki), wherever it went during the 0.35 s leap; the ring is centred there
         const cx=tgt.xS ?? tgt.x; u.move=null; displace(u, cx - (Math.sign(cx-u.x)||face(u))*(RAD(u)+RAD(tgt)), 1e-3, t, true);   /* lands at the start of the next tick */ const until=t+(dvOf(a.S,"wallduration",a.rank)||3.5), r=255;
-        for (const x of [u, ...enemiesOf(u,t)]) if (x===u || Math.abs((x.xS??x.x)-cx)<=350+RAD(x)) x.arena={cx, r, until};
+        for (const x of [u, ...enemiesOf(u,t)]) if (x===u || Math.abs((x.xS??x.x)-cx)<=350+RAD(x)){ x.arena={cx, r, until};
+          // P8 order-independence: a displacement that started earlier in this same step is clamped too, as one started after it is (displace)
+          if (x!==u && x.move && x.move.t0>=t-1e-9) x.move.x1=arenaClamp(x, x.move.x1, t); }
         say(t, `  ${u.name}: Cataclysm walls in everyone within 350 of ${tgt.name} for ${fmt(until-t)}s`);
         simNotes.add(`${u.name} R: Cataclysm's terrain ring (wiki: 350 creation radius, pathing inside 255 of the centre, 3.5 s) keeps everyone caught inside from walking or dashing out (1-D: within 255 of the target's spot); blinks and Flash still cross it; the recast that breaks the walls is not used`); },
     },
@@ -3561,10 +3569,11 @@ function simulate(sidesIn, T, simNotes, fo){
       startCast(u, a, tgt, t, d0){ if (a.slot!=="R") return false; tgt = tgt || enemiesOf(u,t)[0]; if (!tgt) return false;
         const land=t+(a.p && a.p.castTime || 0.25)+0.9, step=u.curStep ?? null;
         u.nextAct=Math.max(u.nextAct, land); u.nextAA=Math.max(u.nextAA, land);
+        unstopStart(u, a, t, (a.p && a.p.castTime) || 0.25, land-t);   // P8: displacement immune from the start of the cast (wiki Cast time) until she lands
         say(t, `${u.name} casts R on ${tgt.name}: vanishes after the cast and emerges beside ${tgt.name} at ${fmt(land)}s`);
         simNotes.add(`${u.name} R: Void Rush lands 1.15 s after the press (0.25 s cast + 0.9 s vanished, wiki), whatever the distance; no damage if the target is untargetable then`);
         events.push({at:land, fn:(tt)=>{ if (!u.alive) return;
-          if (!u.script && tgt.alive){ const dir=tgt.x===u.x ? face(u) : Math.sign(tgt.x-u.x); displace(u, tgt.x-dir*(RAD(u)+RAD(tgt)), 1e-3, tt, true); }
+          if (!u.script && tgt.alive){ const tx=tgt.xS ?? tgt.x, ux=u.xS ?? u.x, dir=tx===ux ? face(u) : Math.sign(tx-ux); displace(u, tx-dir*(RAD(u)+RAD(tgt)), 1e-3, tt, true); }
           const prev=u.curStep; u.curStep=step; resolveCast(u, a, tgt, tt, d0, {started:true, deferred:true, castOk:true, pressT:t}); u.curStep=prev; }});
         return true; },
     },
