@@ -159,7 +159,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-++WzJPWvRidVN+SLyTJZdcJWLDopE0fDbP4pEpYsky8=' 'sha256-6pTXOkCGETXMqaf4NxIMA5bC4ZB0d73Mez2RJTdkvkA=' 'sha256-eUWgcVxCLHNiqGr87DEr+w11qojjEYdFmNwhCVKJa3M=' 'sha256-q5prPqdroesMM9OnZnXszPdPpb29ekGvdfEpcnv5mg0='"
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-++WzJPWvRidVN+SLyTJZdcJWLDopE0fDbP4pEpYsky8=' 'sha256-0j8U7Mmumybtjfgc570MOO8SQb1RtDloPIiRxhKBTvE=' 'sha256-6pTXOkCGETXMqaf4NxIMA5bC4ZB0d73Mez2RJTdkvkA=' 'sha256-HQGDT/s5J8w3G+3C+w9OfdUORmuSOTla46WbZ5rkFgo='"
         }
       ]
     },
@@ -177,7 +177,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-++WzJPWvRidVN+SLyTJZdcJWLDopE0fDbP4pEpYsky8=' 'sha256-6pTXOkCGETXMqaf4NxIMA5bC4ZB0d73Mez2RJTdkvkA=' 'sha256-eUWgcVxCLHNiqGr87DEr+w11qojjEYdFmNwhCVKJa3M=' 'sha256-q5prPqdroesMM9OnZnXszPdPpb29ekGvdfEpcnv5mg0='"
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-++WzJPWvRidVN+SLyTJZdcJWLDopE0fDbP4pEpYsky8=' 'sha256-0j8U7Mmumybtjfgc570MOO8SQb1RtDloPIiRxhKBTvE=' 'sha256-6pTXOkCGETXMqaf4NxIMA5bC4ZB0d73Mez2RJTdkvkA=' 'sha256-HQGDT/s5J8w3G+3C+w9OfdUORmuSOTla46WbZ5rkFgo='"
         }
       ]
     }

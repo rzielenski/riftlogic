@@ -3220,7 +3220,8 @@ function simulate(sidesIn, T, simNotes, fo){
         if (a.slot==="W" && tgt){ a.ccAll ??= a.cc||[]; const marked=[...tgt.dmgBy].some(([x,tt])=>x.side===u.side && t-tt<=4); a.cc = marked ? a.ccAll : a.ccAll.filter(e=>e.type!=="root");
           simNotes.add(`${u.name} W: roots only a target damaged by Jhin or his allies in the last 4 s (Caught Out, wiki)`); }
         if (a.slot==="R" && tgt){ const m=dvOf(a.S,"fourthshotmultiplier",a.rank)||2;
-          for (let i=1;i<4;i++) for (const p of a.parts) kitLater(u, tgt, t+i, {...p, v:p.v*(i===3?m:1)}, `R shot ${i+1}/4${i===3?" (crit)":""}`);
+          // P6 F4: each shot is a 5000/s projectile (wiki Curtain Call; walls, untargetability and spell shields per shot: kitShot)
+          for (let i=1;i<4;i++) kitShot(u, a, tgt, t+i, a.parts.map(p=>({...p, v:p.v*(i===3?m:1)})), `R shot ${i+1}/4${i===3?" (crit)":""}`, u.curStep ?? null);
           u.nextAA=Math.max(u.nextAA, t+3.25); u.nextAct=Math.max(u.nextAct, t+3.25);
           simNotes.add(`${u.name} R: 4 shots 1 s apart at the one target (each +3% per 1% missing health, up to ×4; the 4th ×2); he does nothing else meanwhile`); } },
       afterCast(u, a, tgt, t){ if (a.slot==="W" && a.ccAll) a.cc=a.ccAll; },
@@ -3379,6 +3380,8 @@ function simulate(sidesIn, T, simNotes, fo){
       afterCast(u, a, tgt, t){ if (!tgt || !a.parts.length) return; if (a.slot==="Q") kitRellTilt(u, tgt, t); kitRellMold(u, tgt, t); },
     },
     Thresh: {
+      // P6 F4: Flay's sweep starts at the press (phys.launchAt 0, wiki "Effects start immediately"), not after the 0.389 s cast
+      landAdd:(u, a)=>a.slot==="E" && a.p && a.p.launchAt!=null ? a.p.launchAt-(a.p.castTime||0) : 0,
       // Flay passive: charge = time since his last attack / 10 s (linear assumed; full at the fight's start)
       attack(u, tgt, t){ const E=u.abAll.E, K=u.kit; if (!E) return null; const ch=Math.min(1, (t-(K.lastAA ?? -Infinity))/(dvOf(E.S,"fullchargeduration",E.rank)||10)); K.lastAA=t;
         const v=kitStacks(u.c)*(dvOf(E.S,"dmgpersoul",E.rank)||1.7) + ch*(dvOf(E.S,"passiveadratiott",E.rank)||0.9)*u.st.ad;
@@ -3387,6 +3390,8 @@ function simulate(sidesIn, T, simNotes, fo){
       afterCast(u, a, tgt, t){ if (a.slot==="Q" && tgt && (u.cd.Q||0)>t){ u.cd.Q=Math.max(t, u.cd.Q-(dvOf(a.S,"hitbonuscooldown",a.rank)||2)); } },
     },
     Graves: {
+      // P6 F4: Smoke Screen's canister leaves at the press (phys.launchAt 0, wiki speed note "Starts traveling at the start of the cast time")
+      landAdd:(u, a)=>a.slot==="W" && a.p && a.p.launchAt!=null ? a.p.launchAt-(a.p.castTime||0) : 0,
       timing:{Q:"travel"},   // backlog 25: the bullet lands after the cast + flight; the kit times the detonation
       // 12-Gauge: 4 pellets on one target (6 on a crit, each +50% of the bonus crit damage), at the expected crit rate
       attack(u, tgt, t){ const P=CALC.champs.Graves.P, ctx={S:P, rank:1, st:u.st, flags:u.flags}, one=evalCalc(ctx,"singlebulletdamage").v, k=one>0 ? evalCalc(ctx,"multibulletdamage").v/one : 0.333;
@@ -4621,6 +4626,16 @@ function simulate(sidesIn, T, simNotes, fo){
     let v=evalCalc({S:W.S, rank:W.rank, st:u.st, flags:u.flags},"minitotaldamage").v+(dvOf(W.S,"minipercenthpdamage",W.rank)||0)*x.max; if (x.pet || x.minion) v=Math.min(v, dvOf(W.S,"minimonstercap",W.rank)||300);
     simNotes.add(`${u.name}: Hyper — every third hit on a target (attacks and abilities, 3.5 s) deals bonus magic: 0–40 + 6–14% of its maximum health + 100% AP`);
     const b={v, type:"magic", what:"Hyper"}; if (now){ kitDealNow(u, x, t, b, "Hyper", u.curStep ?? null); return null; } return b; }
+  /* P6 F4: a kit's later projectile hit (Jhin R shots 2–4), checked like a cast's: fired at `at` if x is still within reach, it flies
+     gap / speed; on arrival an untargetable target isn't hit (targeted projectiles are destroyed), a wall stops it (Braum E takes it),
+     a ready spell shield blocks it (blockedHit) */
+  function kitShot(u, a, x, at, parts, what, step){ events.push({at, fn:(tt)=>{ if (!x.alive || !u.alive) return;
+    if (!(u.script && !u.scriptTravel) && gap(u,x) > abReach(u,a,x)+1e-6){ say(tt, `  ${u.name}'s ${what} misses: ${x.name} is out of reach`); return; }
+    const fly=(u.script && !u.scriptTravel) ? 0 : gap(u,x)/((a.p && a.p.speed) || Infinity);
+    const hit=(t2)=>{ if (!x.alive || !u.alive || inStasis(x,t2)) return; let y=x;
+      { const wb=wallStop(u,a,x,t2); if (wb){ if (!wb.intercept || !wb.intercept.alive) return; y=wb.intercept; } }
+      if (blockedHit(u,a,y,t2,`${what} of`)) return; for (const p of parts) kitDealNow(u, y, t2, p, what, step); };
+    if (fly < dt/2) hit(tt); else events.push({at:tt+fly, fn:hit}); }}); }
   function kitBraumStack(u, x, t, now){ const P=CALC.champs.Braum.P, ctx={S:P, rank:1, st:u.st, flags:u.flags};
     if (x.braumImm && x.braumImm.by===u && x.braumImm.until>t) return now ? null : {bonus:[{v:evalCalc(ctx,"onhitdamage").v, type:"magic", what:"Concussive Blows (40%)"}]};
     const B=x.braumP && x.braumP.by===u && x.braumP.until>t ? x.braumP : {by:u, n:0}; B.n++; B.until=t+(dvOf(P,"stackduration",1)||4); x.braumP=B;
@@ -5218,7 +5233,8 @@ const KIT = {
   Gwen: {
     // P6 F4 (wiki Hallowed Mist: untargetable to enemies outside the 480 (cr) mist; DECISIONS 22): canDodge's using: Gwen.W counts only
     // against an attacker outside the mist when its effect lands (dodgeAction, phys.untargetableOutside)
-    phys(c, slot, p){ if (slot==="W") p.untargetableOutside = p.radius || 480; },
+    // Gwen R: the needles start 100 units behind her (data/interactions/Gwen.json R mismatch; wiki Needlework origin)
+    phys(c, slot, p){ if (slot==="W") p.untargetableOutside = p.radius || 480; if (slot==="R") p.originBehind=100; },
     P: {parts(x){ return [{...x.part("percenthealth1000cuts","magic",null,x.P,1), pctOf:"max", label:"A Thousand Cuts: 1% (+0.6% per 100 AP) maximum health"}]; }},
     Q: {opts:{snips:{min:1, max:5, dflt:5, what:"small snips before the final one (1 + one per Snippy stack; 5 = four attacks first)"},
               center:{bool:true, dflt:true, what:"the target in the centre (50% true damage, A Thousand Cuts on every snip)"}},
@@ -5278,6 +5294,8 @@ const KIT = {
     phys(c, slot, p){ if (slot!=="Q") return; const st=stats(c); p.castTime=attackTiming(c.champ, st, st.ranged).windup; p.castTimeSource="wiki: his attack windup"; },
   },
   Smolder: {
+    // P6 F4 (wiki MMOOOMMMM!: range "-600 Wave backwards range" / 4250 forward, speed 1700): the wave starts 600 behind him
+    phys(c, slot, p){ if (slot==="R") p.originBehind=600; },
     stacks: {name:"Dragon Practice", max:Infinity, dflt:()=>0, buff:"{32bcea5d}", why:"stacks come from champion hits and Q kills; the practice tool starts at 0"},
     Q: {parts(x){ const r=[x.part("totaldamage","physical"), {...x.part("passive_qdamageincrease","magic",null,x.P,1), label:`Dragon Practice (${fmt(x.stacks)} stacks)`}];
         if (x.stacks >= (x.dv("stacktier3")||225)) r.push({...x.part("tier3_burn","true"), pctOf:"max", label:"tier 3 burn over 3 s (maximum health)", later:"burn"});
@@ -5632,6 +5650,9 @@ const KIT = {
     cc: {Q:(S,r)=>[{type:"stun", dur:dvOf(S,"stunduration",r)||0.65, src:{dur:"dv:StunDuration"}, text:"Shattering Strike stuns 0.65 s"}]},
   },
   Thresh: {
+    // P6 F4 (wiki Flay: cast time 0.3889 "Effects start immediately"; range "-550 Origin behind" to 525 in front): the sweep leaves at the
+    // press from 550 behind him: (550 + d) / 2000 s
+    phys(c, slot, p){ if (slot==="E"){ p.launchAt=0; p.launchWhy="its effects start at the start of the cast time (wiki)"; p.originBehind=550; } },
     // Damnation (wiki; game data StatValuePerSoul 1): +1 AP and +1 bonus armor per Soul; W shield +2 and Flay +1.7 per Soul
     stacks: {name:"Souls", max:Infinity, dflt:()=>0, buff:"{5fbfbf13}", why:"collected over the game; 0 in the practice tool"},
     stats(c, st, notes, e){ const n=kitStacks(c); if (n>0){ st.ap+=n*(1+e.amp); st.bonusarmor+=n; notes.push(`Thresh: ${fmt(n)} Souls: +${fmt(n)} AP and +${fmt(n)} bonus armor`); } },
@@ -5647,6 +5668,8 @@ const KIT = {
          E:(S,r)=>[{type:"knockback", dist:200, src:{dist:"wiki"}, text:"Flay knocks 200 units in the target direction"}, {type:"slow", dur:dvOf(S,"slowduration",r)||1, pct:(dvOf(S,"activeslowpercentage",r)||20)/100, src:{dur:"dv:SlowDuration", pct:"dv:ActiveSlowPercentage"}, text:"then slows"}]},
   },
   Graves: {
+    // P6 F4 (wiki Smoke Screen speed "1500 Starts traveling at the start of the cast time"): the canister leaves at the press
+    phys(c, slot, p){ if (slot==="W"){ p.launchAt=0; p.launchWhy="it starts travelling at the start of the cast time (wiki)"; } },
     // New Destiny, 12-Gauge (game data SingleBulletDamage = AD × 0.70 to 1.00 by level, MultiBulletDamage × 0.333; wiki 0.33302):
     // 4 pellets, each after the first on the same target 33.3%: one attack on one target = SingleBullet × (1 + 3 × 0.333)
     P: {parts(x){ const one=x.part("singlebulletdamage","physical",null,x.P,1), k=x.P.calcs && x.P.calcs.multibulletdamage ? x.ev("multibulletdamage",x.P,1).v/Math.max(1e-9,one.v) : 0.333;
@@ -5660,6 +5683,8 @@ const KIT = {
     cc: {W:(S)=>[...((S && S.cc) || []), {type:"nearsight", dur:4, src:{dur:"wiki"}, text:"Smoke Screen: nearsighted 4 s inside the smoke"}]},
   },
   Jinx: {
+    // P6 F4 (wiki Super Mega Death Rocket! speed "1700 Initial missile speed | 2200 Increased missile speed after travelling over 1350 units")
+    phys(c, slot, p){ if (slot==="R" && p.speed) p.speedAfter=[1350, 2200]; },
     P: {none:"Get Excited! has no damage: a takedown gives 175% decaying move speed and +25% total attack speed per stack for 6 s (fight())"},
     // Switcheroo!: fight() keeps Pow-Pow (the minigun: Rev'd up attack speed stacks); .damage is one Fishbones rocket attack (110% AD)
     Q: {parts(x){ return [{...x.part("rocketdamage","physical"), label:"Fishbones rocket attack (110% AD; the minigun is used in fight())", later:"attack"}]; }},
@@ -5895,6 +5920,11 @@ const KIT = {
     R: {none:"Destiny has no damage (true sight, then Gate's teleport)"},
   },
   Pyke: {
+    /* P6 F4 (wiki Bone Skewer; data/interactions/Pyke.json Q charge 0.4–3 s): the hook needs a charge: at least 0.4 s (400 range), the
+       range growing to 1100 at 1 s (+700 over 0.6 s: +58.33 every 0.05 s), then flies at 2000/s. Releasing within 0.4 s is the quick
+       thrust (0.25 s cast, 200 wide, ~400 reach, at the closest enemy champion): not modelled separately, so at 400 or less the hook's
+       0.4 s charge is used (0.15 s slower than the thrust). The 20% self-slow while charging isn't modelled */
+    phys(c, slot, p){ if (slot!=="Q") return; p.charge={base:400, per:700/12, step:0.05, init:0.4, max:1100}; },
     P: {none:"Gift of the Drowned Ones has no damage: bonus health becomes AD (no health); grey health from damage taken (not modelled)"},
     // Gift of the Drowned Ones: bonus health gives no health; 1 bonus AD per 14 instead (game data HPPerBAD 14)
     stats(c, st, notes){ if (!(st.bonushp>0)) return; const k=dvOf(CALC.champs.Pyke.P,"hpperbad",1)||14, v=st.bonushp/k;
@@ -7147,7 +7177,7 @@ function travelDist(p, d){
     case "vector": return p.originDist ?? Math.max(0, d - (p.range||0));
     case "remote": return p.originDist ?? 0;
     case "self": return p.speed ? d : 0;
-    default: return d;
+    default: return d + (p.originBehind||0);   // P6 F4: a missile that starts behind the caster (phys.originBehind: Thresh E 550, Smolder R 600, Gwen R 100)
   }
 }
 /* P5 — shapes projected onto fight()'s one line. canDodge asks how far the defender must step to be out of the shape when it
@@ -7210,6 +7240,8 @@ function deliveryLine(c, p, d, tr, travel){
 function travelTime(p, d){
   if (!p.speed) return 0;
   const a=p.accel||0;
+  // P6 F4: a missile that changes speed after a distance (phys.speedAfter [units, new speed]: Jinx R 2200/s after 1350)
+  if (!a && p.speedAfter && d > p.speedAfter[0]) return p.speedAfter[0]/p.speed + (d-p.speedAfter[0])/p.speedAfter[1];
   if (!a) return d/p.speed;
   const lim = a>0 ? (p.maxSpeed||Infinity) : (p.minSpeed||0);
   const t1 = Number.isFinite(lim) ? (lim-p.speed)/a : Infinity, d1 = p.speed*t1 + a*t1*t1/2;
@@ -7251,13 +7283,13 @@ function arrivalTime(c, slot, d, p0){
   const t = landTime(p, d);
   line(`${describePhys(`${label(c)}.${slot}`, p)}`);
   line(`  ${deliveryLine(c, p, d, tr, travel)}`);
-  const how = p.fixedTravel!=null ? (p.fixedTravel ? ` + ${fmt(p.fixedTravel)}s fixed flight` : "") : p.waves ? ` + ${fmt(flightTime(p, d))}s for the first wave that reaches ${fmt(d)} (waves out to ${p.waves.map(w=>`${fmt(w[0])} at +${fmt(w[1])}s`).join(", ")}; wiki)` : p.rangeTravel ? ` + ${fmt(tr)}s travel (it covers its ${p.charge?"charged ":""}range in ${fmt(p.rangeTravel)}s)` : !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
+  const how = p.fixedTravel!=null ? (p.fixedTravel ? ` + ${fmt(p.fixedTravel)}s fixed flight` : "") : p.waves ? ` + ${fmt(flightTime(p, d))}s for the first wave that reaches ${fmt(d)} (waves out to ${p.waves.map(w=>`${fmt(w[0])} at +${fmt(w[1])}s`).join(", ")}; wiki)` : p.rangeTravel ? ` + ${fmt(tr)}s travel (it covers its ${p.charge?"charged ":""}range in ${fmt(p.rangeTravel)}s)` : !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : p.speedAfter && travel > p.speedAfter[0] ? ` + ${fmt(p.speedAfter[0])}/${fmt(p.speed)} + ${fmt(travel-p.speedAfter[0])}/${fmt(p.speedAfter[1])} travel (faster after ${fmt(p.speedAfter[0])})` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
   const ch = p.charge ? ` + ${fmt(chargeTime(p, d))}s charging to reach ${fmt(Math.min(d, p.charge.max))} (${fmt(p.charge.base)} + ${fmt(p.charge.per)} per ${fmt(p.charge.step)}s after ${fmt(p.charge.init)}s)` : "";
   if (p.flightFrom==="press"){ const M=p.pressMissile||p;
     line(`  launched at the key press (the ${fmt(p.castTime)}s cast time runs alongside): ${fmt(travel)} units at ${fmt(M.speed)}/s accelerating ${fmt(M.accel)}/s² to ${fmt(M.maxSpeed)} = ${fmt(tr)}s${p.delay?` + ${fmt(p.delay)}s`:""} = ${fmt(t)}s after the press`);
     if (TR) TR.notes.add(`${label(c)}.${slot}: the missile leaves at the key press and accelerates (DECISIONS 5; game files initial ${fmt(M.speed)}, accel ${fmt(M.accel)}, max ${fmt(M.maxSpeed)}): lands √(2d/${fmt(M.accel)}) s after the press`);
     return t; }
-  line(`  arrives at ${fmt(d)} units after ${p.launchAt!=null ? `${fmt(p.launchAt)}s (launched partway through its ${fmt(p.castTime)}s cast, DECISIONS 36)` : `${fmt(p.castTime)}s cast`}${ch}${how}${p.delay?` + ${fmt(p.delay)}s ${p.delayKind==="missile_travel"?"flight time":p.delayKind==="arm"?"arming delay":p.delayKind==="channel"?"channel":p.delayKind==="lockout"?"release lockout":"appear-delay"}`:""} = ${fmt(t)}s from the start of the cast`);
+  line(`  arrives at ${fmt(d)} units after ${p.launchAt!=null ? `${fmt(p.launchAt)}s (launched partway through its ${fmt(p.castTime)}s cast: ${p.launchWhy||"DECISIONS 36"})` : `${fmt(p.castTime)}s cast`}${ch}${how}${p.delay?` + ${fmt(p.delay)}s ${p.delayKind==="missile_travel"?"flight time":p.delayKind==="arm"?"arming delay":p.delayKind==="channel"?"channel":p.delayKind==="lockout"?"release lockout":"appear-delay"}`:""} = ${fmt(t)}s from the start of the cast`);
   // a documented inconsistent delay (Karthus Q 0.5–0.75 s, DECISIONS 9): the output says it's a range; the earliest is the value
   if (p.delayMax!=null && p.delayMax>(p.delay||0) && /inconsistent|DECISIONS 9/i.test(p.delayBy||"")) line(`  its delay is a documented range ${fmt(p.delay||0)}–${fmt(p.delayMax)}s (wiki; DECISIONS 9), so it lands ${fmt(t)}–${fmt(t-(p.delay||0)+p.delayMax)}s after the press; ${fmt(t)}s (the earliest) is returned`);
   delayNote(c, slot, p);
