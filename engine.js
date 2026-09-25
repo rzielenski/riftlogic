@@ -714,7 +714,7 @@ const SIM_ASSUMPTIONS = [
   "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range (range + both radii for the game files' castRangeUseBoundingBoxes spells: Tristana E/R, Vayne E, Viktor Q, …), other abilities their reach + the target's hitbox, except skillshots the wiki marks centred ({{tip|cr}}: the reach itself) or edge ({{tip|er}}: + both hitboxes) (wiki Range; one rule shared with canDodge)",
   "fight(): every ability and attack in range hits (perfect aim, no dodging in fight(); use canDodge for that), except the kit mechanics that say otherwise (Viktor's Gravity Field stuns only a unit still inside on its 5th stack, Aftershock can be sidestepped, his storm moves, Akali's shroud hides her from attacks and point-and-click spells); an ability's effects land after its cast time, flight and appear-delay (the same timing as .arrival and canDodge: Lux Q 0.67 s at 500, Lux R 1 s, Karthus Q 0.75 s); cooldown, cost and cast lock start at the press; crowd control never cancels a cast time (wiki Cast time: only death does), it cancels channels (Karthus R) and charges (Vi Q, Sion Q); dashes start when the cast time ends and hit on arrival if the target is in reach there (or was at the press); a displacement or knockdown stops a dash under way, a stun or root doesn't (wiki Dash; Akshan E, Camille E, Rakan W/E, Yasuo E, Yuumi W are also stopped by immobilizing CC); unstoppable abilities (Malphite R, Vi R, Hecarim R, Jarvan IV R, …) are immune to displacements and can't be stopped (wiki Crowd control § Displacement Immunity), spell shields still block them; self-casts, heals and shields apply when the cast time ends",
   "fight(): basic attacks start when the attack timer allows (timer, on-attack effects) and land at the end of their windup (wiki Attack speed: attack time × windup %, scaled by the champion's windup modifier; .windup), a ranged one after its missile's flight too (.missileSpeed; 0 = instant); the attacker can't act during the windup; a stun, knock-up or death during it cancels the attack (the timer resets), a silence doesn't; a target dead or in stasis when it lands isn't hit; empowered-attack abilities (Nasus Q, Garen Q, Darius W, Jax W, Leona Q…) resolve with the next attack, and attack resets reset the timer at the press",
-  "fight(): abilities are cast as soon as they're off cooldown (each ability locks its caster for its cast time: game data checked against the wiki's cast time field, calc.json phys.castTime; an ability with none frees the caster on the next step); mana is ignored, energy is not (Zed, Akali, Lee Sin, Kennen, Shen: abilities wait until it covers their cost); a champion whose ability makes it untargetable from the cast (Zed R, Fizz E, Vladimir W, Master Yi Q, Kayn R, Pantheon E) is untargetable for that whole step",
+  "fight(): abilities are cast as soon as they're off cooldown (each ability locks its caster for its cast time: game data checked against the wiki's cast time field, calc.json phys.castTime; an ability with none frees the caster on the next step); mana is ignored, energy is not (Zed, Akali, Lee Sin, Kennen, Shen: abilities wait until it covers their cost); a champion whose ability makes it untargetable from the cast (the ability pages' windows: Zed R, Fizz E, Vladimir W, Master Yi Q, Kayn R, Ekko R, Evelynn R, Xayah R, Camille R, and Pantheon E's kit) is untargetable for that whole step",
   "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground and root prevent starting a dash, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
   "fight(): default roles: ranged = kite (keep max attack range from shorter-ranged enemies, peel them with hard CC, knockbacks held for peel, dashes/blinks used to escape), melee = dive (walk or dash to the lowest-health enemy, use everything on it but knockbacks); knockbacks are held to peel an enemy that dives an ally (except role engage); a stacking-stun field (Viktor W) is held until the enemy commits (moving in within the field's radius + both hitboxes, in its attack reach, unable to move, or diving an ally), not cast on cooldown at range; set x.role = \"kite\" | \"dive\" | \"peel\" | \"engage\" | \"fight\"",
   "fight(): area abilities hit every enemy within their radius on the line (lines and cones: every enemy within reach); ability damage over time lands up front",
@@ -852,9 +852,12 @@ function simulate(sidesIn, T, simNotes, fo){
     if (S.heal) a.heal=evalCalc({S,rank:a.rank,st,flags:u.flags},S.heal).v*hamp;
     if (S.shield) a.shield=evalCalc({S,rank:a.rank,st,flags:u.flags},S.shield).v*hamp;
     { const ks=kitSpec(u.c, a.slot); if (a.shield && ks && ks.shieldMult) a.shield*=ks.shieldMult(u.c, st, a.rank); }   // Viktor Turbocharge
-    // P3: a "oneHit" ability's hit count from the kit option it names (Syndra R: spheres), for spell shields (oneHitCut)
-    { const sh=a.p && a.p.shieldHits, ks=typeof sh==="string" && sh!=="first" ? kitSpec(u.c, a.slot) : null;
-      if (ks && ks.opts && ks.opts[sh]){ const o=kitOptions(ks, ks.sim ? ks.sim(u, a) : null, u.c, a.slot, st, a.rank); a.shieldN=o[sh]; } }
+    // P3: a "oneHit" ability's hit count as fight() deals it, for spell shields (oneHitCut): the kit option shieldHits names (Syndra R:
+    // spheres), else the one count option the kit's fight() setting fixes (Samira W slashes: 1, Samira R shots: 1, Gangplank R waves: 1)
+    if (a.p && a.p.spellShield==="oneHit"){ const sh=a.p.shieldHits, ks=kitSpec(u.c, a.slot); a.shieldN=null;
+      if (ks && ks.opts){ const so=ks.sim ? ks.sim(u, a) : null, o=kitOptions(ks, so, u.c, a.slot, st, a.rank);
+        const cnt=Object.keys(so||{}).filter(n=>ks.opts[n] && typeof ks.opts[n].min==="number" && ks.opts[n].min>=1);
+        if (typeof sh==="string" && ks.opts[sh]) a.shieldN=o[sh]; else if (cnt.length===1) a.shieldN=o[cnt[0]]; } }
   }
   function abCd(u, a){
     if (a.cdFixed!=null) return a.cdFixed;
@@ -953,7 +956,9 @@ function simulate(sidesIn, T, simNotes, fo){
   const locked = (u,t) => u.ccs.some(c=>ccLive(c,t) && LOCKS.includes(c.type));
   const canCast = (u,t) => !locked(u,t) && !ccOn(u,t,"silence") && !ccOn(u,t,"polymorph");
   const canAttack = (u,t) => !locked(u,t) && !ccOn(u,t,"disarm") && !ccOn(u,t,"polymorph");
-  const canMove = (u,t) => !locked(u,t) && !ccOn(u,t,"root") && !(u.move && u.move.t1>t && u.move.t0<t);   // a displacement started this tick counts from the next
+  // a displacement started this tick counts from the next; during the decision pass the movement is the one at its start (u.moveS):
+  // a unit displaced by another's action this tick (its dash stopped and replaced) decides as it would have before (order-independence)
+  const canMove = (u,t) => { const m = u.moveS!==undefined ? u.moveS : u.move; return !locked(u,t) && !ccOn(u,t,"root") && !(m && m.t1>t && m.t0<t); };
   const canDash = (u,t) => canMove(u,t) && !ccOn(u,t,"ground");
   // unstoppable (UNSTOPPABLE, item 28): u.unstop = {imm, slot, from, until, why} while an unstoppable ability is cast / dashing
   const unstopOn = (u,t) => { const s=u.unstop; return s && t>=s.from-1e-9 && t<=s.until+1e-9 ? s : null; };
@@ -1059,7 +1064,7 @@ function simulate(sidesIn, T, simNotes, fo){
   function oneHitCut(u,a){ const sh=a.p.shieldHits;
     if (a.spread>0 && a.S.onHit && dvOf(a.S,"tickspersecond",a.rank)>0) return {skip0:true, what:"one hit of"};
     if (sh==="first" && a.parts.length>1) return {first:true, what:"one pass of"};
-    const n = typeof sh==="number" ? sh : a.shieldN!=null ? a.shieldN : a.spread>0 ? Math.max(1, Math.round(a.spread/0.5)) : 1;
+    const n = a.shieldN!=null ? a.shieldN : typeof sh==="number" ? sh : a.spread>0 ? Math.max(1, Math.round(a.spread/0.5)) : 1;
     return n>1 ? {n, what:`one ${typeof sh==="string" && sh!=="first" ? sh.replace(/s$/,"") : "hit"} (of ${fmt(n)}) of`} : null; }
   // Kennen's Mark of the Storm (wiki): each ability hit adds a mark for 6 s (MarkDuration); the third consumes them to stun
   // for 1.25 s (StunDuration), 0.5 s (ReducedStunDuration) if the same target was stunned by it in the last 6 s.
@@ -1082,7 +1087,9 @@ function simulate(sidesIn, T, simNotes, fo){
      stopped and its hits don't land; x halts where it is unless the effect displaces it (displaced: the knockback/pull moves it).
      x.dashStopAt records it for a dash starting in the same step (order-independence: the displacement wins, as before). */
   function dashStop(x, t, why, displaced){ x.dashStopAt=t; x.dashStopWhy=why; const D=x.dashNow;
-    if (!D || D.stopped || t<D.t0-1e-9 || t>D.t1+1e-9) return false;
+    // a dash arriving on this very step has arrived: a displacement landing on the same step doesn't stop it, whichever of the two
+    // events runs first (order-independence; P3: two Jarvan IV Q dashes landing together knocked up each other in array order)
+    if (!D || D.stopped || t<D.t0-1e-9 || t>D.t1-1e-9) return false;
     D.stopped=true; if (!displaced && x.move && !x.move.forced) x.move=null;
     say(t, `  ${x.name}'s ${D.slot} dash is stopped (${why}; wiki Dash): it doesn't land`); return true; }
   // an unstoppable window starting at t: crowd control it resists that landed earlier in the same step doesn't apply either
@@ -2106,14 +2113,14 @@ function simulate(sidesIn, T, simNotes, fo){
      Kits that set their own (KIT_OWN_GRANTS) are skipped; GRANT_NOTES adds a longer lockout (Master Yi Q) and the log text. */
   function castGrants(u, a, t){ const k=`${u.c.champ}.${a.slot}`; if (!a.p || KIT_OWN_GRANTS.has(k)) return;
     const G=a.p.grants||{}, N=GRANT_NOTES[k]||{}; let hide=null;
-    for (const kind of ["untargetable","stasis"]){ const w=G[kind]; if (numWin(w)) hide = hide ? [Math.min(hide[0],w[0]), Math.max(hide[1],w[1])] : [w[0],w[1]]; }
+    for (const kind of ["untargetable","stasis"]){ const w=grantWin(G[kind], k, a.rank, a.slot); if (w) hide = hide ? [Math.min(hide[0],w[0]), Math.max(hide[1],w[1])] : w; }
     if (hide){ const [s,e]=hide, lock=N.lock ?? e;
       if (s < dt/2-1e-9) castStasis(u, t+e, t); else events.push({at:t+s, fn:()=>{ if (u.alive) u.stasisUntil=Math.max(u.stasisUntil, t+e); }});
       u.nextAct=Math.max(u.nextAct, t+lock); u.nextAA=Math.max(u.nextAA, t+lock);
       say(t, `${u.name} casts ${a.slot}: untargetable ${s>=dt/2?`from ${fmt(t+s)}s `:""}until ${fmt(t+e)}s`);
       simNotes.add(`${u.name} ${a.slot}: ${N.why || `untargetable ${fmt(s)}–${fmt(e)} s after the press (wiki)`} (modelled as stasis: nothing lands on it and it doesn't act)`); }
-    const iv=G.invulnerable;
-    if (numWin(iv)){ (u.invuln ||= []).push({from:t+iv[0], until:t+iv[1], slot:a.slot});
+    const iv=grantWin(G.invulnerable, k, a.rank, a.slot);
+    if (iv){ (u.invuln ||= []).push({from:t+iv[0], until:t+iv[1], slot:a.slot});
       simNotes.add(`${u.name} ${a.slot}: ${N.why || `invulnerable ${fmt(iv[0])}–${fmt(iv[1])} s after the press (wiki)`}: it takes no damage, crowd control still lands`); }
     const F=a.p.invulnFar;
     if (F){ (u.invuln ||= []).push({from:t+F.from, until:t+F.until, beyond:F.beyond, slot:a.slot});
@@ -2133,8 +2140,8 @@ function simulate(sidesIn, T, simNotes, fo){
     if (!tgt || tgt.side===u.side || !unitTargeted(a) || tgt.pet) return;
     const p=a.p, km=CHAMP_MECH[u.c.champ]; if (km && km.timing && km.timing[a.slot]==="own") return;
     const on = p.cancelOn || ["untargetable","stasis","invisible","range"], hid=(tt)=>inStasis(tgt,tt) && (on.includes("untargetable") || on.includes("stasis"));
-    if (!a.dash && on.length && ct >= dt-1e-9) for (let k=1; k*dt < ct-1e-9; k++) events.push({at:t+k*dt, fn:(tt)=>{ if (P.cancelled || P.done || !u.alive || !tgt.alive) return;
-      const why = hid(tt) ? "untargetable" : on.includes("invisible") && unseen(tgt,tt) ? "invisible" : on.includes("range") && !(u.script && !u.scriptTravel) && gap(u,tgt) > abReach(u,a,tgt)+1e-6 ? `out of reach (${fmt(gap(u,tgt))} > ${fmt(abReach(u,a,tgt))})` : null;
+    if (on.length && ct >= dt-1e-9) for (let k=1; k*dt < ct-1e-9; k++) events.push({at:t+k*dt, fn:(tt)=>{ if (P.cancelled || P.done || !u.alive || !tgt.alive) return;
+      const why = hid(tt) ? "untargetable" : on.includes("invisible") && unseen(tgt,tt) ? "invisible" : on.includes("range") && !a.dash && !(u.script && !u.scriptTravel) && gap(u,tgt) > abReach(u,a,tgt)+1e-6 ? `out of reach (${fmt(gap(u,tgt))} > ${fmt(abReach(u,a,tgt))})` : null;
       if (!why) return; P.cancelled=true; P.done=true; u.nextAct=Math.min(u.nextAct, tt+dt);
       if (!p.cancelSpends){ u.cd[a.slot]=R.cd0; if (R.ammo0 && a.ammo){ a.ammo.n=R.ammo0.n; a.ammo.at=R.ammo0.at; } if (R.en0>0) enGain(u, R.en0, tt, `${a.slot} cancelled: cost refunded`); }
       say(tt, `  ${u.name}'s ${a.slot} is cancelled: ${tgt.name} is ${why} during its cast time (${p.cancelSpends ? "it still goes on cooldown and costs: a documented bug, wiki" : "no cooldown, no cost"}; DECISIONS 3)`);
@@ -2150,8 +2157,8 @@ function simulate(sidesIn, T, simNotes, fo){
      displacementImmune window (fixed: seconds from the press; kits with their own code are skipped) */
   function unstopOf(u, a){ const H=(UNSTOPPABLE[u.c.champ]||{})[a.slot]; if (H) return H;
     const k=`${u.c.champ}.${a.slot}`, G=(a.p && a.p.grants)||{}; if (KIT_OWN_GRANTS.has(k)) return null;
-    for (const [kind, imm] of [["ccImmune","cc"],["displacementImmune","displacement"]]) if (numWin(G[kind]))
-      return {imm, from:G[kind][0], fixedUntil:G[kind][1], why:`${kind==="ccImmune"?"crowd control":"displacement"} immune ${fmt(G[kind][0])}–${fmt(G[kind][1])} s after the press (wiki)`};
+    for (const [kind, imm] of [["ccImmune","cc"],["displacementImmune","displacement"]]){ const w=grantWin(G[kind], k, a.rank, a.slot);
+      if (w) return {imm, from:w[0], fixedUntil:w[1], why:`${kind==="ccImmune"?"crowd control":"displacement"} immune ${fmt(w[0])}–${fmt(w[1])} s after the press (wiki)`}; }   // an end with no number (Kled R, Vi R, … "until it lands") is in the hand table; Vex R / Yuumi W (recast, attach) aren't modelled
     return null; }
   // invulnerable to this hit (P3: Kayle R, Xin Zhao R beyond 450, Taric R): 0 damage, the unit stays targetable
   function invulnTo(att, x, t){ return !!x.invuln && x.invuln.some(w=>t>=w.from-1e-9 && t<w.until-1e-9 && (w.beyond==null || gap(att, x) > w.beyond)); }   // the source's own position (sheet: pets and DoTs count if the source is outside)
@@ -3092,7 +3099,9 @@ function simulate(sidesIn, T, simNotes, fo){
         if (a.slot==="Q" && tgt && gap(u,tgt) <= 170+RAD(u)+RAD(tgt)){ const k=evalCalc({S:a.S, rank:a.rank, st:u.st, flags:u.flags},"criticaldamage").v/Math.max(1e-9, evalCalc({S:a.S, rank:a.rank, st:u.st, flags:u.flags},"leapdamage").v); for (const p of a.parts) p.v*=k;
         simNotes.add(`${u.name} Q: cast within 170 units it crits (150%, wiki); from farther it is the leap without a crit`); } },
       afterCast(u, a, tgt, t){ if (!tgt) return;
-        if (a.slot==="W"){ const d=(a.later||[]).find(p=>p.later==="delay"); if (d) kitLater(u, tgt, t+0.35+(dvOf(a.S,"returndelay",a.rank)||0.7), d, "W return"); }
+        // the return (afterCast runs at the out blades' landing, cast + 0.35 s fixed travel): they linger 0.7 s at maximum range, then home
+        // back at 3000/s (wiki Rake) over the maximum range less the target's distance
+        if (a.slot==="W"){ const d=(a.later||[]).find(p=>p.later==="delay"), R=(a.p && (a.p.coneLength||a.p.range))||900; if (d) kitLater(u, tgt, t+(dvOf(a.S,"returndelay",a.rank)||0.7)+Math.max(0, R-gap(u,tgt))/3000, d, "W return"); }
         if (a.slot==="R"){ const d=(a.later||[]).find(p=>p.later==="recast"); if (d) kitLater(u, tgt, t+1, d, "R blades converge"); }
         if (a.parts.length) kitTalonWound(u, tgt, t); },
       attack(u, tgt, t){ const W=tgt.talonW; if (!W || W.by!==u || W.bleeding || W.n<3 || !(W.until>t)) return null;
@@ -3570,9 +3579,12 @@ function simulate(sidesIn, T, simNotes, fo){
       // 6 s), her next attack fires them all; Beat Drop roots an already slowed target and stuns an immobilized one; Surround Sound heals only
       // if she already has a shield
       init(u){ u.kit.echo=2; },
+      // the Note and the Echo count are the cast's (at the press: a Q still in the air doesn't give its Note to an attack or its Echo to a
+      // later E that lands first; batch 8 re-check after the sheets' Q delay 0.4 s)
+      pressCast(u, a, tgt, t){ const K=u.kit; if (K.echoing) return;
+        K.notes={n:Math.min(dvOf(CALC.champs.Seraphine.P,"maxnotes",1)||4, (K.notes && K.notes.until>t ? K.notes.n : 0)+1), until:t+(dvOf(CALC.champs.Seraphine.P,"noteduration",1)||6)};
+        if ("QWE".includes(a.slot)){ if ((K.echo||0)>=2){ K.echo=0; K.echoNext=a.slot; } else K.echo=(K.echo||0)+1; } },
       onCast(u, a, tgt, t){ const K=u.kit;
-        if (!K.echoing){ K.notes={n:Math.min(dvOf(CALC.champs.Seraphine.P,"maxnotes",1)||4, (K.notes && K.notes.until>t ? K.notes.n : 0)+1), until:t+(dvOf(CALC.champs.Seraphine.P,"noteduration",1)||6)};
-          if ("QWE".includes(a.slot)){ if ((K.echo||0)>=2){ K.echo=0; K.echoNext=a.slot; } else K.echo=(K.echo||0)+1; } }
         if (a.slot==="W" && !u.shields.some(s=>s.until>t && shieldLeft(s,t)>0)) a.heal=0;
         if (a.slot==="E"){ a.ccAll ??= a.cc||[]; const slowed=tgt && tgt.slows.some(s=>s.until>t && !(s.t0>=t)), imm=tgt && tgt.ccs.some(c=>ccLive(c,t) && ["stun","root","knockup","knockback","pull","suppress","sleep","ground"].includes(c.type));
           a.cc=a.ccAll.filter(e=>e.type==="slow" || (e.type==="root" && slowed) || (e.type==="stun" && imm)); } },
@@ -3742,6 +3754,10 @@ function simulate(sidesIn, T, simNotes, fo){
       // Ionian Fervor: a stack per champion hit by her abilities (6 s, attacks refresh), +10–25% attack speed each; at 4 her attacks deal
       // bonus magic. Flawless Duet and Vanguard's Edge mark the target Unsteady (5 s): Bladesurge on it consumes the mark and is ready
       // again 0.2 s later. Defiant Dance is charged the full 0.75 s (the damage reduction meanwhile isn't modelled).
+      // Defiant Dance: she charges from the press (0.75 s for the maximum), then the recast's 0.25 s cast (the data's castTime + 0.05 s
+      // delay are the recast's): no attacks or casts until press + 0.75 + 0.25 (batch 8 re-check: onCast runs at the landing now)
+      pressCast(u, a, tgt, t){ if (a.slot!=="W") return; const d=(dvOf(a.S,"chargetimeformax",a.rank)||0.75)+((a.p && a.p.castTime)||0.25);
+        u.nextAct=Math.max(u.nextAct, t+d); u.nextAA=Math.max(u.nextAA, t+d); },
       onCast(u, a, tgt, t){ const K=u.kit;
         if (a.slot==="Q" && tgt){ const M=tgt.ireliaMark; K.qReset = !!(M && M.by===u && M.until>t); if (K.qReset) tgt.ireliaMark=null; }
         if (a.slot==="W" && tgt){ const ps=a.parts; a.parts=[]; const d=dvOf(a.S,"chargetimeformax",a.rank)||0.75, step=u.curStep ?? null;
@@ -4129,6 +4145,126 @@ function simulate(sidesIn, T, simNotes, fo){
         simNotes.add(`${u.name}: Signature of the Visionary — an ability hit marks (4 s); the next one on the mark explodes 0.85 s later; fight() casts QQ, WE and EQ`); },
       attack(u, tgt, t){ const W=u.kit.we; if (!W || !(W.until>t) || W.n<=0) return null; W.n--; return {bonus:[{v:W.v, type:"magic", what:"WE Stirring Lights"}]}; },
     },
+    /* ---- champion audit batch 8 (2026-09-24) ---- */
+    Shaco: {
+      // Deceive: his next attack within the stealth (2.5–3.5 s) is from behind (perfect play): attack + Deceive + Backstab, critically striking
+      // for 1 + 60% × (crit damage − 1) (game data QCritDamageMod). Jack in the Box: the lone-target shot when it hits one enemy.
+      onCast(u, a, tgt, t){ const K=u.kit;
+        if (a.slot==="Q"){ const p=(a.later||[]).find(q=>q.later==="attack"); K.q={until:t+(dvOf(a.S,"stealthduration",a.rank)||3.5), v:p ? p.v : 0, mod:evalCalc({S:a.S, rank:a.rank, st:u.st, flags:u.flags},"qcritdamagemod").v};
+          simNotes.add(`${u.name} Q: Deceive — his next attack within the stealth is from behind: a critical strike for ${fmt(100*K.q.mod)}% of attack + Deceive + Backstab (perfect play)`); }
+        if (a.slot==="W" && tgt && hitList(u,a,tgt,t).filter(x=>!x.pet).length<=1){ a.parts=[{v:evalCalc({S:a.S, rank:a.rank, st:u.st, flags:u.flags},"stdamage").v, type:"magic"}];
+          simNotes.add(`${u.name} W: Jack in the Box deals its lone-target shot when it hits one enemy (one shot; the 0.5 s shots over 5 s aren't modelled)`); } },
+      attack(u, tgt, t){ const K=u.kit, Q=K.q; if (!Q || !(Q.until>t)) return null; K.q=null;
+        const back=evalCalc({S:CALC.champs.Shaco.P, rank:1, st:u.st, flags:u.flags},"basicattackdamage").v;
+        return {replace:{v:(u.st.ad+Q.v+back)*Q.mod, type:"physical", what:"Deceive backstab crit"}}; },
+    },
+    Varus: {
+      // Blighted Quiver: attacks deal the on-hit and add a Blight stack (6 s, 3 max); Q/E/R hits pop them (Q: +50% at full charge, the
+      // fight() Q) and refund 13% of his basic abilities' cooldowns per stack on a champion. Active: his next Q within 5.5 s deals
+      // 6–14% missing health (+50% at full charge). Hail of Arrows: Grievous Wounds 40% while in the field (4 s). Chain of Corruption:
+      // 3 Blight stacks 0.65 / 1.2 / 1.75 s into the root (wiki notes).
+      onCast(u, a, tgt, t){ const K=u.kit; if (a.slot==="W") K.wq={until:t+5.5}; },
+      afterCast(u, a, tgt, t){ if (!tgt || !["Q","E","R"].includes(a.slot) || !a.parts.length) return; const K=u.kit, step=u.curStep ?? null, W=u.abAll.W;
+        const hit=hitList(u,a,tgt,t,a.land).filter(x=>x.alive && x.side!==u.side);
+        for (const x of hit){ kitVarusPop(u, x, t, a.slot==="Q" ? (W && dvOf(W.S,"varuswmaxchargehpdamage",W.rank)) || 1.5 : 1);
+          if (a.slot==="Q" && W && K.wq && K.wq.until>t) kitDealNow(u, x, t, {v:evalCalc({S:W.S, rank:W.rank, st:u.st, flags:u.flags},"qempowerpercenthp").v*(dvOf(W.S,"varuswmaxchargehpdamage",W.rank)||1.5), type:"magic", pctOf:"missing"}, "W Blighted Quiver (empowered Q)", step);
+          if (a.slot==="E"){ x.grievUntil=Math.max(x.grievUntil, t+(dvOf(a.S,"groundduration",a.rank)||4)); x.grievBy=Math.max(x.grievUntil>t?x.grievBy||0:0, dvOf(a.S,"grievousamount",a.rank)||0.4); }
+          if (a.slot==="R" && !x.pet) for (const d of [0.65, 1.2, 1.75]) events.push({at:t+d, fn:(tt)=>{ if (x.alive && u.alive) kitVarusStack(u, x, tt); }}); }
+        if (a.slot==="Q") K.wq=null;
+        simNotes.add(`${u.name}: Blighted Quiver — attacks add Blight (6 s, 3 max); Q/E/R pop it for 3–5% (+1.3% per 100 AP) maximum health per stack (+50% with the fully charged Q) and refund 13% of his basic cooldowns per stack; R adds 3 stacks over the root`); },
+      attack(u, tgt, t){ const W=u.abAll.W; if (!W) return null; kitVarusStack(u, tgt, t);
+        return {bonus:[{v:evalCalc({S:W.S, rank:W.rank, st:u.st, flags:u.flags},"onhitdamage").v, type:"magic", what:"Blighted Quiver"}]}; },
+    },
+    Darius: {
+      // Hemorrhage: his attacks, the Decimate blade (the handle isn't modelled: perfect spacing) and Noxian Guillotine (after its damage)
+      // add a bleed stack. Noxian Guillotine: +20% per stack on the target; a kill with it within 0.15 s refreshes it (recast within 20 s).
+      onCast(u, a, tgt, t){ if (a.slot!=="R" || !tgt) return; const H=tgt.dariusH, n=H && H.by===u && H.until>t ? H.n : 0;
+        if (n){ const m=1+(dvOf(a.S,"rdamagepercentperhemostack",a.rank)||0.2)*n; a.parts=a.parts.map(p=>({...p, v:p.v*m})); say(t, `  ${u.name}: Noxian Guillotine +${fmt(100*(m-1))}% (${n} Hemorrhage stacks)`); }
+        simNotes.add(`${u.name} R: Noxian Guillotine deals +20% per Hemorrhage stack on the target (×2 at 5); a kill with it refreshes it`); },
+      afterCast(u, a, tgt, t){ if (!tgt || !(a.slot==="Q" || a.slot==="R") || !a.parts.length) return;
+        for (const x of hitList(u,a,tgt,t,a.land)) if (x.alive && x.side!==u.side) kitDariusBleed(u, x, t);
+        if (a.slot==="R") u.kit.rHit={x:tgt, t}; },
+      onTakedown(u, x, t){ const R=u.kit.rHit; if (R && R.x===x && t-R.t<=0.15+1e-9){ u.kit.rHit=null; u.cd.R=t; say(t, `  ${u.name}: Noxian Guillotine kill — it can be cast again`); } },
+      attack(u, tgt, t){ kitDariusBleed(u, tgt, t); return null; },
+    },
+    Fizz: {
+      // Seastone Trident: passive: his attacks bleed the target (DoTDamage over 3 s, a tick every 0.5 s; a new attack restarts it); active:
+      // his next attack within 4 s (attack reset) deals the bonus, then his attacks deal the on-hit for 5 s. Chum the Waters: the shark by
+      // the distance to the target (Guppy / Chomper / Gigalodon: damage ×1 / 1.25 / 1.5, slow 40 / 60 / 80%).
+      onCast(u, a, tgt, t){ const K=u.kit;
+        if (a.slot==="W"){ const p=(a.later||[]).find(q=>q.later==="attack"); K.w={until:t+(dvOf(a.S,"activeduration",a.rank)||4), v:p ? p.v : 0}; u.nextAA=Math.min(u.nextAA, t); }
+        if (a.slot==="R" && tgt){ const d=gap(u,tgt), sh=kitFizzShark(d, a.S, a.rank); a.ccAll ??= a.cc||[];
+          if (sh.m!==1) a.parts=a.parts.map(p=>({...p, v:p.v*sh.m})); a.cc=a.ccAll.map(e=>e.type==="slow" ? {...e, pct:sh.slow} : e);
+          simNotes.add(`${u.name} R: the shark's size follows the lure's flight (the distance to the target): < 455 Guppy, 455–910 Chomper ×1.25, > 910 Gigalodon ×1.5; slow 40/60/80%`); } },
+      afterCast(u, a){ if (a.slot==="R" && a.ccAll) a.cc=a.ccAll; },
+      attack(u, tgt, t){ const K=u.kit, W=u.abAll.W; if (!W) return null; const ctx={S:W.S, rank:W.rank, st:u.st, flags:u.flags}, b=[];
+        if (K.w && K.w.until>t){ K.w=null; b.push({v:evalCalc(ctx,"activedamage").v, type:"magic", what:"Seastone Trident"}); K.oh={until:t+(dvOf(W.S,"onhitbuffduration",W.rank)||5)}; }
+        else if (K.oh && K.oh.until>t) b.push({v:evalCalc(ctx,"onhitbuffdamage").v, type:"magic", what:"Seastone Trident on-hit"});
+        const tot=evalCalc(ctx,"dotdamage").v, dur=dvOf(W.S,"passivedotduration",W.rank)||3, n=Math.round(dur*(dvOf(W.S,"dottickspersecond",W.rank)||2)), id={}, x=tgt, step=u.curStep ?? null;
+        x.fizzBleed=id;
+        for (let i=1;i<=n;i++) events.push({at:t+dur*i/n, fn:(tt)=>{ if (x.fizzBleed!==id || !x.alive || !u.alive) return; const prev=u.curStep, b0=u.dealt; u.curStep=step;
+          deal(u, x, tot/n, "magic", tt, "dot", "Seastone Trident bleed"); u.curStep=prev; if (step!=null && u.stepLog[step]) u.stepLog[step].dmg += u.dealt-b0; }});
+        simNotes.add(`${u.name} W: Seastone Trident — his attacks bleed ${fmt(tot)} magic over 3 s (a new attack restarts it); the active empowers his next attack (reset), then 5 s of on-hit damage`);
+        return b.length ? {bonus:b} : null; },
+    },
+    Sion: {
+      // Roar of the Slayer: −25% armor for 4 s on the champion hit (after the hit). Glory in Death: fatal damage → 1.5 s of stasis, then full
+      // health draining 1 + level per 0.25 s, +70% of that each tick (the audit's reading of the wiki: 2–19 by level), 1.75 attack speed,
+      // 100% life steal, attacks + 10% of the target's maximum health (75 max vs non-champions), no abilities; then he dies.
+      afterCast(u, a, tgt, t){ if (a.slot!=="E" || !tgt || !a.parts.length) return; const S=a.S, r=a.rank;
+        for (const x of hitList(u,a,tgt,t,a.land)) if (x.alive && x.side!==u.side && !x.pet && !x.minion) events.push({at:t, fn:(tt)=>{ (x.kitShred ||= {}).sionE={until:tt+(dvOf(S,"armorshredduration",r)||4), pct:(dvOf(S,"armorshred",r)||25)/100}; }});
+        simNotes.add(`${u.name} E: Roar of the Slayer — −25% armor for 4 s on a champion hit (the stun and knock-back are for minions and monsters)`); },
+      castable(u, a){ return u.kit.zombie ? "Glory in Death: no abilities while a zombie" : true; },
+      onFatal(u, att, t){ const K=u.kit; if (K.zombie) return false; K.zombie=true; const P=CALC.champs.Sion.P, st=1.5, L=u.st.level, b=1+L;
+        u.hp=u.max; u.ccs=[]; u.slows=[]; u.stasisUntil=Math.max(u.stasisUntil, t+st); u.nextAct=Math.max(u.nextAct, t+st); u.nextAA=Math.max(u.nextAA, t+st);
+        addBuff(u, "sionZ", 1e9, {bonusAS:Math.max(0, (1.75-u.st.as)/(u.st.asratio||1))}, t);
+        let k=0; const drain=(at)=>events.push({at, fn:(tt)=>{ if (!u.alive) return; u.hp-=b*(1+0.7*k); k++; if (u.hp<=0){ u.hp=0; say(tt, `${u.name}: Glory in Death ends`); kill(u, att, tt); return; } drain(tt+0.25); }});
+        drain(t+st+0.25);
+        say(t, `${u.name} would die: Glory in Death — ${fmt(st)} s of stasis, then full health that drains away`);
+        simNotes.add(`${u.name}: Glory in Death — fatal damage puts him in stasis ${fmt(st)} s, then he fights on at full health that drains (${fmt(b)} per 0.25 s, +70% of that each tick), 1.75 attack speed, 100% life steal, attacks + 10% of the target's maximum health, no abilities (Death Surge not modelled)`); return true; },
+      attack(u, tgt, t, mult){ if (!u.kit.zombie) return null; const P=CALC.champs.Sion.P; let v=(dvOf(P,"percentmaxhp",1)||0.1)*tgt.max; if (tgt.pet || tgt.minion) v=Math.min(v, dvOf(P,"nonchampcap",1)||75);
+        heal(u, u, (dvOf(P,"lifesteal",1)||1)*kitPostMit(u, tgt, u.st.ad*mult+v, "physical"), t, "Glory in Death life steal");
+        return {bonus:[{v, type:"physical", what:"Glory in Death"}]}; },
+    },
+    Gragas: {
+      // Happy Hour: an ability cast heals 5.5% of his maximum health when its cast time ends, every 12/10/8/6 s (levels 1/6/11/16; the
+      // game data's level breakpoints aren't readable by the evaluator). Drunken Rage: a 0.75 s drink from the press (no attacks or casts),
+      // 10–26% (+4% per 100 AP) less damage taken for 2.5 s; then his next attack within 5 s carries the damage to enemies within 250 of it.
+      pressCast(u, a, tgt, t){ const K=u.kit;
+        if ("QWER".includes(a.slot) && t>=(K.hhAt||0)){ const L=u.st.level, cd=L>=16?6:L>=11?8:L>=6?10:12; K.hhAt=t+cd; const ct=(a.p && a.p.castTime)||0;
+          events.push({at:t+ct, fn:(tt)=>{ if (u.alive) heal(u, u, (dvOf(CALC.champs.Gragas.P,"healratio",1)||0.055)*u.max, tt, "Happy Hour"); }});
+          simNotes.add(`${u.name}: Happy Hour — an ability cast heals 5.5% of his maximum health, every ${cd} s at level ${L}`); }
+        if (a.slot==="W"){ const ch=(a.p && a.p.channel)||0.75, ctx={S:a.S, rank:a.rank, st:u.st, flags:u.flags};
+          u.nextAct=Math.max(u.nextAct, t+ch); u.nextAA=Math.max(u.nextAA, t+ch);
+          K.rDR={until:t+(dvOf(a.S,"defenseduration",a.rank)||2.5), dr:evalCalc(ctx,"damagereduction").v};
+          K.w={from:t+ch, until:t+ch+(dvOf(a.S,"attackduration",a.rank)||5)};
+          simNotes.add(`${u.name} W: Drunken Rage — a ${fmt(ch)} s drink (no attacks), ${fmt(100*K.rDR.dr)}% less damage for 2.5 s, then his next attack within 5 s deals the damage around its target`); } },
+      attack(u, tgt, t){ const K=u.kit, W=u.abAll.W; if (!W || !(K.w && t>=K.w.from-1e-9 && K.w.until>t)) return null; K.w=null;
+        const ctx={S:W.S, rank:W.rank, st:u.st, flags:u.flags}, base=evalCalc(ctx,"totaldamage").v, f=(dvOf(W.S,"maxhppercentdamage",W.rank)||7)/100, cap=dvOf(W.S,"monsterdamagecap",W.rank)||300;
+        const val=x=>{ const v=base+f*x.max; return x.pet || x.minion ? Math.min(v, cap) : v; }, cx=tgt.xS ?? tgt.x, step=u.curStep ?? null;
+        for (const y of enemiesOf(u,t)) if (y!==tgt && Math.abs((y.xS ?? y.x)-cx) <= 250+RAD(y)) kitDealNow(u, y, t, {v:val(y), type:"magic"}, "Drunken Rage", step);
+        return {bonus:[{v:val(tgt), type:"magic", what:"Drunken Rage"}]}; },
+    },
+    Ashe: {
+      // Frost Shot: attacks slow 20–30% 2 s and deal × st.asheFrost instead of critting. Ranger's Focus: attacks add Focus (on-attack, 4 s,
+      // 4 max) while it's inactive; at 4 she can cast it: 6 s of +20–60% attack speed (attack reset), each attack a flurry (the first +20%)
+      castable(u, a, tgt, t){ if (a.slot!=="Q") return true; const K=u.kit; return (K.focus && K.focus.until>t && K.focus.n>=4 && !(K.q && K.q.until>t)) ? true : "Ranger's Focus needs 4 Focus stacks (4 attacks)"; },
+      step(u, step, tgt, t, log){ if (step!=="Q" || !u.abAll.Q) return false; const why=CHAMP_MECH.Ashe.castable(u, u.abAll.Q, tgt, t); if (why===true) return false; log({skipped:why}); return "logged"; },
+      onAttack(u, tgt, t){ const K=u.kit; if (!u.abAll.Q || (K.q && K.q.until>t)) return; const F=K.focus && K.focus.until>t ? K.focus : {n:0}; F.n=Math.min(4, F.n+1); F.until=t+(dvOf(u.abAll.Q.S,"stackduration",u.abAll.Q.rank)||4); K.focus=F; },
+      afterCast(u, a){ if (a.slot==="R" && a.ccAll) a.cc=a.ccAll; },
+      onCast(u, a, tgt, t){
+        if (a.slot==="R" && tgt){ a.ccAll ??= a.cc||[]; const d=gap(u,tgt), mx=dvOf(a.S,"maxstunduration",a.rank)||3.5, s=Math.min(mx, (dvOf(a.S,"minstunduration",a.rank)||1)+0.25*Math.max(0, d-800)/200);
+          a.cc=a.ccAll.map(e=>e.type==="stun" ? {...e, dur:s} : e);
+          simNotes.add(`${u.name} R: the stun lasts 1 s up to 800 units flown, +0.25 s per 200 beyond (3.5 s at 2800; the distance to the target at the landing)`); }
+        if (a.slot!=="Q") return; const K=u.kit, d=dvOf(a.S,"buffduration",a.rank)||6, p=(a.later||[]).find(q=>q.later==="attack"); K.focus=null; K.q={until:t+d, first:true};
+        addBuff(u, "asheQ", t+d, {bonusAS:(dvOf(a.S,"bonusas",a.rank)||60)/100}, t); u.nextAA=Math.min(u.nextAA, t);
+        simNotes.add(`${u.name} Q: Ranger's Focus at 4 Focus stacks — ${fmt(d)} s of bonus attack speed (attack reset); each attack is a flurry for ${fmt(100*(dvOf(a.S,"damageperstrike",a.rank)||1.3))}% AD (the first one +20%: a sixth arrow)`); },
+      attack(u, tgt, t){ const K=u.kit, Q=u.abAll.Q, f=u.st.asheFrost||1, P=CALC.champs.Ashe.P;
+        if (!tgt.pet) applyCC(u, {slot:"P", S:P, p:{}, cc:[{type:"slow", pct:kitAsheSlow(u.c, false), dur:dvOf(P,"slowduration",1)||2}]}, tgt, t, 0);
+        if (Q && K.q && K.q.until>t){ const m=K.q.first ? 1.2 : 1; K.q.first=false;
+          return {replace:{v:evalCalc({S:Q.S, rank:Q.rank, st:u.st, flags:u.flags},"empowereddamage").v*f*m, type:"physical", what:`Ranger's Focus flurry${m>1?" (first: 6 arrows)":""}`}}; }
+        return f!==1 ? {replace:{v:u.st.ad*f, type:"physical", what:"attack, Frost Shot crit bonus"}} : null; },
+    },
   };
   // batch 6 helpers
   function kitIreliaStack(u, t, add=1){ const P=CALC.champs.Irelia.P, F=u.kit.fervor && u.kit.fervor.until>t ? u.kit.fervor : {n:0};
@@ -4159,6 +4295,31 @@ function simulate(sidesIn, T, simNotes, fo){
     if (B.n<(dvOf(P,"stackcap",1)||4)) return null; x.braumP=null; x.braumImm={by:u, until:t+evalCalc(ctx,"stuncd").v};
     applyCC(u, {slot:"P", S:P, p:{}, cc:[{type:"stun", dur:evalCalc(ctx,"stunduration").v}], hard:true}, x, t, 0);
     const b={v:evalCalc(ctx,"totaldamage").v, type:"magic", what:"Concussive Blows"}; if (now){ kitDealNow(u, x, t, b, "Concussive Blows", u.curStep ?? null); return null; } return {bonus:[b]}; }
+  // batch 8 helpers
+  // Darius Hemorrhage: a stack on x (5 max, the 5 s refreshed); the bleed ticks every 1.25 s (a quarter of a stack's damage per stack).
+  // At 5 stacks on a champion: Noxian Might, + 30–230 AD by level for 5 s, every application meanwhile goes straight to 5 (wiki)
+  function kitDariusBleed(u, x, t){ if (!x.alive) return; const P=CALC.champs.Darius.P, K=u.kit, mx=dvOf(P,"maxstacks",1)||5, dur=dvOf(P,"bleedduration",1)||5, every=dur/4;
+    const H=x.dariusH && x.dariusH.by===u && x.dariusH.until>t ? x.dariusH : {by:u, n:0}, nm=K.nm && K.nm.until>t;
+    H.n=nm ? mx : Math.min(mx, H.n+1); H.until=t+dur; x.dariusH=H;
+    if (H.n>=mx && !nm && !x.pet && !x.minion){ const ad=evalCalc({S:P, rank:1, st:u.st, flags:u.flags},"noxianmightbonusad").v; K.nm={until:t+dur}; addBuff(u, "dariusNM", t+dur, {bonusad:ad}, t);
+      say(t, `  ${u.name}: Noxian Might (+${fmt(ad)} AD for ${fmt(dur)} s)`); }
+    if (H.ticking) return; H.ticking=true; const step=u.curStep ?? null;
+    const tick=(at)=>events.push({at, fn:(tt)=>{ if (!x.alive || x.dariusH!==H || tt>H.until+1e-6){ H.ticking=false; if (x.dariusH===H && tt>H.until+1e-6) x.dariusH=null; return; }
+      const v=evalCalc({S:P, rank:1, st:u.st, flags:u.flags},"bleeddamageperstack").v*H.n/4, prev=u.curStep, b=u.dealt; u.curStep=step;
+      deal(u, x, v, "physical", tt, "dot", `Hemorrhage ×${H.n}`); u.curStep=prev; if (step!=null && u.stepLog[step]) u.stepLog[step].dmg += u.dealt-b;
+      if (tt+every <= H.until+1e-6) tick(tt+every); else { H.ticking=false; if (x.dariusH===H) x.dariusH=null; } }});
+    tick(t+every);
+    simNotes.add(`${u.name}: Hemorrhage — his attacks, the Decimate blade and Noxian Guillotine add a bleed stack (5 s, 5 max; a tick every 1.25 s); at 5 on a champion, Noxian Might (+AD 5 s, stacks go straight to 5)`); }
+  // Varus Blight: a stack on x (6 s, refreshed, 3 max)
+  function kitVarusStack(u, x, t){ const W=u.abAll.W; if (!W || !x.alive) return; const B=x.varusB && x.varusB.by===u && x.varusB.until>t ? x.varusB : {by:u, n:0};
+    B.n=Math.min(dvOf(W.S,"varuswmaxstacks",W.rank)||3, B.n+1); B.until=t+(dvOf(W.S,"varuswdebuffduration",W.rank)||6); x.varusB=B; }
+  // Varus: an ability hit pops x's Blight: % maximum health per stack (× m), capped per stack on non-champions; −13% of each basic
+  // ability's full cooldown per stack popped on a champion
+  function kitVarusPop(u, x, t, m){ const W=u.abAll.W, B=x.varusB; if (!W || !B || B.by!==u || !(B.until>t) || !(B.n>0)) return; x.varusB=null;
+    const per=evalCalc({S:W.S, rank:W.rank, st:u.st, flags:u.flags},"percenthpperstack").v*m; let v=B.n*per*x.max;
+    if (x.pet || x.minion) v=Math.min(v, B.n*(dvOf(W.S,"maxmonsterdamage",W.rank)||120)*m);
+    kitDealNow(u, x, t, {v, type:"magic"}, `Blight ×${B.n}`, u.curStep ?? null);
+    if (!x.pet && !x.minion){ const f=(dvOf(W.S,"cdrperblightstack",W.rank)||0.13)*B.n; for (const s of ["Q","W","E"]){ const A=u.abAll[s]; if (A && (u.cd[s]||0)>t) u.cd[s]=Math.max(t, u.cd[s]-f*abCd(u, A)); } } }
   function runScript(u, t){
     if (u.si >= u.script.length) return;
     const foes=enemiesOf(u,t); if (!foes.length) return;
@@ -4402,7 +4563,7 @@ function simulate(sidesIn, T, simNotes, fo){
       u.shields=u.shields.filter(s=>s.until>=t && shieldLeft(s,t)>0.01);
     }
     flush();
-    for (const u of U){ u.hpS=u.hp; u.xS=u.x; u.stasisS=u.stasisUntil; }   // the state everyone decides on this tick
+    for (const u of U){ u.hpS=u.hp; u.xS=u.x; u.stasisS=u.stasisUntil; u.moveS=u.move; }   // the state everyone decides on this tick
     // pass 1: items, summoners, heals and shields (protection lands before anyone's damage this tick); pass 2: everything else
     if (simul) dmgQueue=[];
     for (const u of U){ if (!u.alive) continue; refresh(u,t); if (t<u.stasisUntil) continue; itemsTick(u,t); summonersTick(u,t); if (t>=u.nextAct && !locked(u,t)) supportPass(u,t,canCast(u,t)); }
@@ -4419,7 +4580,7 @@ function simulate(sidesIn, T, simNotes, fo){
     for (const u of U) if (!castStartSlot(u.c.champ)) act2(u);
     flush();
     inTick=false;
-    for (const u of U){ if (u.nx!=null && u.alive && !(u.move && u.move.t0>=t)) u.x=u.nx; u.nx=null; u.hpS=null; u.xS=null; u.stasisS=null; }
+    for (const u of U){ if (u.nx!=null && u.alive && !(u.move && u.move.t0>=t)) u.x=u.nx; u.nx=null; u.hpS=null; u.xS=null; u.stasisS=null; u.moveS=undefined; }
     for (const u of U) if (u.interruptAt===t){ u.interruptAt=null; if (u.alive) doInterrupt(u,t,u.intSoft); u.intSoft=false; }
     for (const k of pendingKills.splice(0)) if (k.tgt.alive && k.tgt.hp<=0) kill(k.tgt, k.att, t);
     const aliveBy=[0,1].map(s=>U.some(x=>x.side===s && !x.pet && (x.alive || x.reviveAt>=0)));   // pets don't keep a side in the fight
@@ -5759,7 +5920,110 @@ const KIT = {
     cc: {E:(S,r)=>{ const d=dvOf(S,"tooltip_eqfleeduration",r)||1.5; return [{type:"fear", dur:d, src:{dur:"dv:Tooltip_EQFleeDuration"}, text:"feared 1–1.5 s (EQ Grim Visage)"},
           {type:"slow", pct:0.7, dur:d, src:{pct:"wiki", dur:"dv:Tooltip_EQFleeDuration"}, text:"slowed 70% (up to 99% by distance) while feared"}]; }},
   },
+  /* ---- champion audit batch 8 (2026-09-24): the next most-played champions in solo queue without a test file (draft_stats.json);
+     live wiki Template:Data_<Champ>/<ability>, the game files (data/raw/cdragon_bins) and data/interactions/<Champ>.json ---- */
+  Shaco: {
+    // Backstab: attacks from behind + 20–35 by level (+20% bonus AD) physical (game data BasicAttackDamage; the export read the monster
+    // crit tooltip). fight(): the attack out of Deceive (perfect play: from behind), crit-affected
+    P: {parts(x){ return [{...x.part("basicattackdamage","physical",null,x.P,1), label:"Backstab: an attack from behind (fight(): the attack out of Deceive)", later:"attack"}]; }},
+    // Deceive: the next attack + 25–65 (+60% bonus AD), critically striking for 1 + 60% × (crit damage − 1) (game data QCritDamageMod)
+    Q: {parts(x){ return [{...x.part("totaldamage","physical"), label:"Deceive: his next attack's bonus (fight(): a 160% crit with Backstab)", later:"attack"}]; }},
+    // Jack in the Box: one shot on a lone target 25–85 (+18% AP) (game data STDamage), 10–30 (+12% AP) when it attacks several (AoEDamage);
+    // the shots every 0.5 s for 5 s aren't modelled (one shot)
+    W: {opts:{isolated:{bool:true, dflt:true, what:"the box attacks only one target (STDamage)"}}, sim:()=>({isolated:false}),
+      parts(x){ return [x.o.isolated ? {...x.part("stdamage","magic"), label:"Jack in the Box: a shot on a lone target"} : {...x.part("aoedamage","magic"), label:"Jack in the Box: a shot on several targets"}]; }},
+    // Jack in the Box: fear 0.5–1.5 s and a root of the same length on champions (game data FearDuration; sheet); Two-Shiv Poison active:
+    // slow 20–30% for 3 s (game data SlowAmount, SlowDurationActive; the 2 s is the attacks' passive slow)
+    cc: {W:(S,r)=>[{type:"fear", dur:dvOf(S,"fearduration",r)||1.5, src:{dur:"dv:FearDuration"}, text:"feared 0.5–1.5 s"},
+           {type:"root", dur:dvOf(S,"fearduration",r)||1.5, src:{dur:"dv:FearDuration"}, text:"rooted as long (champions)"}],
+         E:(S,r)=>[{type:"slow", pct:-(dvOf(S,"slowamount",r)||-0.3), dur:dvOf(S,"slowdurationactive",r)||3, src:{pct:"dv:SlowAmount", dur:"dv:SlowDurationActive"}, text:"slowed 20–30% for 3 s"}]},
+  },
+  Varus: {
+    // Piercing Arrow: fully charged (1.25 s) 80–360 (+120% bonus AD) (game data TotalDamageMax); uncharged two thirds (ChargeMultiplierInverse)
+    Q: {opts:{charged:{bool:true, dflt:true, what:"fully charged (1.25 s; uncharged: two thirds)"}}, sim:()=>({charged:true}),
+      parts(x){ return [x.o.charged ? {...x.part("totaldamagemax","physical"), label:"Piercing Arrow (fully charged)"} : {...x.part("totaldamagemintooltip","physical"), label:"Piercing Arrow (uncharged)"}]; }},
+    // Blighted Quiver: his attacks deal 4–40 (+15% bonus AD) (+25% AP) bonus magic on-hit (game data OnHitDamage) and add a Blight stack
+    // (6 s, 3 max); Q/E/R hits pop them: 3–5% (+1.3% per 100 AP) of maximum health each, +50% with a charged Q (fight())
+    W: {parts(x){ return [{...x.part("onhitdamage","magic"), label:"Blighted Quiver: on-hit on each attack (fight(): + Blight stacks popped by Q/E/R)", later:"attack"}]; }},
+    // Hail of Arrows: the field slows 25–50% for 4 s (game data SlowPercent, GroundDuration; the enemy stays in it), lingering 0.25 s after
+    // leaving it (wiki notes: "Slow lingers for 0.25 seconds after leaving the marked area"; sheet 4.25), and applies Grievous Wounds (fight())
+    cc: {E:(S,r)=>[{type:"slow", pct:-(dvOf(S,"slowpercent",r)||-0.5), dur:(dvOf(S,"groundduration",r)||4)+0.25, src:{pct:"dv:SlowPercent", dur:"dv:GroundDuration + 0.25 s linger (wiki)"}, text:"slowed 25–50% by the field (its 4 s + 0.25 s linger)"}]},
+  },
+  Darius: {
+    // Apprehend passive: 20–40% armor penetration (game data PassivePercentArmorPen; multiplicative with other % penetration: wiki)
+    statsFinal(c, st, notes){ const r=rankOf(c,"E"); if (!r) return; const f=(dvOf(CALC.champs.Darius.E,"passivepercentarmorpen",r)||0)/100; if (!(f>0)) return;
+      st.armorpenpct=1-(1-(st.armorpenpct||0))*(1-f); notes.push(`Darius: Apprehend passive ${fmt(100*f)}% armor penetration`); },
+    // Hemorrhage: one stack bleeds 13–30 by level (+30% bonus AD) physical over 5 s (game data BleedDamagePerStack); fight(): attacks, the
+    // Decimate blade and Noxian Guillotine add stacks (5 max), Noxian Might at 5 on a champion
+    P: {parts(x){ return [{...x.part("bleeddamageperstack","physical",null,x.P,1), label:"Hemorrhage: one stack's bleed over 5 s (fight(): up to 5 stacks)", later:"bleed"}]; }},
+    // Crippling Strike: his next attack deals 140–160% AD in all (game data ADRatio): the bonus over the attack; slow 90% 1 s (EMPOWER_NEXT)
+    W: {parts(x){ const m=(x.dv("adratio")||1.6)-1; return [{label:`Crippling Strike: the next attack's bonus (${fmt(100*m)}% AD)`, v:m*x.st.ad, s:`${fmt(m)} × AD ${fmt(x.st.ad)}`, type:"physical", pctOf:null}]; }},
+    // Noxian Guillotine: +20% per Hemorrhage stack on the target (game data RDamagePercentPerHemoStack), ×2 at 5
+    R: {opts:{stacks:{min:0, max:5, dflt:0, what:"Hemorrhage stacks on the target (+20% each)"}}, sim:()=>({stacks:0}),
+      parts(x){ const p=x.part("damage","true"), n=x.o.stacks, m=1+(x.dv("rdamagepercentperhemostack")||0.2)*n; return [n ? {...scale(p, m, `(${n} Hemorrhage stacks)`), label:`Noxian Guillotine (${n} stacks)`} : p]; }},
+  },
+  Ashe: {
+    // Frost Shot: her crits deal no bonus damage (record 1.0); instead every attack deals × (1 + crit chance × (100% + bonus crit damage))
+    // (game data DamageBonus; wiki). Kept as st.asheFrost for fight()
+    statsFinal(c, st, notes, e){ const cd=(e && e.it && e.it.critdmg) || 0; st.asheFrost=1+st.crit*(1+cd);
+      for (let i=notes.length-1;i>=0;i--) if (/Frost Shot bonus is not modelled/.test(notes[i])) notes.splice(i, 1);
+      if (st.crit>0) notes.push(`Ashe: Frost Shot — her crits deal no bonus damage; attacks deal ×${fmt(st.asheFrost)} instead (1 + crit ${fmt(st.crit)} × (1 + bonus crit damage ${fmt(cd)}))`); },
+    P: {none:"Frost Shot has no damage of its own: attacks slow 20–30% by level for 2 s and deal × (1 + crit chance × (1 + bonus crit damage)) instead of critting (fight())"},
+    // Ranger's Focus: each attack for 6 s is a flurry of 5 arrows for 110–130% AD in all (game data EmpoweredDamage); the first flurry
+    // fires a sixth arrow: +20% (wiki notes); ready at 4 Focus stacks (fight(): no cooldown)
+    Q: {simCd:()=>0.5, simCdWhy:"Ranger's Focus has no cooldown: it's ready at 4 Focus stacks (one per attack while it's inactive; fight() and perform() wait for them)",
+      parts(x){ return [{...x.part("empowereddamage","physical"), label:"Ranger's Focus: each empowered attack (a flurry; fight(): the first +20%)", later:"attack"}]; }},
+    // Frost Shot: slow 20–30% by level 2 s (game data SlowAmount, SlowDuration); Volley: Critical Slow 40–60% by level 2 s
+    // (EmpoweredSlowAmount); Enchanted Crystal Arrow: stun 1 s up to 800 units flown, +0.25 s per 200 beyond, 3.5 s at 2800 (wiki;
+    // fight(): the distance at the cast), and Frost Shot's slow around
+    cc: {P:(S,r,c)=>[{type:"slow", pct:kitAsheSlow(c, false), dur:dvOf(CALC.champs.Ashe.P,"slowduration",1)||2, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"slowed 20–30% by level for 2 s"}],
+         W:(S,r,c)=>[{type:"slow", pct:kitAsheSlow(c, true), dur:dvOf(CALC.champs.Ashe.P,"slowduration",1)||2, src:{pct:"dv:EmpoweredSlowAmount", dur:"dv:SlowDuration"}, text:"Critical Slow 40–60% by level for 2 s"}],
+         R:(S,r,c)=>[{type:"stun", dur:dvOf(S,"minstunduration",r)||1, src:{dur:"dv:MinStunDuration"}, text:"stunned 1 s up to 800 units flown, +0.25 s per 200 beyond (3.5 s at 2800; fight(): by distance)"},
+           {type:"slow", pct:kitAsheSlow(c, false), dur:dvOf(CALC.champs.Ashe.P,"slowduration",1)||2, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"Frost Shot's slow"}]},
+  },
+  Fizz: {
+    P: {none:"Nimble Fighter has no damage: every damage instance he takes is 4 (+1% AP) lower before resistances, at most 50% (not modelled yet: needs a pre-mitigation hook in fight())"},
+    // Seastone Trident: the active's bonus magic on his next attack (50–150 + 45% AP, game data ActiveDamage; attack reset), then 20–40
+    // (+30% AP) on-hit for 5 s (OnHitBuffDamage); passive: his attacks bleed 30–90 (+25% AP) magic over 3 s (DoTDamage; fight())
+    W: {parts(x){ return [{...x.part("activedamage","magic"), label:"Seastone Trident: his next attack's bonus (fight(): + the on-hit for 5 s; attacks bleed)", later:"attack"}]; }},
+    // Chum the Waters: Guppy (lure flew < 455) ×1, Chomper (455–910) ×1.25, Gigalodon (> 910) ×1.5 (game data MidDamageMulti,
+    // LargeDamageMulti; wiki); fight(): the distance to the target, slow 40/60/80% by size
+    R: {opts:{distance:{min:0, max:1300, dflt:0, what:"units the lure flew (< 455 Guppy, 455–910 Chomper ×1.25, > 910 Gigalodon ×1.5)"}}, sim:()=>({distance:0}),
+      parts(x){ const d=x.o.distance, p=x.part("smallsharkdamage","magic"), m=kitFizzShark(d, x.S, x.rank).m; return [m===1 ? {...p, label:"Chum the Waters (Guppy)"} : {...scale(p, m, d>910?"(Gigalodon)":"(Chomper)"), label:`Chum the Waters (${d>910?"Gigalodon":"Chomper"})`}]; }},
+    // Playful: the splash slows 35–60% for 2 s (game data SlowAmount, SlowDuration)
+    cc: {E:(S,r)=>[{type:"slow", pct:dvOf(S,"slowamount",r)||0.6, dur:dvOf(S,"slowduration",r)||2, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"slowed 35–60% for 2 s by the splash"}]},
+  },
+  Sion: {
+    P: {none:"Glory in Death has no damage of its own: on death 1.5 s of stasis, then he fights on at full health that drains away (fight(): 100% life steal, attacks + 10% of the target's maximum health, no abilities)"},
+    // Decimating Smash: 2 s charge in 0.25 s steps, base 30–90 → 90–350 and AD ratio 40–80% → 120–240% (game data LowDamage/HighDamage,
+    // ADRatioMin/ADRatioMax); default: the 1 s charge of the default cast (castTime 1, its 1 s crowd control): halfway
+    Q: {opts:{charged:{bool:true, dflt:null, what:"false: released at once (minimum); true: the full 2 s (maximum); default: the 1 s charge (halfway)"}}, sim:()=>({charged:null}),
+      parts(x){ const c=x.o.charged; if (c===false) return [{...x.part("mindamagetotal","physical"), label:"Decimating Smash (uncharged)"}];
+        if (c===true) return [{...x.part("maxdamagetotal","physical"), label:"Decimating Smash (charged 2 s)"}];
+        const lo=x.part("mindamagetotal","physical"), hi=x.part("maxdamagetotal","physical"), v=(lo.v+hi.v)/2;
+        return [{...lo, v, s:`(${lo.s} + ${hi.s}) / 2`, label:"Decimating Smash (charged 1 s: halfway)"}]; }},
+    // Unstoppable Onslaught: 150–450 (+60% bonus AD) → 400–1200 (+120% bonus AD) after 3 s of charging (game data MaxDamageTotal)
+    R: {opts:{charged:{bool:true, dflt:false, what:"charged 3 s or more (the maximum)"}}, sim:()=>({charged:false}),
+      parts(x){ return [x.o.charged ? {...x.part("maxdamagetotal","physical"), label:"Unstoppable Onslaught (charged 3 s)"} : x.part("mindamagetotal","physical")]; }},
+    // Roar of the Slayer on a champion: slow 35–60% 2.5 s (game data SlowAmount, SlowDuration) and −25% armor 4 s (fight()); the 0.75 s
+    // stun and the 1350 knock-back are for minions and monsters only (wiki)
+    cc: {E:(S,r)=>[{type:"slow", pct:(dvOf(S,"slowamount",r)||60)/100, dur:dvOf(S,"slowduration",r)||2.5, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"slowed 35–60% for 2.5 s (champions; −25% armor 4 s: fight())"}]},
+  },
+  Gragas: {
+    P: {none:"Happy Hour has no damage: after an ability cast he heals 5.5% of his maximum health, every 12/10/8/6 s (levels 1/6/11/16; fight())"},
+    // Barrel Roll: fermented 2 s: ×1.5 (game data MaxDamage, BarrelCookMaxAmp); default: exploded on arrival (perfect play for the hit)
+    Q: {opts:{charged:{bool:true, dflt:false, what:"fermented the full 2 s (×1.5)"}}, sim:()=>({charged:false}),
+      parts(x){ return [x.o.charged ? {...x.part("maxdamage","magic"), label:"Barrel Roll (fermented 2 s, ×1.5)"} : x.part("mindamage","magic")]; }},
+    // Drunken Rage: after the 0.75 s drink, his next attack within 5 s deals 20–140 (+70% AP) + 7% of the target's maximum health magic
+    // to enemies within 250 of the target (fight())
+    W: {parts(x){ return [{...x.part("totaldamage","magic"), label:"Drunken Rage: his next attack after the 0.75 s drink", later:"attack"},
+      {...x.part("maxhppercentdamage","magic"), label:"Drunken Rage: % of the target's maximum health", later:"attack"}]; }},
+  },
 };
+/* Ashe, Frost Shot slow by level (game data SlowAmount 20–30%, EmpoweredSlowAmount 40–60% for Critical Slow; ByCharLevelInterpolation) */
+function kitAsheSlow(c, emp){ if (!c || !c.champ) return emp ? 0.6 : 0.3; return evalCalc({S:CALC.champs.Ashe.P, rank:1, st:stats(c), flags:new Set()}, emp ? "empoweredslowamount" : "slowamount").v || (emp ? 0.6 : 0.3); }
+/* Fizz R shark size by the lure's flight (wiki Chum the Waters): Guppy < 455 (×1, slow 40%), Chomper 455–910 (×1.25, 60%), Gigalodon > 910 (×1.5, 80%) */
+function kitFizzShark(d, S, r){ return d>910 ? {m:(S && dvOf(S,"largedamagemulti",r))||1.5, slow:0.8} : d>=455 ? {m:(S && dvOf(S,"middamagemulti",r))||1.25, slow:0.6} : {m:1, slow:0.4}; }
 /* Irelia, Ionian Fervor on-hit (game data OnHitBonus: OnHitBaseDamage 10 + OnHitPerLevel 3 per level after the first, + 20% bonus AD;
    the per-level part is a calc type the evaluator doesn't read; wiki 10–61 by level) */
 function kitIreliaOnHit(st){ const P=CALC.champs.Irelia.P, b=dvOf(P,"onhitbasedamage",1)||10, pl=dvOf(P,"onhitperlevel",1)||3, L=st.level||1, v=b+pl*(L-1)+0.2*st.bonusad;
@@ -6040,10 +6304,11 @@ const EMPOWER_NEXT = {
   Garen:{Q:{win:4.5, reset:true}}, Darius:{W:{win:4, reset:true}}, Jax:{W:{win:10, reset:true}}, Leona:{Q:{win:6, reset:true}},
   Trundle:{Q:{win:7, reset:true}}, Kassadin:{W:{win:5, reset:true}}, Yorick:{Q:{win:5, reset:true}}, Volibear:{Q:{win:4, reset:true}},
 };
-/* ===== SIM_INTERIM_P3 (P3 of the interaction audit, 2026-09-24): INTERIM per-ability data for fight()/perform(), DELETE when P1 lands =====
-   Hand-copied from the sheets (data/interactions/<C>.json: blockedBy.spellShield + the wiki quotes in their notes; DECISIONS.md).
-   Read through physOf → simInterim (merge: defaults < this table < P2's SIM_INTERIM < calc.json phys), so fight() sees them on a.p.
-   Fields (the P1 phys names):
+/* ===== SIM_INTERIM_P3 (P3 of the interaction audit, 2026-09-24): RESIDUAL per-ability data for fight()/perform() =====
+   P1 now exports the sheets' fields into calc.json phys (which wins in physOf → simInterim: defaults < this table < P2's SIM_INTERIM
+   < calc.json phys). Only what the sheets have no field for stays here (outputs/interactions/P1_DIFF.md): shieldHits "first" (Ahri Q)
+   and "spheres" (Syndra R). Move them to the sheets' sim blocks and delete this table.
+   The phys fields fight() reads (the P1 names):
      spellShield   how a spell shield (Banshee's, Edge of Night, Verdant Barrier, Sivir E, Nocturne W) meets the cast on one target:
                    "blocks" (default: the whole cast) | "not" (never blocked; the shield isn't used up) | "oneHit" (the shield takes one
                    hit / sphere / dagger / pass / tick, the rest land) | "ccOnly" (only the crowd control is blocked, the damage lands) |
@@ -6060,57 +6325,29 @@ const EMPOWER_NEXT = {
      grants        the caster's own windows, s from the press (where P2's table has none)
      untargetableDash:true  untargetable from the press until the dash arrives (the window depends on the distance)
      invulnFar     {from, until, beyond}: invulnerable only to enemy champions farther than `beyond` (Xin Zhao R) */
-const SIM_INTERIM_P3 = (()=>{
-  const T={
-    // spell shields per hit (sheets' blockedBy.spellShield quotes)
-    "Ahri.Q":{spellShield:"oneHit", shieldHits:"first"},             // 'a shield blocks one pass, the other pass still hits' (out magic, back true)
-    "Syndra.R":{spellShield:"oneHit", shieldHits:"spheres", cancelOn:[]},                 // 'will only block the damage of a single sphere'; spheres fly from the press, 'cannot be interrupted' (DECISIONS 5)
-    "Katarina.R":{spellShield:"oneHit"},                             // 'Spell shield will block and be consumed by only one dagger.'
-    "Fiddlesticks.R":{spellShield:"oneHit", shieldHits:20},          // DECISIONS 32: one tick (damage every 0.25 s for 5 s = 20 ticks)
-    "Lucian.R":{spellShield:"oneHit", shieldHits:22},                // 'Spell shield only blocks one instance of damage.' (up to 22 shots)
-    // DECISIONS 33 (wiki spellshield field empty): persistent damage areas lose one tick; effects riding a basic attack aren't blocked
-    "Vladimir.W":{spellShield:"oneHit", shieldHits:4},               // ticks at 0, 0.5, 1.0, 1.5 s (sheet)
-    "Velkoz.R":{spellShield:"oneHit", shieldHits:13},                // 'hitting every 0.2 s' over the 2.6 s channel
-    "Singed.Q":{spellShield:"oneHit"},
-    "Kayle.P":{spellShield:"not"}, "Ornn.P":{spellShield:"not"}, "Vayne.Q":{spellShield:"not"}, "Xerath.P":{spellShield:"not"},
-    "Garen.Q":{spellShield:"ccOnly"},                                // 'Spell shield will only negate the silence.'
-    "Trundle.Q":{spellShield:"ccOnly"},                              // 'will only block the attack damage reduction and slow'
-    "XinZhao.Q":{spellShield:"ccOnly"},                              // 'Spell shield will only block the knock up.'
-    "Zaahen.Q":{spellShield:"ccOnly"},                               // 'will only block the knock up from the recast'
-    "Soraka.E":{spellShield:"damageOnly"},                           // 'Spell shield will not block the silence.'
-    "Yasuo.R":{spellShield:"not", shieldConsumed:true},              // bug: 'will not prevent Last Breath ... The spell shield is still consumed'
-    // unit-targeted casts (DECISIONS 1, 3, 13, 21) and caster windows the P2 table doesn't have
-    "Lulu.W":{cancelSpends:true}, "Evelynn.W":{cancelSpends:true}, "Sejuani.E":{cancelSpends:true},   // bug: 'will cancel but still go on cooldown and pay its cost'
-    "RekSai.R":{cancelOn:["invisible"]},                             // 'will not be cancelled if the target becomes untargetable during the cast time'; out of sight cancels
-    "Nautilus.R":{inFlight:"hits"},
-    "JarvanIV.R":{inFlight:"invalidated"},                           // DECISIONS 13: lands, the arena forms, the untargetable target takes no damage
-    "Jayce.Q":{leapTo:"press", leapRadius:300},                      // DECISIONS 21; 'physical damage in 300 in front of Jayce' (wiki)
-    "Taric.R":{grants:{invulnerable:[2.75,5.25]}},                   // 'calls down a star ... over 2.5 seconds. Afterwards ... invulnerable for 2.5 seconds' after the 0.25 s cast
-    "Kayn.R":{grants:{untargetable:[0,1.35]}},                       // ≥ 1.35 s (0.25 dash + 0.5 + 0.1 + 0.5 recast delay; sheet)
-    "Maokai.W":{untargetableDash:true},                              // 'dashes to the target enemy while being untargetable'
-    "XinZhao.R":{invulnFar:{from:0.35, until:4.35, beyond:450}},     // 'For the next 4 seconds, Xin Zhao is invulnerable against enemy champions far away from him' (cr 450), after the 0.35 s cast
-  };
-  // oneHit abilities whose other hits fight() or a kit deals separately (the first fight() hit is the one blocked)
-  for (const k of ("Akshan.Q Akshan.E Akshan.R AurelionSol.E Draven.R Ekko.Q Gwen.Q Gwen.R Graves.Q Kaisa.Q Kayn.Q MasterYi.Q Mel.Q MonkeyKing.R "+
-    "Neeko.Q Ornn.E Ornn.R Poppy.Q Samira.W Samira.R Sejuani.W Sejuani.R Sivir.Q Smolder.E Taliyah.Q Talon.R Velkoz.W Xayah.Q Xayah.E Yuumi.R "+
-    "Zac.R Ziggs.E Gangplank.R Rammus.R Viktor.R").split(" ")) T[k]={spellShield:"oneHit", ...(T[k]||{})};
-  // spellshield = False on the hostile abilities' sheets (Karthus W/E, Evelynn W mark, Azir W, Shyvana Q, Renekton R, Miss Fortune E/R, Nasus E, …)
-  for (const k of ("Amumu.W Anivia.W Anivia.R Ashe.Q Azir.W Belveth.E Briar.W Camille.Q Cassiopeia.W Chogath.E Corki.W Corki.E DrMundo.E Draven.Q "+
-    "Evelynn.W Fiora.R Garen.E Gnar.W Gwen.E Hecarim.W Heimerdinger.Q Hwei.Q Hwei.W Hwei.E Ivern.R Jayce.W Jinx.Q Jinx.E Jinx.R Kalista.W Karthus.W "+
-    "Karthus.E Kindred.R Kled.W KogMaw.W Lillia.E Locke.W Malphite.W MasterYi.E Mel.W MissFortune.E MissFortune.R MonkeyKing.W Morgana.W Naafiri.W "+
-    "Nasus.Q Nasus.E Nidalee.E Rammus.W RekSai.Q Renekton.R Rengar.Q Rengar.R Rumble.Q Rumble.R Sett.Q Shaco.Q Shyvana.Q Singed.W Sivir.W Skarner.Q "+
-    "Swain.R Taliyah.R Teemo.E TwistedFate.E TwistedFate.R Twitch.R Udyr.R Urgot.W Vayne.W Vi.W Vladimir.R Warwick.W Yone.E Yorick.Q "+
-    "Yorick.W Yorick.R Yunara.Q Zed.W Zeri.Q Zeri.E Zyra.W").split(" ")) T[k]={...(T[k]||{}), spellShield:"not"};
-  return T; })();
+const SIM_INTERIM_P3 = {
+  "Ahri.Q":{shieldHits:"first"},      // sheet: 'a shield blocks one pass, the other pass still hits' — the out pass (magic) is the first part
+  "Syndra.R":{shieldHits:"spheres"},  // wiki: 'Spell shield will only block the damage of a single sphere.' — the kit's sphere count
+};
 /* Caster windows that the kits set themselves (the generic grant code in cast() skips them): Zed R, Pantheon E, Naafiri W and Olaf R,
    Fiora W in CHAMP_MECH; Lissandra R's stasis is only for a self-cast (fight() casts it on an enemy). */
 const KIT_OWN_GRANTS = new Set(["Zed.R","Pantheon.E","Naafiri.W","Olaf.R","Fiora.W","Lissandra.R"]);
+/* a grants window [start, end] (seconds from the press) as numbers, or null. The sheets write an end that depends on something as
+   null (ends on an event: Kayn R) or {min, max, by}: by "rank" → the value at this rank; otherwise the documented lower bound (min;
+   Maokai W "dash length / 1300": its dash code covers the real window). A null end takes GRANT_NOTES' `until` (a documented bound). */
+function grantWin(w, key, rank, slot){ if (!Array.isArray(w)) return null;
+  const val = (v, isEnd) => { if (typeof v==="number") return v;
+    if (v==null) return isEnd ? ((GRANT_NOTES[key]||{}).until ?? null) : null;
+    if (typeof v==="object" && typeof v.min==="number" && typeof v.max==="number"){ const n = slot==="R" ? 3 : 5;
+      return v.by==="rank" && rank ? v.min+(v.max-v.min)*Math.min(1, Math.max(0, (rank-1)/(n-1))) : v.min; }
+    return null; };
+  const s=val(w[0], false), e=val(w[1], true); return s!=null && e!=null && e>s ? [s, e] : null; }
 /* extra lockout and log text for cast windows (the windows themselves come from the grants data) */
 const GRANT_NOTES = {
   "Fizz.E":{lock:1.25, why:"Playful: untargetable at once, 0.75 s on the trident then 0.5 s hopping off (wiki; the Trickster recast isn't modelled)"},
   "Vladimir.W":{lock:2, why:"Sanguine Pool: untargetable for 2 s from the cast (wiki: cast time none); he can't attack or cast meanwhile (he can move in the game; here he stays put)"},
   "MasterYi.Q":{lock:1.087, why:"Alpha Strike: vanishes at once; 4 marks 0.2 s apart, reappears at 0.94 s and acts again 1.087 s after the cast (wiki, one target)"},
-  "Kayn.R":{lock:1.35, why:"Umbral Trespass: vanishes at once (0.25 s dash, 0.5 s before the channel, recast after 0.1 s, recast delay 0.5 s: 1.35 s at the earliest; wiki); the exit dash isn't modelled"},
+  "Kayn.R":{lock:1.35, until:1.35, why:"Umbral Trespass: vanishes at once (0.25 s dash, 0.5 s before the channel, recast after 0.1 s, recast delay 0.5 s: 1.35 s at the earliest; wiki); the exit dash isn't modelled"},
   "Xayah.R":{why:"Featherstorm: untargetable for 1.5 s from the cast (wiki; DECISIONS 12); she can't attack or cast meanwhile"},
   "Evelynn.R":{why:"Last Caress: untargetable from the start of the cast time until the blink 0.85 s after the press (wiki)"},
   "Camille.R":{why:"The Hextech Ultimatum: untargetable during the 0.5 s leap (wiki)"},
@@ -6135,7 +6372,7 @@ function castStartSlot(champ){
   if (!CAST_START_MAP){ CAST_START_MAP = {Zed:"R", Pantheon:"E"};
     for (const [c, C] of Object.entries(CALC.champs)) for (const s of ["Q","W","E","R"]){ if (!C[s] || KIT_OWN_GRANTS.has(`${c}.${s}`)) continue;
       const g={...simInterim(c, s), ...(C[s].phys||{})}.grants || {};
-      if (["untargetable","stasis"].some(k=>Array.isArray(g[k]) && g[k][0]===0 && typeof g[k][1]==="number")) CAST_START_MAP[c]=s; } }
+      if (["untargetable","stasis"].some(k=>{ const w=grantWin(g[k], `${c}.${s}`, 1, s); return w && w[0]===0; }) || ({...simInterim(c, s), ...(C[s].phys||{})}).untargetableDash) CAST_START_MAP[c]=s; } }
   return CAST_START_MAP[champ] || null; }
 /* Unstoppable (AUTOPILOT item 28; wiki "Crowd control" § Immunity, checked 2026-09-24). "Unstoppable" in the game is displacement
    immunity (its buff icon): immune to airborne (knock-up, knockback, pull), knockdown, sleep, enemy stasis and the special-cased
