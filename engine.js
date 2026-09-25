@@ -712,7 +712,7 @@ function kitRankKey(c){ const k=KIT[c.champ]; return k && (k.stats || k.statsFin
 /* ================= fight simulator ================= */
 const SIM_ASSUMPTIONS = [
   "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range (range + both radii for the game files' castRangeUseBoundingBoxes spells: Tristana E/R, Vayne E, Viktor Q, …), other abilities their reach + the target's hitbox, except those the wiki marks centred ({{tip|cr}}: the reach itself) or edge ({{tip|er}}: + both hitboxes); an area marked {{tip|cr}} needs the target's centre inside, no hitbox added (DECISIONS 29); global abilities (Karthus R, Ezreal R, …) reach any distance (wiki Range; one rule shared with canDodge)",
-  "fight(): every ability and attack in range hits (perfect aim, no dodging in fight(); use canDodge for that), except the kit mechanics that say otherwise (Viktor's Gravity Field stuns only a unit still inside on its 5th stack, Aftershock can be sidestepped, his storm moves, Akali's shroud hides her from attacks and point-and-click spells); an ability's effects land after its cast time, flight and appear-delay (the same timing as .arrival and canDodge: Lux Q 0.67 s at 500, Lux R 1 s, Karthus Q 0.75 s); cooldown, cost and cast lock start at the press; crowd control never cancels a cast time (wiki Cast time: only death does), it cancels channels (Karthus R) and charges (Vi Q, Sion Q); dashes start when the cast time ends and hit on arrival if the target is in reach there (or was at the press); a displacement or knockdown stops a dash under way, a stun or root doesn't (wiki Dash; Akshan E, Camille E, Rakan W/E, Yasuo E, Yuumi W are also stopped by immobilizing CC); unstoppable abilities (Malphite R, Vi R, Hecarim R, Jarvan IV R, …) are immune to displacements and can't be stopped (wiki Crowd control § Displacement Immunity), spell shields still block them; self-casts, heals and shields apply when the cast time ends",
+  "fight(): basic attacks, point-and-click abilities and dashes in range hit; a skillshot or area (not unit-targeted) misses a defender who, at the reaction time its player skill gives, could walk out of it (canDodge's physics at the distance at the press: reveal, reach, shape, landing; walking only, at its current move speed, after any stun/root it is under; skill 0–100, default 70 in fight()/fights(); reaction = 0.10 + 0.35 × (100 − skill) / skill s: 100 → 0.10 s, 90 → 0.14 s, 70 → 0.25 s, 50 → 0.45 s, 0 → never dodges; a dodge that needs no reaction at all, i.e. out of reach, is left to the fight's own reach rule); Flash, dashes, spell shields and walls are not spent on dodges (the kits' own shield/wall AI still raises them with perfect reaction); perform(), canKill/timeToKill and fight(…, perfectAim: true) land every ability in reach (skill 0 gives the same), except the kit mechanics that say otherwise (Viktor's Gravity Field stuns only a unit still inside on its 5th stack, Aftershock can be sidestepped, his storm moves, Akali's shroud hides her from attacks and point-and-click spells); an ability's effects land after its cast time, flight and appear-delay (the same timing as .arrival and canDodge: Lux Q 0.67 s at 500, Lux R 1 s, Karthus Q 0.75 s); cooldown, cost and cast lock start at the press; crowd control never cancels a cast time (wiki Cast time: only death does), it cancels channels (Karthus R) and charges (Vi Q, Sion Q); dashes start when the cast time ends and hit on arrival if the target is in reach there (or was at the press); a displacement or knockdown stops a dash under way, a stun or root doesn't (wiki Dash; Akshan E, Camille E, Rakan W/E, Yasuo E, Yuumi W are also stopped by immobilizing CC); unstoppable abilities (Malphite R, Vi R, Hecarim R, Jarvan IV R, …) are immune to displacements and can't be stopped (wiki Crowd control § Displacement Immunity), spell shields still block them; self-casts, heals and shields apply when the cast time ends",
   "fight(): basic attacks start when the attack timer allows (timer, on-attack effects) and land at the end of their windup (wiki Attack speed: attack time × windup %, scaled by the champion's windup modifier; .windup), a ranged one after its missile's flight too (.missileSpeed; 0 = instant); the attacker can't act during the windup; a stun, knock-up or death during it cancels the attack (the timer resets), a silence doesn't; a target dead or in stasis when it lands isn't hit; empowered-attack abilities (Nasus Q, Garen Q, Darius W, Jax W, Leona Q…) resolve with the next attack, and attack resets reset the timer at the press",
   "fight(): abilities are cast as soon as they're off cooldown (each ability locks its caster for its cast time: game data checked against the wiki's cast time field, calc.json phys.castTime; an ability with none frees the caster on the next step); mana is ignored, energy is not (Zed, Akali, Lee Sin, Kennen, Shen: abilities wait until it covers their cost); a champion whose ability makes it untargetable from the cast (the ability pages' windows: Zed R, Fizz E, Vladimir W, Master Yi Q, Kayn R, Ekko R, Evelynn R, Xayah R, Camille R, and Pantheon E's kit) is untargetable for that whole step",
   "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground and root prevent starting a dash, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
@@ -845,6 +845,7 @@ function simulate(sidesIn, T, simNotes, fo){
      labels. uniqueName is also used for units added later (Daisy). */
   const uniqueName = u => { const base=u.name; let k=1; while (U.some(x=>x!==u && x.name===u.name)) u.name=`${base} (${++k})`; };
   for (const u of U) uniqueName(u);
+  if (fo.skill && !fo.skill.perfect) simNotes.add(`fight(): player skill (0–100; reaction time for walking out of skillshots and areas): ${U.filter(u=>!u.pet).map(u=>`${u.name} ${fmt(u.skill)} (${Number.isFinite(skillReaction(u.skill)) ? fmt(skillReaction(u.skill))+" s" : "never dodges"})`).join(", ")}; set x.skill or fight(…, skill: n / {n1, n2}); perfectAim: true lands everything in reach`);
   for (const u of U){ statNotes(u.c).forEach(n=>simNotes.add(n));
     for (const k of u.items){ if (ITEM_SIM_NOTES[k]) simNotes.add(ITEM_SIM_NOTES[k]); if (ITEM_GAPS[k]) simNotes.add(ITEM_GAPS[k]); } }
   if (U.some(u=>u.st.crit>0)) simNotes.add("fight(): critical strikes count at their expected value on every attack (damage × (1 + crit chance × (crit damage − 1)))");
@@ -898,6 +899,8 @@ function simulate(sidesIn, T, simNotes, fo){
     // centred on 0 so mirrored positions are exact negatives (no rounding bias)
     u.x = side===0 ? -(fo.start||0)/2-u.depth : (fo.start||0)/2+u.depth; u.x0=u.x; u.ccs=[]; u.slows=[]; u.move=null; u.role=o.role||null; u.walk=null; u.chan=null;
     u.flags=new Set(); u.kit={};
+    // player skill (x.skill, else fight(…, skill:) for its side, else SKILL_DEFAULT): only used when fo.skill turns dodging on
+    u.skill = o.skill ?? (fo.skill && fo.skill.side ? fo.skill.side[side] : null) ?? SKILL_DEFAULT;
     for (const s of ["P","Q","W","E","R"]){
       const S=CALC.champs[c.champ][s]; if (!S) continue;
       if (s==="P" && !u.script) continue;      // the passive is only triggered explicitly, in combos
@@ -1888,6 +1891,31 @@ function simulate(sidesIn, T, simNotes, fo){
   // L (backlog 25): a landing after the press. The aim is decided at the press (the target in reach then, perfect aim) and the hit
   // test is at the landing: the target must still be alive and targetable (a stasis or untargetability at the landing blocks it; a
   // point-and-click missile tracks it); areas hit whoever is inside them at the landing (centred on the target: perfect aim).
+  /* Player skill (fight()/fights(); fo.skill, off in perform()/canKill and with perfectAim: true): a skillshot or area that isn't
+     unit-targeted misses x if x, reacting skillReaction(x.skill) s after the reveal, could walk out of it: canDodge's own physics
+     (reveal, reach, shape, landing time) at the distance at the press (the aimed target: d0; others: the gap now), with x's current
+     move speed, the reaction pushed back by any stun/root on x that was live in the window (applied before this step, so the side
+     order doesn't matter). Walking only: Flash, dashes, shields and walls aren't spent on it. A dodge that needs no reaction (canDodge
+     says dodged even with an unbounded reaction time: out of reach) is left to the fight's own reach rule, so skill 0 = perfect aim.
+     Memoised per fight (the answer depends only on the key). */
+  const dodgeMemo=new Map();
+  function skillDodged(u, a, x, t, L, d0, tgt){
+    if (!fo.skill || fo.skill.perfect || !L || u.script || u.pet || !u.c || !x || x.pet || x.dummy || !x.c || x.side===u.side) return false;
+    const p=a.p; if (!p || p.kind==="targeted" || a.dash || p.hostile===false) return false;
+    const react=skillReaction(x.skill); if (!Number.isFinite(react)) return false;
+    const d = x===tgt ? d0 : gap(u,x), tp0 = L.pressT + Math.min(revealOf(p), Math.max(0, t-L.pressT)) + react;
+    let hold=tp0; for (const c of x.ccs) if (c.at < t-1e-9 && c.until > hold && (LOCKS.includes(c.type) || c.type==="root")) hold=c.until;
+    if (hold >= t-1e-9) return false;
+    const r=react+(hold-tp0), ms=msNow(x, Math.max(L.pressT, Math.min(t, tp0))), ab={t:"ability", owner:u.c, slot:a.slot};
+    const key=`${x.name}|${u.name}|${a.slot}|${d.toFixed(1)}|${r.toFixed(3)}|${ms.toFixed(1)}`;
+    let v=dodgeMemo.get(key);
+    if (v===undefined){ const saved=TR; TR=null;
+      try { v = canDodge(x.c, ab, {distance:d, reaction:r}, {ms}) === true && canDodge(x.c, ab, {distance:d, reaction:1e6}, {ms}) !== true; }
+      catch(err){ v=false; } finally { TR=saved; }
+      dodgeMemo.set(key, v); }
+    if (v){ x.dodged=(x.dodged||0)+1; say(t, `  ${x.name} dodges ${u.name}'s ${a.slot} (skill ${fmt(x.skill)}: reacts ${fmt(react)} s after it shows; canDodge at ${fmt(d)} units)`);
+      simNotes.add(`fight(): player skill: ${x.name} (skill ${fmt(x.skill)}) reacts ${fmt(react)} s after an ability shows and walks out of skillshots and areas it can (canDodge's physics; walking only)`); }
+    return v; }
   function hitList(u,a,tgt,t,L){
     if (u.script) return a.aoe ? enemiesOf(u,t) : (tgt ? [tgt] : []);
     { const km=CHAMP_MECH[u.c.champ], r=km && km.hitList ? km.hitList(u,a,tgt,t) : null; if (r) return r; }   // champion kits: hits from other origins (Zed's shadows)
@@ -2071,7 +2099,7 @@ function simulate(sidesIn, T, simNotes, fo){
     if (!L || !L.started) castStart(u, a, t);
     const km=CHAMP_MECH[u.c.champ], ktg=tgt||enemiesOf(u,t)[0]||null; if (km && km.onCast){ a.land=L; km.onCast(u, a, ktg, t); }
     if (a.parts.length && tgt){
-      const targets = hitList(u,a,tgt,t,L).filter(x=>!(L && L.voided && x===tgt));   // P3: a targeted hit voided in flight (flightWatch)
+      const targets = hitList(u,a,tgt,t,L).filter(x=>!(L && L.voided && x===tgt)).filter(x=>!skillDodged(u,a,x,t,L,d0,tgt));   // P3: a targeted hit voided in flight (flightWatch); player skill: walked out of (skillDodged)
       if (!targets.length && !u.script) say(t, L && L.deferred ? `${u.name}'s ${a.slot} misses ${tgt.name}${!L.castOk ? ` (out of reach at the cast: ${fmt(d0)} > ${fmt(abReach(u,a,tgt))})` : !tgt.alive ? " (dead)" : L.voided ? ` (untargetable while it was in flight, from ${fmt(L.voided)}s: its effect is voided)` : inStasis(tgt,t) ? " (untargetable as it lands)" : ""}`
         : `${u.name}'s ${a.slot} misses: ${tgt.name} is out of reach (${fmt(gap(u,tgt))} > ${fmt(abReach(u,a,tgt))})`);
       if (!(L && L.deferred && !targets.length)) say(t, `${u.name}${L && L.deferred ? `'s ${a.slot} lands` : ` casts ${a.slot}`}${a.aoe&&targets.length>1?` (area, ${targets.length} targets)`:""}`);
@@ -2116,7 +2144,7 @@ function simulate(sidesIn, T, simNotes, fo){
       if (hitAny) enOnHit(u, a, t);   // energy restores on a damaging cast (Kennen E, Shen Q/E; item 24)
     }
     if (!a.parts.length && (tgt || (a.p && a.p.delivery==="self")) && (a.immob || a.slows || (a.cc && a.cc.length))){ say(t, `${u.name}${L && L.deferred ? `'s ${a.slot} lands` : ` casts ${a.slot}`}`); a.saidAt=t;
-      for (let x of hitList(u,a,tgt,t,L)){ if (L && L.voided && x===tgt) continue; { const wb=wallStop(u,a,x,t); if (wb){ if (!wb.intercept || a.aoe || !wb.intercept.alive) continue; x=wb.intercept; } } { const kd=!x.pet && CHAMP_MECH[x.c.champ]; if (kd && kd.untargetableTo && kd.untargetableTo(x, u, t, a)) continue; } { const sh=shieldHit(u,a,x,t); if (sh && sh!=="dmg") continue; } passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
+      for (let x of hitList(u,a,tgt,t,L)){ if (L && L.voided && x===tgt) continue; if (skillDodged(u,a,x,t,L,d0,tgt)) continue; { const wb=wallStop(u,a,x,t); if (wb){ if (!wb.intercept || a.aoe || !wb.intercept.alive) continue; x=wb.intercept; } } { const kd=!x.pet && CHAMP_MECH[x.c.champ]; if (kd && kd.untargetableTo && kd.untargetableTo(x, u, t, a)) continue; } { const sh=shieldHit(u,a,x,t); if (sh && sh!=="dmg") continue; } passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
     else if (!a.parts.length && !a.heal && !a.shield && !a.quiet && !(L && L.deferred)) say(t, `${u.name} casts ${a.slot}`);
     if (km && km.afterCast) km.afterCast(u, a, ktg, t);
     a.land=null;
@@ -7623,7 +7651,12 @@ function dashInfo(c, slot){
   const ch = p.charge ? chargeTime(p, dist) : 0;
   return {dist, time: ch + p.castTime + (blink ? (p.blinkDelay||0) : dist/speed), blink, castTime:p.castTime + ch};
 }
-function canDodge(def, ab, named){
+/* Player skill in fight()/fights() (x.skill, fight(…, skill: n | {side1, side2}), default 70): the defender's reaction time for
+   skillshot/area dodges (skillDodged in simulate). Hyperbolic so that 100 → 0.10 s, 70 → 0.25 s and 0 → never (Infinity). */
+const SKILL_DEFAULT = 70;
+function skillReaction(s){ return !(s>0) ? Infinity : 0.1 + 0.35*(100-Math.min(100, s))/s; }
+/* canDodge(…, opt): opt.ms overrides the defender's move speed (fight(): its current, slowed speed); JS callers only */
+function canDodge(def, ab, named, opt){
   if (!def || def.t!=="champ") throw new Error("canDodge(defender, ability, distance: …) needs a Champion first");
   if (def.dummy) throw new Error("canDodge: the practice-tool Target Dummy never moves, so it dodges nothing. Use a champion as the defender (its move speed decides the dodge)");
   if (ab && ab.t==="ability" && ab.owner.dummy) throw new Error("canDodge: the Target Dummy has no abilities");
@@ -7661,7 +7694,7 @@ function canDodge(def, ab, named){
     slowSpec={pct, need:0, atAbs:act}; }
   const reveal = Math.min(revealOf(p), T), tp0 = reveal + react, win = T - reveal, avail = win - react;
   line(`  ${label(def)} can react from ${fmt(reveal)}s (${revealWhy(p)}); it ${G?"stuns":"lands"} ${fmt(win)}s later: ${fmt(win)}s − ${fmt(react)}s reaction = ${fmt(avail)}s to respond`);
-  const ds=stats(def), Y=named.using;
+  const ds = opt && opt.ms!=null ? {...stats(def), ms:opt.ms} : stats(def), Y=named.using;
   const acts = Y ? (Y.t==="list" ? Y.items : [Y]).map(y=>dodgeAction(def, y, !!named.preBuff, ds, !!named.recast, a, d, s)) : [];
   const fmtW = w => `${fmt(w.s)}–${Number.isFinite(w.e) ? fmt(w.e) : "…"}s`;
   // the hit lands: does its crowd control? (cc: true asks exactly that; otherwise the answer is the hit, with the CC note in the trace)
@@ -8253,7 +8286,7 @@ function Interpreter(ast, emitRaw){
         if (c.dummy && ["with","stacks","perform","combo","proc","closeGap","addClass","removeClass","is","has","cdOf","cdmaxOf","rangeOf","threatRange","gapClose"].includes(name))
           throw new LangError(`the Target Dummy can't use .${name}: it has no items, runes or abilities and never attacks or moves. Use it as the target: x.Q.damage(vs: d), x.proc(Item, vs: d), x.perform(combo, vs: d)`, ln);
         if (c.dummy && name==="resists"){ line(`Target Dummy armor ${fmt(c.dummy.armor)}, MR ${fmt(c.dummy.mr)}`); if (c.dummy.armor!==c.dummy.mr) throw new LangError(`this dummy's armor (${fmt(c.dummy.armor)}) and MR (${fmt(c.dummy.mr)}) differ; read .armor and .mr`, ln); return c.dummy.armor; }
-        if (["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt"].includes(name)){ const o=c.opts||{}; const d={target:null, healPolicy:"lowest", passive:false, rotation:"RQEW", souls:0, skillOrder:"QEW", role:stats(c).ranged?"kite":"dive", stasis:"low", exhaustAt:"default"}; return o[name] ?? d[name]; }
+        if (["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt","skill"].includes(name)){ const o=c.opts||{}; const d={target:null, healPolicy:"lowest", passive:false, rotation:"RQEW", souls:0, skillOrder:"QEW", role:stats(c).ranged?"kite":"dive", stasis:"low", exhaustAt:"default", skill:SKILL_DEFAULT}; return o[name] ?? d[name]; }
         if (name==="oathsworn"){ if (c.champ!=="Kalista") throw new LangError(`only Kalista has an Oathsworn`, ln); const o=(c.opts||{}).oathsworn||null;
           line(`${label(c)}.oathsworn = ${o ? label(o) : "not set (fight() default: the Support-class ally, else the ally with the least AD + AP)"}`); return o; }
         if (name==="evolved"){ const k=KIT[c.champ]; if (!k || !k.evolved) throw new LangError(`${champName(c)} has no evolved or augmented abilities`, ln);
@@ -8309,7 +8342,7 @@ function Interpreter(ast, emitRaw){
         const w=WORLD.champ(c.champ);
         if (name==="melee"){ const v=w.stats.melee===1; line(`${label(c)} attack range ${w.stats.range} → melee ${v}`); return v; }
         if (name in w.stats){ line(`${label(c)}.${name} = ${w.stats[name]}`); return w.stats[name]; }
-        throw new LangError(`a Champion has no “${name}”.${hint(name, [...STATKEYS, ...Object.keys(methods), "Q","W","E","R","P","name","level","items","runes","classes","stacks","combos","melee","threatRange","gapClose","hitbox","target","healPolicy","passive","rotation","souls","skillOrder","stasis","exhaustAt","attack","defense","magic","difficulty"])} See “What a Champion can tell you” in the cheatsheet.`, ln);
+        throw new LangError(`a Champion has no “${name}”.${hint(name, [...STATKEYS, ...Object.keys(methods), "Q","W","E","R","P","name","level","items","runes","classes","stacks","combos","melee","threatRange","gapClose","hitbox","target","healPolicy","passive","rotation","souls","skillOrder","stasis","exhaustAt","skill","attack","defense","magic","difficulty"])} See “What a Champion can tell you” in the cheatsheet.`, ln);
       }
       case "ability": {
         const c=obj.owner, s=obj.slot, S=CALC.champs[c.champ][s];
@@ -8425,7 +8458,7 @@ function Interpreter(ast, emitRaw){
           deathTime:(a)=>{ const u=U(a[0]); if (u.dummy) return u.wouldDieAt ?? Infinity; return u.alive?Infinity:u.deathAt; }, dealt:(a)=>U(a[0]).dealt, healed:(a)=>U(a[0]).healDone,
           shielded:(a)=>U(a[0]).shieldDone, received:(a)=>U(a[0]).healRecv, taken:(a)=>U(a[0]).taken,
           ccTime:(a)=>{ const u=U(a[0]), v=Math.round((u.lockTime||0)*1000)/1000; line(`${u.name} spent ${fmt(v)}s unable to act (stunned, airborne, suppressed, asleep or forced)`); return v; },
-          blocks:(a)=>U(a[0]).blocks||0, position:(a)=>U(a[0]).x,
+          blocks:(a)=>U(a[0]).blocks||0, position:(a)=>U(a[0]).x, dodges:(a)=>U(a[0]).dodged||0,   // dodges(x): skillshot/area hits x walked out of (player skill)
           // casts(x, Q): times x started that ability (first casts; recasts played by kits aren't counted); bySource(x, "name"): x's damage
           // after resistances from hits labelled name ("E Aftershock", "R storm", "Q", "Ignite"; exact, see srcMatch; prefix: true = starts with)
           casts:(a)=>{ const u=U(a[0]), s=a[1] && a[1].t==="slot" ? a[1].name : String(a[1]||""); if (!/^[QWER]$/.test(s)) throw new Error("casts(x, Q): the second argument is Q, W, E or R");
@@ -8442,7 +8475,7 @@ function Interpreter(ast, emitRaw){
         if (name==="duration") return f.end;
         if (name==="log"){ return f.log.join("\n"); }
         if (methods[name]) return M(methods[name]);
-        throw new LangError(`a Fight has: winner, duration, log, alive(x), dead(x), hp(x), hpPercent(x), deathTime(x), dealt(x), healed(x), shielded(x), received(x), taken(x), ccTime(x), blocks(x), position(x), distance(x, y), casts(x, Q), bySource(x, "name"), survivors(side), deaths(side), totalHealing(side)`, ln);
+        throw new LangError(`a Fight has: winner, duration, log, alive(x), dead(x), hp(x), hpPercent(x), deathTime(x), dealt(x), healed(x), shielded(x), received(x), taken(x), ccTime(x), blocks(x), dodges(x), position(x), distance(x, y), casts(x, Q), bySource(x, "name"), survivors(side), deaths(side), totalHealing(side)`, ln);
       }
       case "combo": {
         const methods = { size: ()=>obj.steps.length, add: (args)=>{ const more=comboOf({t:"list", items:args}, "add()").steps; checkSize(obj.steps.length+more.length, "Combo", ln, more.length); for (const x of more) obj.steps.push(x); return null; } };
@@ -8527,7 +8560,7 @@ function Interpreter(ast, emitRaw){
   const SWEEP_MAX = 5000;
   function sweep(a, named){
     if (a.length!==3 || typeof a[2]!=="number") throw new Error("fights(team1, team2, seconds, starts: range(0, 1200, 50), levels: {9, 13, 16}, roles: f, bothSides: true)");
-    checkNamed(named, ["starts","levels","roles","bothSides","kite","room","formation"], "fights(…)");
+    checkNamed(named, ["starts","levels","roles","bothSides","kite","room","formation","skill","perfectAim"], "fights(…)");
     if (!(a[2]>0 && a[2]<=120)) throw new Error("a fight lasts between 0 and 120 seconds");
     const nums = (v, what, eg) => { const xs = v&&v.t==="list" ? v.items : typeof v==="number" ? [v] : null;
       if (!xs || !xs.length || xs.some(x=>typeof x!=="number")) throw new Error(`fights(…, ${what} …) takes a number or a list of numbers, e.g. ${what} ${eg}`); return xs; };
@@ -8538,7 +8571,7 @@ function Interpreter(ast, emitRaw){
     for (const f of fns) if (f!==null && !(f && f.t==="fn" && f.decl.params.length>=1 && f.decl.params.length<=3))
       throw new Error(`roles: takes a function you wrote (or a list of them): TeamComp f(TeamComp t), f(TeamComp t, int level) or f(TeamComp t, int level, int team); got ${typeName(f)}`);
     const both = named.bothSides!=null && truthy(named.bothSides);
-    const fo = fightOpts({kite:named.kite, room:named.room, formation:named.formation});
+    const fo = fightOpts({kite:named.kite, room:named.room, formation:named.formation, skill:named.skill, perfectAim:named.perfectAim});
     for (const k of ["kite","room","formation"]) if (named[k]==null) delete fo[k];
     const n = starts.length*levels.length*fns.length*(both?2:1);
     if (n > SWEEP_MAX) throw new Error(`fights(…) runs at most ${big(SWEEP_MAX)} fights (this one would run ${big(n)}): use fewer starts, levels or role sets`);
@@ -8557,7 +8590,7 @@ function Interpreter(ast, emitRaw){
       for (let ri=0; ri<fns.length; ri++) for (const L of levels){
         const A=prep(0, L, fns[ri]), B=prep(1, L, fns[ri]);
         for (const o of both ? [0, 1] : [0]) for (const s of starts){
-          const f=runFight(o ? [B, A] : [A, B], a[2], {...fo, start:s});
+          const f=runFight(o ? [B, A] : [A, B], a[2], {...fo, start:s, skill: o && fo.skill && fo.skill.side ? {side:[fo.skill.side[1], fo.skill.side[0]]} : fo.skill});   // a per-side skill follows its team
           let a1=0, a2=0; for (const u of f.units) if (u.alive){ if ((u.side===0) === !o) a1++; else a2++; }
           rec.push({s, L, r:ri+1, o, w: a1&&!a2 ? 1 : a2&&!a1 ? -1 : 0, end:f.end, m:a1-a2});
           for (const x of f.notes) if (notes.size<300 && !/^fight\(\): the sides start /.test(x)) notes.add(x);
@@ -8615,7 +8648,13 @@ function Interpreter(ast, emitRaw){
     return r;
   }
   function fightOpts(named){ const o={}; named=named||{};
-    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), kite: (false = nobody kites, even with role "kite"), room: (how far a unit can back off; default unlimited), formation: (false = everyone on the front line)`);
+    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within","skill","perfectAim"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), kite: (false = nobody kites, even with role "kite"), room: (how far a unit can back off; default unlimited), formation: (false = everyone on the front line), skill: (player skill 0–100 for everyone, or {side1, side2}; default 70; a champion's own .skill wins), perfectAim: (true = every ability in reach lands, the pre-skill engine)`);
+    // player skill (skillDodged): on by default; perfectAim: true turns it off; skill: n or {n1, n2} for champions without their own .skill
+    if (named.perfectAim!=null && truthy(named.perfectAim)) o.skill={perfect:true};
+    else if (named.skill!=null){ const s=named.skill, xs = typeof s==="number" ? [s, s] : s && s.t==="list" && s.items.length===2 && s.items.every(v=>typeof v==="number") ? s.items.slice() : null;
+      if (!xs || xs.some(v=>!(v>=0 && v<=100))) throw new Error("skill: is a player skill level from 0 to 100 for everyone (skill: 70) or one per side (skill: {70, 90})");
+      o.skill={side:xs}; }
+    else o.skill={side:null};
     if (named.formation!=null) o.formation=truthy(named.formation);
     if (named.start!=null){ if (typeof named.start!=="number" || named.start<0) throw new Error("start: is the distance between the two sides in units (0 or more)"); o.start=named.start; }
     if (named.kite!=null) o.kite=truthy(named.kite);
@@ -8634,7 +8673,7 @@ function Interpreter(ast, emitRaw){
     const t2=copy(tgt); if (!named.fightBack) t2.opts={...t2.opts, passive:true};
     const helpers = named.healers ? teamOf(named.healers).map(h=>{ const x=copy(h); x.opts={...x.opts, passive:true, healPolicy:x.opts&&x.opts.healPolicy||"lowest"}; return x; }) : [];
     if (TR) TR.notes.add(`${label(tgt)} ${named.fightBack?"fights back":"does not attack back (add fightBack: true)"}${helpers.length?`; healers only heal and shield: ${helpers.map(label).join(", ")}`:""}`);
-    return runFight([[att], [t2, ...helpers]], T, fightOpts({start:named.start}));
+    return runFight([[att], [t2, ...helpers]], T, {...fightOpts({start:named.start}), skill:null});   // burst questions: every ability in reach lands (no player-skill dodging)
   }
 
   /* ---- expressions ---- */
@@ -8699,7 +8738,8 @@ function Interpreter(ast, emitRaw){
       env.set(target.name, target.name==="defaultLevel" ? Math.round(v) : v); if (target.name==="defaultLevel") statMemo.clear(); if (target.name==="gameMinute"){ GAME.minute=v; statMemo.clear(); } return; }
     if (target.k==="member"){
       const obj=evalE(target.obj, env);
-      if (obj&&obj.t==="champ" && ["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt"].includes(target.name)){
+      if (obj&&obj.t==="champ" && ["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt","skill"].includes(target.name)){
+        if (target.name==="skill" && !(typeof v==="number" && v>=0 && v<=100)) throw new LangError(`skill is a player skill level from 0 to 100 (fight(): its reaction time for walking out of skillshots and areas; 100 → 0.10 s, 70 → 0.25 s, 0 → never)`, ln);
         if (target.name==="exhaustAt" && !(typeof v==="number" && v>=0 && Number.isFinite(v)) && !(typeof v==="string" && /^(arrival(\+[0-9]*\.?[0-9]+)?|never|default)$/.test(v))) throw new LangError(`exhaustAt (when Exhaust is pressed) is "arrival" (the first step an enemy is targetable in range), "arrival+0.25" (that much later), a time in seconds, "never", or "default" (on its target once it fights)`, ln);
         if (target.name==="exhaustAt" && v==="default") v=null;
         if (target.name==="stasis" && !(typeof v==="number" && v>=0 && Number.isFinite(v)) && !["low","dash","pop","cover","never"].includes(v)) throw new LangError(`stasis (when Zhonya's / Seeker's is pressed) is "low" (below 30% health, the default), "dash" (as Zed's Death Mark dash ends), "pop" (just before a Death Mark pops), "cover" (as early as the stasis still covers the pop), "never", or a time in seconds`, ln);
@@ -8732,7 +8772,7 @@ function Interpreter(ast, emitRaw){
         if (!H) throw new LangError(`${champName(obj.owner)}.${obj.slot} has no hold time (only a held charge has one: Vladimir E)`, ln);
         if (typeof v!=="number" || !(v>=H.min && v<=H.max)) throw new LangError(`${champName(obj.owner)}.${obj.slot}.hold is a number of seconds from ${fmt(H.min)} to ${fmt(H.max)}`, ln);
         const o=obj.owner.opts||{}; obj.owner.opts={...o, hold:{...(o.hold||{}), [obj.slot]:v}}; return; }
-      throw new LangError(`you can set a champion's level, skillOrder, target, healPolicy, passive, rotation, role, stasis, exhaustAt and souls, and an ability's rank (and hold, for Vladimir E); “${target.name}” is calculated.${hint(target.name, ["level","rank","hold","skillOrder","target","healPolicy","passive","rotation","souls","stasis","exhaustAt"])}`, ln);
+      throw new LangError(`you can set a champion's level, skillOrder, target, healPolicy, passive, rotation, role, stasis, exhaustAt, skill and souls, and an ability's rank (and hold, for Vladimir E); “${target.name}” is calculated.${hint(target.name, ["level","rank","hold","skillOrder","target","healPolicy","passive","rotation","souls","stasis","exhaustAt","skill"])}`, ln);
     }
     if (target.k==="index"){ const o=evalE(target.obj,env), i=evalE(target.i,env); const arr=o&&o.t==="comp"?o.champs:o&&o.t==="list"?o.items:null; if(!arr) throw new LangError("can't assign into that", ln);
       if (typeof i!=="number" || !Number.isInteger(i) || i<0 || i>=arr.length) throw new LangError(`index ${typeof i==="number"?fmt(i):show(i)} is out of range (size ${arr.length}; use .add(…) to grow a list)`, ln);
