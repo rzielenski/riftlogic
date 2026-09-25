@@ -5124,6 +5124,17 @@ const KIT = {
       parts(x){ const n=Math.min(x.o.missiles, x.evolved.includes("Q")?12:6), red=x.dv("extrahitreduction") ?? 0.25, one=x.part("totalindividualmissiledamage","physical");
         return [{...one, v:one.v*(1+red*(n-1)), s:`(${one.s}) × (1 + ${fmt(red)} × ${n-1})`, label:`${n} missiles on one target`}]; }},
   },
+  Annie: {
+    /* P6 F2 (wiki Pyromania; data/interactions/Annie.json P): the stun her Energized Q/W/R applies, 1.25/1.5/1.75 s at levels 1/6/11
+       (the same rule CHAMP_MECH.Annie applies in fight()); for .ccDuration on P */
+    cc: {P:(S, r, c)=>{ const L=c ? (c.level||1) : 1, P=CALC.champs.Annie.P;
+      return [{type:"stun", dur:(dvOf(P,"stunbaseduration",1)||1.25)+(dvOf(P,"stundurationpertier",1)||0.25)*(L>=11?2:L>=6?1:0), src:{dur:"dv:StunBaseDuration"}, text:"Pyromania: the next Q, W or R after 4 stacks stuns 1.25/1.5/1.75 s (levels 1/6/11)"}]; }},
+  },
+  Ziggs: {
+    /* P6 F2 (wiki Hexplosive Minefield: "Each mine … explodes upon contact with terrain or an enemy, … slowing them for 1.5 seconds"):
+       the export marked the slow terrain-only (cond "terrain"); it applies to the enemy the mine explodes on */
+    cc: {E:(S)=>((S && S.cc) || []).map(e=>{ const x={...e}; delete x.cond; return x; })},
+  },
   KogMaw: {
     /* P6 F2 (wiki Template:Data_Kog'Maw/Caustic_Spittle "cast time = Basic attack timer"; game files 0.25): Q's cast time is his
        basic attack windup at his attack speed (wiki "Attack speed": attack time × windup %, as .windup) */
