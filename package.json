@@ -2,9 +2,10 @@
   "name": "riftlogic",
   "private": true,
   "scripts": {
-    "start": "serve . -l $PORT"
+    "start": "node server.js"
   },
   "dependencies": {
-    "serve": "14.2.6"
+    "serve": "14.2.6",
+    "serve-handler": "6.1.7"
   }
 }

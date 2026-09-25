@@ -327,6 +327,7 @@ ul.conds li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px;font-s
       </div>
       <span class="filestate" id="filestate" role="status" aria-live="polite" hidden></span>
       <input type="file" id="fileinput" accept=".rl,.txt,text/plain" hidden>
+      <button type="button" class="btn ghost" id="bugbtn" title="Send this program and its output to the developer">Report bug</button>
       <button type="button" class="btn ghost" id="vimbtn" aria-pressed="false" title="Vim keys in the editor">Vim</button>
       <button type="button" class="btn ghost" id="reset" title="Reload the example as written (your edits stay under Your code)">Reset</button>
       <a class="btn ghost" id="draftlink" href="https://claude.ai/artifact/61Bvs9B5oWiFftZSE8Bx3p" rel="noopener noreferrer">Draft</a>
@@ -339,6 +340,15 @@ ul.conds li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px;font-s
     <div class="dlgbtns"><button type="button" class="btn ghost" id="uCancel">Cancel</button><button type="button" class="btn" id="uDiscard">Don't save</button><button type="button" class="btn primary" id="uSave">Save</button></div>
   </dialog>
 
+  <dialog class="dlg" id="bugdlg" aria-labelledby="bugT">
+    <form id="bugform" method="dialog">
+      <h3 id="bugT">Report a bug</h3>
+      <p>Sends your current program, its output and any errors so it can be checked and fixed.</p>
+      <p><textarea id="bugnote" rows="4" maxlength="4000" placeholder="What looks wrong? (optional) e.g. “Fizz E should dodge Syndra R”" aria-label="What looks wrong" style="width:100%;font:13px/1.45 var(--sans);padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface-2);color:var(--ink);resize:vertical"></textarea></p>
+      <p id="bugmsg" role="status" style="font-size:13px;margin:-6px 0 12px" hidden></p>
+      <div class="dlgbtns"><button type="button" class="btn ghost" id="bugNo">Cancel</button><button type="button" class="btn ghost" id="bugCopy" hidden>Copy report</button><button type="submit" class="btn primary" id="bugSend">Send report</button></div>
+    </form>
+  </dialog>
   <dialog class="dlg" id="vimdlg" aria-labelledby="vimT">
     <form id="vimform" method="dialog">
       <h3 id="vimT">How do you exit vim?</h3>
@@ -8941,6 +8951,27 @@ const VIM = (() => {
   let was = null; try { was = localStorage.getItem("riftlogic.vim"); } catch (_) {}
   return {restore(){ if (was) enable(); }, get on(){ return on; }, get mode(){ return mode; }};
 })();
+
+/* ================= bug reports: send the program + output to the site's /api/report ================= */
+{
+  const d = $("bugdlg"), msg = $("bugmsg"), note = $("bugnote"), sendB = $("bugSend"), copyB = $("bugCopy");
+  const say = (text, bad) => { msg.textContent = text; msg.style.color = bad ? "var(--no)" : "var(--ok)"; msg.hidden = false; };
+  const report = () => ({code: src.value, output: ($("out").innerText || $("out").textContent || "").slice(0, 100000),
+    errors: [...document.querySelectorAll("#out .err, #out [data-err], .squig")].map(e => e.textContent || e.title || "").join("\n").slice(0, 20000),
+    note: note.value.trim(), patch: String(KB.patch || ""), page: location.pathname, engine: (curDraft || curEx || "").slice(0, 80)});
+  $("bugbtn").addEventListener("click", () => { msg.hidden = true; copyB.hidden = true; sendB.disabled = false; note.value = ""; d.showModal(); note.focus(); });
+  $("bugNo").addEventListener("click", () => d.close());
+  copyB.addEventListener("click", async () => { try { await navigator.clipboard.writeText(JSON.stringify(report(), null, 1)); say("Copied — paste it wherever you're reporting."); } catch (_) { say("Couldn't copy.", true); } });
+  $("bugform").addEventListener("submit", async e => {
+    e.preventDefault(); sendB.disabled = true; say("Sending…");
+    try {
+      const r = await fetch("api/report", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(report())});
+      const j = await r.json().catch(() => ({}));
+      if (r.ok){ say(`Sent — thanks! Report ${j.id || ""}`); setTimeout(() => d.open && d.close(), 1800); }
+      else { say(j.error || `Couldn't send (${r.status}).`, true); sendB.disabled = false; copyB.hidden = false; }
+    } catch (_) { say("Couldn't reach the server (reports only work on the Rift Logic site).", true); sendB.disabled = false; copyB.hidden = false; }
+  });
+}
 
 /* ================= inspector ================= */
 const dl=$("champlist");
