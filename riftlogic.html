@@ -1357,7 +1357,7 @@ function simulate(sidesIn, T, simNotes, fo){
   const unstopOn = (u,t) => { const s=u.unstop; return s && t>=s.from-1e-9 && t<=s.until+1e-9 ? s : null; };
   const ccImmune = (u,t) => u.ccImmuneUntil>t || u.shields.some(s=>s.ccImmune && s.until>=t && shieldLeft(s,t)>0.01) || (unstopOn(u,t)||{}).imm==="cc";   // ccImmuneUntil: kits (Olaf R)
   // wiki Movement speed: only the strongest slow counts; slow resist scales it; soft caps after
-  function slowNow(u,t){ let best=0; for (const s of u.slows){ if (s.until<=t || s.t0>=t) continue;   // takes effect from the next tick
+  function slowNow(u,t){ if (u.slowImmUntil>t) return 0;   /* P8: slow immunity (Master Yi R), also against kit slows pushed directly */ let best=0; for (const s of u.slows){ if (s.until<=t || s.t0>=t) continue;   // takes effect from the next tick
       const v = s.decay ? s.pct*(s.until-t)/Math.max(1e-9,s.until-s.t0) : s.pct; if (v>best) best=v; } return best*(1-(u.st.slowresist||0)); }
   const msNow = (u,t) => msCap((u.st.msuncapped||u.st.ms)*(1-slowNow(u,t)));
   // Cheap Shot's crowd control (wiki Rune_data_Cheap_Shot): immobilize, blind, disarm, ground, nearsight, polymorph, silence, slow
@@ -1573,7 +1573,9 @@ function simulate(sidesIn, T, simNotes, fo){
     u.unstop={imm:US.imm, slot:a.slot, why:US.why, from: US.from==="press" ? t : US.from==="dash" ? t+ct : t+US.from, until: US.fixedUntil!=null ? t+US.fixedUntil : t+Math.max(ct, land), fixed:US.fixedUntil!=null};
     if (US.ccFor) u.ccImmuneUntil=Math.max(u.ccImmuneUntil||0, t+US.ccFor);   // Zaahen R: CC immune over the cast, then displacement immune
     simNotes.add(`${u.name} ${a.slot}: unstoppable — ${US.why}; ${US.imm==="cc"?"immune to all crowd control":"immune to airborne, sleep and the special-cased suppressions; other crowd control still applies but can't stop it"} from ${US.from==="press"||US.from===0?"the press":US.from==="dash"?"the end of its cast time":`${fmt(US.from)} s after the press`} ${US.fixedUntil!=null?`until ${fmt(US.fixedUntil)} s after it`:"until it lands"}; spell shields still block it`);
-    if (US.from==="press" || US.from===0) unstopClean(u, t);
+    // any window that starts on this step (from the press, or "dash" after a 0 s cast: Jarvan IV R) cleans what landed earlier in it
+    // (P8b: Lulu R's knock-up pressed on the same step stuck on Jarvan IV only when Lulu's side acted first)
+    if (u.unstop.from<=t+1e-9) unstopClean(u, t);
     return US; }
   // an unstoppable window starting at t: crowd control it resists that landed earlier in the same step doesn't apply either
   // (everything in a step is simultaneous), and a same-step displacement doesn't beat its dash
@@ -1608,6 +1610,7 @@ function simulate(sidesIn, T, simNotes, fo){
       // a dash in progress (wiki Dash): stopped by a displacement or a knockdown; the dashes in DASH_CC_STOPS also by immobilizing CC
       if (!US && (AIRBORNE.has(e.type) || (knockdown && HARD_CC.has(e.type)))) dashStop(x, t, AIRBORNE.has(e.type) ? `${e.type==="knockup"?"knocked up":e.type==="pull"?"pulled":"knocked back"} by ${u.name}'s ${a.slot}` : `knocked down by ${u.name}'s ${a.slot}`, e.type==="knockback" || e.type==="pull");
       else if (!US && (LOCKS.includes(e.type) || e.type==="polymorph")){ x.immobAt=t; if (x.dashNow && x.dashNow.ccStops) dashStop(x, t, `${CC_VERB[e.type]||e.type} by ${u.name}'s ${a.slot}`, false); }
+      if ((e.type==="slow" || e.type==="cripple") && x.slowImmUntil>t){ say(t, `  ${x.name} ignores ${u.name}'s ${a.slot} ${e.type} (slow immunity)`); continue; }   // P8: Master Yi R
       let dur=e.dur;
       if (e.durMin!=null){ const r=Math.min(abReach(u,a,x), 5000)||1; dur=e.durMin+(e.dur-e.durMin)*Math.min(1, d0/r);
         simNotes.add(`${u.name} ${a.slot}: ${e.type} lasts ${fmt(e.durMin)}–${fmt(e.dur)}s growing with distance (wiki); assumed linear from 0 to the ability's reach`); }
@@ -2621,6 +2624,10 @@ function simulate(sidesIn, T, simNotes, fo){
       u.nextAct=Math.max(u.nextAct, t+lock); u.nextAA=Math.max(u.nextAA, t+lock);
       say(t, `${u.name} casts ${a.slot}: untargetable ${s>=dt/2?`from ${fmt(t+s)}s `:""}until ${fmt(t+e)}s`);
       simNotes.add(`${u.name} ${a.slot}: ${N.why || `untargetable ${fmt(s)}–${fmt(e)} s after the press (wiki)`} (modelled as stasis: nothing lands on it and it doesn't act)`); }
+    // P8: slow and cripple immunity only (Master Yi R, GRANT_COND_OFF slowOnly): cleanses them at the press and ignores new ones
+    { const g=grantCondOff(k, "ccImmune", a.p), w=g && g.slowOnly && grantWin(G.ccImmune, k, a.rank, a.slot);
+      if (w){ u.slowImmUntil=Math.max(u.slowImmUntil||0, t+w[1]); u.slows=[]; u.cripples=[]; refresh(u,t);
+        simNotes.add(`${u.name} ${a.slot}: ${g.why}: immune to slows and cripples ${fmt(w[0])}–${fmt(w[1])} s after the press; other crowd control still lands`); } }
     const iv=grantWin(G.invulnerable, k, a.rank, a.slot);
     if (iv){ (u.invuln ||= []).push({from:t+iv[0], until:t+iv[1], slot:a.slot});
       simNotes.add(`${u.name} ${a.slot}: ${N.why || `invulnerable ${fmt(iv[0])}–${fmt(iv[1])} s after the press (wiki)`}: it takes no damage, crowd control still lands`); }
@@ -2659,7 +2666,8 @@ function simulate(sidesIn, T, simNotes, fo){
      displacementImmune window (fixed: seconds from the press; kits with their own code are skipped) */
   function unstopOf(u, a){ const H=(UNSTOPPABLE[u.c.champ]||{})[a.slot]; if (H) return H;
     const k=`${u.c.champ}.${a.slot}`, G=(a.p && a.p.grants)||{}; if (KIT_OWN_GRANTS.has(k)) return null;
-    for (const [kind, imm] of [["ccImmune","cc"],["displacementImmune","displacement"]]){ const w=grantWin(G[kind], k, a.rank, a.slot);
+    for (const [kind, imm] of [["ccImmune","cc"],["displacementImmune","displacement"]]){ if (grantCondOff(k, kind, a.p)) continue;   // P8: conditional windows (Udyr E Awaken only)
+      const w=grantWin(G[kind], k, a.rank, a.slot);
       if (w) return {imm, from:w[0], fixedUntil:w[1], why:`${kind==="ccImmune"?"crowd control":"displacement"} immune ${fmt(w[0])}–${fmt(w[1])} s after the press (wiki)`}; }   // an end with no number (Kled R, Vi R, … "until it lands") is in the hand table; Vex R / Yuumi W (recast, attach) aren't modelled
     return null; }
   // invulnerable to this hit (P3: Kayle R, Xin Zhao R beyond 450, Taric R): 0 damage, the unit stays targetable
@@ -7496,7 +7504,16 @@ const EMPOWER_NEXT = {
      invulnFar     {from, until, beyond}: invulnerable only to enemy champions farther than `beyond` (Xin Zhao R) */
 /* Caster windows that the kits set themselves (the generic grant code in cast() skips them): Zed R, Pantheon E, Naafiri W and Olaf R,
    Fiora W in CHAMP_MECH; Lissandra R's stasis is only for a self-cast (fight() casts it on an enemy). */
-const KIT_OWN_GRANTS = new Set(["Zed.R","Pantheon.E","Naafiri.W","Olaf.R","Fiora.W","Lissandra.R","Gwen.W"]);   // Gwen.W (P6 F4): untargetable only to enemies outside the mist (CHAMP_MECH.Gwen)
+const KIT_OWN_GRANTS = new Set(["Zed.R","Pantheon.E","Naafiri.W","Olaf.R","Fiora.W","Lissandra.R","Gwen.W"]);
+/* P8: a grants window whose condition (phys.grantsCond, from the sheet) fight()'s generic cast doesn't meet, so unstopOf must not turn it
+   into immunity on every cast. Checked only while the data still carries that condition. slowOnly: the window is slow and cripple
+   immunity (castGrants), not crowd-control immunity. */
+const GRANT_COND_OFF = {
+  "Udyr.E":    {ccImmune:{re:/awaken/i, why:"only the Awakened Blazing Stampede grants 1.5 s of crowd control immunity (wiki; Awaken isn't modelled in fight())"}},
+  "MasterYi.R":{ccImmune:{re:/slow/i, slowOnly:true, why:"Highlander grants slow and cripple immunity only, and cleanses them (wiki)"}},
+  "Morgana.E": {ccImmune:{re:/target|shield/i, why:"Black Shield's crowd control immunity is the shielded target's while the shield holds (its own shield code)"}},
+};
+const grantCondOff = (key, kind, p) => { const g=(GRANT_COND_OFF[key]||{})[kind], c=p && p.grantsCond && p.grantsCond[kind]; return g && typeof c==="string" && g.re.test(c) ? g : null; };   // Gwen.W (P6 F4): untargetable only to enemies outside the mist (CHAMP_MECH.Gwen)
 /* a grants window [start, end] (seconds from the press) as numbers, or null. The sheets write an end that depends on something as
    null (ends on an event: Kayn R) or {min, max, by}: by "rank" → the value at this rank; otherwise the documented lower bound (min;
    Maokai W "dash length / 1300": its dash code covers the real window). A null end takes GRANT_NOTES' `until` (a documented bound). */
@@ -8387,7 +8404,7 @@ function closeGap(c, d){
   let left=d, t=0; const st=stats(c), steps=[];
   for (const s of ["Q","W","E","R"]){ if (left<=0) break; const tags=WORLD.champ(c.champ).slots[s].tags; if (tags.dash===undefined && tags.blink===undefined) continue; if (!rankOf(c,s)) continue;
     const di=dashInfo(c,s); if (!(di.dist>0)) continue;   // no dash distance in the data (Yunara, Warwick, Kha'Zix): used to give NaN
-    const used=Math.min(di.dist,left), move=Math.max(0, di.time-di.castTime); t+=(di.castTime||0) + (di.blink?0:used*move/di.dist); left-=used; steps.push(`${s} ${fmt(used)}`); }
+    const used=Math.min(di.dist,left), move=Math.max(0, di.time-di.castTime); t+=(di.castTime||0) + (di.blink?move:used*move/di.dist);   /* P8: a blink waits its own delay (phys.blinkDelay: Zed W's Shadow flight, channels) whatever the distance used */ left-=used; steps.push(`${s} ${fmt(used)}`); }
   if (left>0){ t+=left/st.ms; steps.push(`walk ${fmt(left)} at ${fmt(st.ms)}`); }
   line(`${label(c)}.closeGap(${fmt(d)}) = ${steps.join(", ")} → ${fmt(t)}s`);
   if (TR) TR.notes.add("closeGap: dashes are used in Q, W, E, R order, all toward the target, nothing blocks them");
