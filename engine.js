@@ -291,7 +291,8 @@ const growth = (base, g, L) => base + g*(L-1)*(0.7025+0.0175*(L-1));
 const STATLABEL = {0:"AP",1:"armor",2:"AD",4:"attack speed",6:"MR",7:"move speed",8:"crit chance",9:"crit damage",10:"ability haste",12:"health",14:"current health",29:"lethality",31:"attack range"};
 const STATKEYS = ["ap","ad","bonusad","basead","hp","bonushp","basehp","armor","bonusarmor","basearmor","mr","bonusmr","basemr","mana","haste","ms","bonusms","as","bonusas","crit","critdmg","lethality","armorpen","armorpenpct","magicpen","magicpenpct","range","lifesteal","omnivamp","tenacity","slowresist","gold","ehpphysical","ehpmagic","aa","dps","level","healpower","healIn","shieldIn"];
 const statMemo = new Map();
-function champKey(c){ const stk=c.opts&&c.opts.stacks; return `${c.champ}${dummyKey(c)}@${c.level}[${c.items.join(",")}](${(c.runes||[]).join(",")}){${Object.entries(c.ranks).map(([k,v])=>k+v).join("")}}${stk&&Object.keys(stk).length?JSON.stringify(stk):""}`; }
+const partialKey = c => c.partial ? `+${c.partial.key}*${c.partial.f}` : "";   // goldGap's partly-bought item (stats only)
+function champKey(c){ const stk=c.opts&&c.opts.stacks; return `${c.champ}${dummyKey(c)}@${c.level}[${c.items.join(",")}${partialKey(c)}](${(c.runes||[]).join(",")}){${Object.entries(c.ranks).map(([k,v])=>k+v).join("")}}${stk&&Object.keys(stk).length?JSON.stringify(stk):""}`; }
 function champName(c){ return KB.champs[c.champ].name; }
 function label(c){ return c.label || champName(c); }
 /* ================= runes ================= */
@@ -558,7 +559,7 @@ const AS_CAP = 3.003;
 const asCapOf = champ => champ==="Belveth" ? Infinity : AS_CAP;
 function stats(c, mods){
   const runes = c.runes || [], stk = (c.opts && c.opts.stacks) || {};
-  const key = c.champ+dummyKey(c)+"@"+c.level+"["+c.items.join(",")+"]("+runes.join(",")+")#"+GAME.minute+(Object.keys(stk).length?JSON.stringify(stk):"")+kitRankKey(c)+(mods?"|"+JSON.stringify(mods):"");
+  const key = c.champ+dummyKey(c)+"@"+c.level+"["+c.items.join(",")+partialKey(c)+"]("+runes.join(",")+")#"+GAME.minute+(Object.keys(stk).length?JSON.stringify(stk):"")+kitRankKey(c)+(mods?"|"+JSON.stringify(mods):"");
   let r = statMemo.get(key);
   if (!r){
     if (statMemo.size > 10000) statMemo.clear();   // ~2 KB an entry: a cache, not a store (a loop over champions × levels × items stays small)
@@ -567,6 +568,8 @@ function stats(c, mods){
     const sk = (k, max) => has(k) ? Math.max(0, Math.min(max ?? Infinity, Number(stk[k]) || 0)) : 0;
     const B=CALC.champs[c.champ].base, it={}, notes=[];
     for (const k of c.items) for (const [s,v] of Object.entries(ITEMS[k].stats)) it[s]=(it[s]||0)+v;
+    // an item only partly paid for (fight(…, goldGap:)): that share of its stats, no passive or active (partialKey)
+    if (c.partial) for (const [s,v] of Object.entries(ITEMS[c.partial.key].stats)) it[s]=(it[s]||0)+v*c.partial.f;
     const kbMelee = KB.champs[c.champ] && KB.champs[c.champ].stats ? KB.champs[c.champ].stats.melee : null;
     const ranged = kbMelee!=null ? kbMelee!==1 : B.range>=350;
     // Rod of Ages: Timeless stacks; at max stacks the champion gains a level
@@ -705,7 +708,7 @@ function stats(c, mods){
   if (TR && !mods) for (const n of r.notes) TR.notes.add(n);
   return r.st;
 }
-const statNotes = c => { stats(c); const runes=c.runes||[], stk=(c.opts&&c.opts.stacks)||{}; return statMemo.get(c.champ+dummyKey(c)+"@"+c.level+"["+c.items.join(",")+"]("+runes.join(",")+")#"+GAME.minute+(Object.keys(stk).length?JSON.stringify(stk):"")+kitRankKey(c)).notes; };
+const statNotes = c => { stats(c); const runes=c.runes||[], stk=(c.opts&&c.opts.stacks)||{}; return statMemo.get(c.champ+dummyKey(c)+"@"+c.level+"["+c.items.join(",")+partialKey(c)+"]("+runes.join(",")+")#"+GAME.minute+(Object.keys(stk).length?JSON.stringify(stk):"")+kitRankKey(c)).notes; };
 // champion kits whose stats depend on ability ranks (Dr. Mundo E passive AD) key the stat memo by the set ranks too
 function kitRankKey(c){ const k=KIT[c.champ]; return k && (k.stats || k.statsFinal) && k.rankStats ? "{"+Object.entries(c.ranks||{}).map(([s,r])=>s+r).join("")+"}" : ""; }
 
@@ -1000,9 +1003,23 @@ function simulate(sidesIn, T, simNotes, fo){
   const castLock = (u,a) => a.p && a.p.castTime!=null ? Math.max(dt, a.p.castTime) : 0.25;
   // fight(..., kite: false) wins over x.role = "kite" (the option is the more specific instruction for this fight)
   const roleOf = u => { const r = u.role || (u.ranged ? "kite" : "dive"); return r==="kite" && fo.kite===false ? "fight" : r; };
-  const arenaClamp = (x, to, t) => x.arena && x.arena.until>t ? Math.max(x.arena.cx-x.arena.r, Math.min(x.arena.cx+x.arena.r, to)) : to;   // Jarvan IV R walls
+  /* Jarvan IV R walls, Camille R zone: a unit keeps every ring it is caught in (x.arenas), not the last one written, so two rings
+     formed in the same step (two Jarvan IVs landing together) clamp it the same whatever order their events ran in (P8e); inside
+     overlapping rings it stays in their intersection; rings that don't overlap (1-D corner case): the ones it stands in, else the
+     nearest. fresh: ignore rings formed this step (a Jarvan IV landing his own leap this step isn't held by a ring formed with it). */
+  const addArena = (x, ring) => { (x.arenas ||= []).push(ring); };
+  const arenaClamp = (x, to, t, fresh) => { if (!x.arenas) return to;
+    const act = x.arenas.filter(a=>a.until>t && !(fresh && a.from>=t-1e-9)); if (!act.length) return to;
+    const box = rs => rs.reduce((b,a)=>[Math.max(b[0], a.cx-a.r), Math.min(b[1], a.cx+a.r)], [-Infinity, Infinity]);
+    let b=box(act);
+    if (b[0]>b[1]){ const inside=act.filter(a=>Math.abs(x.x-a.cx)<=a.r+1e-9); b=box(inside);
+      if (!inside.length || b[0]>b[1]){ const d=a=>Math.max(0, Math.abs(x.x-a.cx)-a.r); const near=act.reduce((m,a)=>d(a)<d(m)-1e-9 || (Math.abs(d(a)-d(m))<=1e-9 && a.cx<m.cx) ? a : m); b=box([near]); } }
+    return Math.max(b[0], Math.min(b[1], to)); };
+  // Jarvan IV R: a leap landing this step and where (from the start-of-step positions, as the landing itself computes it)
+  const leapNow = (x, t) => !!(x.leap && x.alive && Math.abs(x.leap.land-t) < dt/2);
+  const leapSpot = x => { const T=x.leap.tgt, cx=T.xS ?? T.x, ux=x.xS ?? x.x; return cx - (Math.sign(cx-ux)||face(x))*(RAD(x)+RAD(T)); };
   // forced (enemy) displacements beat the unit's own dash started in the same tick, whichever came first in the tick
-  function displace(x, to, dur, t, forced){ if (!forced && x.move && x.move.forced && x.move.t0>=t) return; to=arenaClamp(x, to, t); x.move={x0:x.x, x1:to, t0:t, t1:t+Math.max(dur,1e-3), forced:!!forced}; }
+  function displace(x, to, dur, t, forced, fresh){ if (!forced && x.move && x.move.forced && x.move.t0>=t) return; to=arenaClamp(x, to, t, fresh); x.move={x0:x.x, x1:to, t0:t, t1:t+Math.max(dur,1e-3), forced:!!forced}; }
   function stepMove(u,t){ const m=u.move; if (!m) return; const f=Math.min(1,(t-m.t0)/(m.t1-m.t0)); u.x=m.x0+(m.x1-m.x0)*f; if (f>=1) u.move=null; }
   const clampRoom = (u, x) => fo.room==null ? x : u.side===0 ? Math.max(u.x0-fo.room, x) : Math.min(u.x0+fo.room, x);
   function walk(u, toX, t, why){
@@ -2669,7 +2686,7 @@ function simulate(sidesIn, T, simNotes, fo){
          damage, but he still lands there and the arena forms; killed while leaping, nothing happens (wiki) */
       startCast(u, a, tgt, t, d0){ if (a.slot!=="R" || u.script || !tgt) return false;
         const lt=(a.p && a.p.fixedTravel)||0.35, land=t+lt, step=u.curStep ?? null, L={started:true, deferred:true, castOk:true, voided:false};
-        castStart(u, a, t); u.nextAct=Math.max(u.nextAct, land); u.nextAA=Math.max(u.nextAA, land);
+        castStart(u, a, t); u.nextAct=Math.max(u.nextAct, land); u.nextAA=Math.max(u.nextAA, land); u.leap={land, tgt};
         unstopStart(u, a, t, (a.p && a.p.castTime) || 0, lt);   // P8: the leap keeps its displacement immunity through the landing step (wiki)
         say(t, `${u.name} casts R on ${tgt.name}: leaps onto ${tgt.name} over ${fmt(lt)}s`);
         for (let k=0; k*dt < lt-1e-9; k++) events.push({at:t+k*dt, fn:(tt)=>{ if (L.voided || !tgt.alive || !inStasis(tgt,tt)) return;
@@ -2681,10 +2698,12 @@ function simulate(sidesIn, T, simNotes, fo){
           if (tgt && tgt.alive && a.parts.length && inReach(u,a,tgt)) (tgt.kitShred ||= {}).j4Q={until:t+3, pct:dvOf(a.S,"basearshred",a.rank)||0.1}; }
         if (a.slot!=="R" || !tgt) return;
         // he leaps onto the target champion (unit-targeted, wiki), wherever it went during the 0.35 s leap; the ring is centred there
-        const cx=tgt.xS ?? tgt.x; u.move=null; displace(u, cx - (Math.sign(cx-u.x)||face(u))*(RAD(u)+RAD(tgt)), 1e-3, t, true);   /* lands at the start of the next tick */ const until=t+(dvOf(a.S,"wallduration",a.rank)||3.5), r=255;
-        for (const x of [u, ...enemiesOf(u,t)]) if (x===u || Math.abs((x.xS??x.x)-cx)<=350+RAD(x)){ x.arena={cx, r, until};
+        const cx=tgt.xS ?? tgt.x; u.move=null; displace(u, cx - (Math.sign(cx-(u.xS ?? u.x))||face(u))*(RAD(u)+RAD(tgt)), 1e-3, t, true, true);   /* lands at the start of the next tick */ const until=t+(dvOf(a.S,"wallduration",a.rank)||3.5), r=255;
+        // P8e (two Jarvan IVs landing in one step): an enemy Jarvan IV landing his own leap this step counts where he lands (leapSpot), not
+        // where he leapt from, and a ring formed this step doesn't hold his landing, whichever landing event runs first
+        for (const x of [u, ...enemiesOf(u,t)]) if (x===u || Math.abs((leapNow(x,t) ? leapSpot(x) : (x.xS??x.x))-cx)<=350+RAD(x)){ addArena(x, {cx, r, until, from:t});
           // P8 order-independence: a displacement that started earlier in this same step is clamped too, as one started after it is (displace)
-          if (x!==u && x.move && x.move.t0>=t-1e-9) x.move.x1=arenaClamp(x, x.move.x1, t); }
+          if (x!==u && !leapNow(x,t) && x.move && x.move.t0>=t-1e-9) x.move.x1=arenaClamp(x, x.move.x1, t); }
         say(t, `  ${u.name}: Cataclysm walls in everyone within 350 of ${tgt.name} for ${fmt(until-t)}s`);
         simNotes.add(`${u.name} R: Cataclysm's terrain ring (wiki: 350 creation radius, pathing inside 255 of the centre, 3.5 s) keeps everyone caught inside from walking or dashing out (1-D: within 255 of the target's spot); blinks and Flash still cross it; the recast that breaks the walls is not used`); },
     },
@@ -3318,7 +3337,7 @@ function simulate(sidesIn, T, simNotes, fo){
           simNotes.add(`${u.name} Q: the empowered attack, then the recast 1.5 s later (bonus ×2, ${fmt(Math.min(1, evalCalc(ctx,"damageconversionpercentage").v)*100)}% of that attack as true damage); the cooldown starts after the recast`); }
         if (a.slot==="E"){ addBuff(u,"camE",t+(dvOf(a.S,"asduration",a.rank)||5),{bonusAS:dvOf(a.S,"asbuff",a.rank)||0},t); simNotes.add(`${u.name} E: Wall Dive from a wall (assumed available): damage, 0.75 s stun and bonus attack speed for 5 s`); }
         if (a.slot==="R" && tgt){ const dur=dvOf(a.S,"rduration",a.rank)||4, pct=(dvOf(a.S,"rpercentcurrenthpdamage",a.rank)||0)/100, cx=tgt.xS ?? tgt.x;
-          K.camR={tgt, until:t+dur, pct}; tgt.arena={cx, r:dvOf(a.S,"rcircleradius",a.rank)||425, until:t+dur};
+          K.camR={tgt, until:t+dur, pct}; addArena(tgt, {cx, r:dvOf(a.S,"rcircleradius",a.rank)||425, until:t+dur, from:t});
           simNotes.add(`${u.name} R: the target can't leave the ${fmt(dvOf(a.S,"rcircleradius",a.rank)||425)} zone for ${fmt(dur)} s and her attacks on it add ${fmt(pct*100)}% of its current health as magic damage`); } },
       attack(u, tgt, t){ const K=u.kit, Q=K.camQ; let out=null;
         if (Q && Q.until>t){ K.camQ=null; const tot=u.st.ad+Q.v;   // this attack can't crit (wiki)
@@ -5180,7 +5199,7 @@ function sweepStats(rec){
   if (n){ const den=1+z*z/n, c=(share+z*z/(2*n))/den, h=z*Math.sqrt(share*(1-share)/n + z*z/(4*n*n))/den; low=Math.max(0, c-h); high=Math.min(1, c+h); }
   // side swap check: cells (start, level, role set) whose result changes when the two teams swap sides
   const byCell=new Map(); let mism=0;
-  for (const x of rec){ const k=`${x.s}|${x.L}|${x.r}`, y=byCell.get(k); if (y && y.o!==x.o){ if (y.w!==x.w) mism++; byCell.delete(k); } else byCell.set(k, x); }
+  for (const x of rec){ const k=`${x.s}|${x.L}|${x.r}|${x.lg}|${x.gg}`, y=byCell.get(k); if (y && y.o!==x.o){ if (y.w!==x.w) mism++; byCell.delete(k); } else byCell.set(k, x); }
   return {wins:w, draws:d, losses:l, total:n, share, low, high, meanTime: w+l ? tDec/(w+l) : Infinity, margin: n ? m/n : NaN, sideMismatches:mism};
 }
 const pct1 = x => `${(Math.round(x*1000)/10).toFixed(1)}%`;
@@ -5192,8 +5211,9 @@ function sweepLine(v){
 // the per-cell grid: one row per role set × level × side order, one character per start (W / D / L for team 1)
 function sweepGrid(v){
   const starts=[...new Set(v.rec.map(x=>x.s))].sort((a,b)=>a-b), rows=new Map();
-  for (const x of v.rec){ const k=`${x.r}|${x.L}|${x.o}`; if (!rows.has(k)) rows.set(k, {r:x.r, L:x.L, o:x.o, cells:new Map()}); rows.get(k).cells.set(x.s, x.w>0?"W":x.w<0?"L":"D"); }
-  const name = R => `${v.nroles>1?`roles ${R.r} `:""}${R.L!=null?`L${R.L} `:""}${v.both?(R.o?"swapped ":"as given "):""}`.trim() || "all";
+  for (const x of v.rec){ const k=`${x.r}|${x.L}|${x.lg}|${x.gg}|${x.o}`; if (!rows.has(k)) rows.set(k, {r:x.r, L:x.L, lg:x.lg, gg:x.gg, o:x.o, cells:new Map()}); rows.get(k).cells.set(x.s, x.w>0?"W":x.w<0?"L":"D"); }
+  const sg = x => x>0 ? `+${fmt(x)}` : fmt(x);   // a gap is team 1's lead
+  const name = R => `${v.nroles>1?`roles ${R.r} `:""}${R.L!=null?`L${R.L} `:""}${R.lg!=null?`lvl${sg(R.lg)} `:""}${R.gg!=null?`gold${sg(R.gg)} `:""}${v.both?(R.o?"swapped ":"as given "):""}`.trim() || "all";
   const w=Math.max(...[...rows.values()].map(R=>name(R).length), 5);
   const lines=[`  ${"starts".padEnd(w)}  ${starts.length>1?`${fmt(starts[0])} … ${fmt(starts[starts.length-1])} (${starts.length})`:fmt(starts[0])}`];
   for (const R of rows.values()){ const c=R.cells, ws=[...c.values()].filter(x=>x==="W").length;
@@ -8120,7 +8140,7 @@ function show(v){
   if (typeof v==="string") return v;
   if (!v) return "nothing";
   switch(v.t){
-    case "champ": if (v.dummy) return dummyText(v); return `${champName(v)} (level ${v.level}${v.items.length?", "+v.items.map(k=>ITEMS[k].name).join(", "):""}${(v.runes||[]).length?"; "+v.runes.map(runeName).join(", "):""})`;
+    case "champ": if (v.dummy) return dummyText(v); return `${champName(v)} (level ${v.level}${v.items.length?", "+v.items.map(k=>ITEMS[k].name).join(", "):""}${v.partial?`, ${fmt(Math.round(v.partial.f*100))}% of ${ITEMS[v.partial.key].name} (stats only)`:""}${(v.runes||[]).length?"; "+v.runes.map(runeName).join(", "):""})`;
     case "item": return ITEMS[v.key].name;
     case "summoner": return v.owner ? `${label(v.owner)}.${summName(v.key)}` : summName(v.key);
     case "set": return `{${v.items.map(k=>ITEMS[k].name).join(", ")}}`;
@@ -8439,13 +8459,15 @@ function Interpreter(ast, emitRaw){
         const methods = {
           byStart:(a)=>{ const s=num1(a[0],"byStart"); return sub(x=>Math.abs(x.s-s)<1e-9, `at start ${fmt(s)} (starts: ${[...new Set(v.rec.map(x=>x.s))].map(fmt).join(", ")})`); },
           byLevel:(a)=>{ const L=num1(a[0],"byLevel"); if (v.rec[0] && v.rec[0].L==null) throw new Error("this sweep kept the champions' own levels (no levels: given)"); return sub(x=>x.L===L, `at level ${fmt(L)}`); },
+          byLevelGap:(a)=>{ const g=num1(a[0],"byLevelGap"); if (v.rec[0] && v.rec[0].lg==null) throw new Error("this sweep has no level-gap axis (add levelGaps: range(-3, 3, 1))"); return sub(x=>x.lg===g, `at level gap ${fmt(g)} (team 1's lead; levelGaps: ${[...new Set(v.rec.map(x=>x.lg))].map(fmt).join(", ")})`); },
+          byGoldGap:(a)=>{ const g=num1(a[0],"byGoldGap"); if (v.rec[0] && v.rec[0].gg==null) throw new Error("this sweep has no gold-gap axis (add goldGaps: {-2000, -1000, 0})"); return sub(x=>Math.abs(x.gg-g)<1e-9, `at gold gap ${fmt(g)} (team 1's lead; goldGaps: ${[...new Set(v.rec.map(x=>x.gg))].map(fmt).join(", ")})`); },
           byRoles:(a)=>{ const i=num1(a[0],"byRoles"); return sub(x=>x.r===i, `for role set ${fmt(i)} (role sets count from 1 to ${v.nroles})`); },
           bySide:(a)=>{ const i=num1(a[0],"bySide"); if (i!==1 && i!==2) throw new Error("bySide(1): team 1 on side 1 as given; bySide(2): the swapped fights (bothSides: true)"); return sub(x=>x.o===i-1, i===2 ? "with the sides swapped (add bothSides: true)" : "as given"); },
         };
         if (methods[name]) return M(methods[name]);
         const st=sweepStats(v.rec);
         if (own(st, name)) return st[name];
-        throw new LangError(`a Fights sweep has: wins, draws, losses, total, share, low, high, meanTime, margin, sideMismatches, byStart(d), byLevel(L), byRoles(i), bySide(1|2)`, ln);
+        throw new LangError(`a Fights sweep has: wins, draws, losses, total, share, low, high, meanTime, margin, sideMismatches, byStart(d), byLevel(L), byLevelGap(n), byGoldGap(g), byRoles(i), bySide(1|2)`, ln);
       }
       case "fight": {
         const f=obj;
@@ -8539,7 +8561,12 @@ function Interpreter(ast, emitRaw){
     items:()=>({t:"list", items:ITEMKEYS.filter(k=>ITEMS[k].complete).map(k=>({t:"item", key:k}))}),
     runes:()=>({t:"list", items:RUNE_KEYS.map(k=>({t:"rune", key:k}))}),
     canDodge:(a, named)=>canDodge(a[0], a[1], named),
-    fight:(a, named)=>{ if (a.length<3 || typeof a[2]!=="number") throw new Error("fight(side1, side2, seconds, start: distance)"); return runFight([teamOf(a[0]), teamOf(a[1])], a[2], fightOpts(named)); },
+    fight:(a, named)=>{ if (a.length<3 || typeof a[2]!=="number") throw new Error("fight(side1, side2, seconds, start: distance)");
+      const {levelGap, goldGap, ...rest}=named||{}, lg=gapPair(levelGap, "levelGap:", false), gg=gapPair(goldGap, "goldGap:", true), fo=fightOpts(rest);
+      if (!lg && !gg) return runFight([teamOf(a[0]), teamOf(a[1])], a[2], fo);
+      const notes = TR ? TR.notes : null; if (notes) notes.add(GAP_NOTE);
+      return runFight([0, 1].map(i=>applyGap(teamOf(a[i]).map(copy), lg ? lg[i] : 0, gg ? gg[i] : 0, i+1, notes)), a[2], fo); },
+    crossover:(a, named)=>crossover(a, named),
     fights:(a, named)=>sweep(a, named),
     range:(a)=>{ if (a.length<2 || a.length>3 || a.some(x=>typeof x!=="number")) throw new Error("range(from, to) or range(from, to, step): numbers from “from” to “to”, both included, e.g. range(0, 1200, 50)");
       return {t:"list", items:rangeList(a[0], a[1], a.length>2 ? a[2] : (a[1]>=a[0] ? 1 : -1))}; },
@@ -8558,9 +8585,41 @@ function Interpreter(ast, emitRaw){
      fights themselves cost no interpreter steps (they count against the time limit only), so a sweep is far cheaper than
      the same loop written in Rift Logic. Fight objects are dropped after scoring: memory stays at one record per fight. */
   const SWEEP_MAX = 5000;
+  /* Game-state gaps (fight/fights levelGap: and goldGap:, fights levelGaps: and goldGaps:, crossover). A gap is an offset from the
+     teams as built. Levels: + n per champion, clamped to 1–18 (skill points follow the new level unless the program set ranks).
+     Gold: − g per champion, taken off the build from its LAST item backwards (the list order is the buy order); an item only partly
+     paid for keeps that share of its stats and none of its passive or active (about what its components give), and a build can't
+     lose more than it has. One number is team 1's LEAD: + n lowers team 2 by n, − n lowers team 1 (a lead never needs levels above
+     18 or items the build doesn't have). {a, b} gives each team its own offset (gold: 0 or less). */
+  function gapPair(v, what, gold){
+    if (v==null) return null;
+    const ok = x => typeof x==="number" && Number.isFinite(x) && (gold || Math.abs(x)<=17);
+    if (ok(v)){ const n = gold ? v : Math.round(v); return n>=0 ? [0, -n] : [n, 0]; }
+    if (v && v.t==="list" && v.items.length===2 && v.items.every(ok)){ const p=v.items.map(x=>gold ? x : Math.round(x));
+      if (gold && p.some(x=>x>0)) throw new Error(`goldGap: {g1, g2} is the gold each team is behind (0 or less), e.g. goldGap: {0, -1500}; a lead is the other team's deficit (goldGap: 1500 = team 2 1500 behind)`);
+      return p; }
+    throw new Error(gold ? `${what} is team 1's gold lead per champion as one number (goldGap: -1500 = team 1 1500 gold behind) or each team's deficit (goldGap: {0, -1500})`
+                         : `${what} is team 1's level lead as one number from -17 to 17 (levelGap: -2 = team 1 two levels behind) or one offset per team (levelGap: {0, -2})`);
+  }
+  // take g gold off one champion's build, last item first; returns the gold it couldn't take (the build ran out)
+  function goldCut(c, g){
+    let left=g, part=c.partial||null; const its=[...c.items];
+    if (part && left>1e-9){ const cost=ITEMS[part.key].gold, have=cost*part.f; if (have<=left+1e-9){ left-=have; part=null; } else { part={key:part.key, f:(have-left)/cost}; left=0; } }
+    for (let i=its.length-1; i>=0 && left>1e-9; i--){ const cost=(ITEMS[its[i]]||{}).gold||0; if (!(cost>0)) continue;
+      if (cost<=left+1e-9){ left-=cost; its.splice(i,1); } else { part={key:its[i], f:(cost-left)/cost}; its.splice(i,1); left=0; } }
+    c.items=its; c.partial=part; return Math.max(0, left); }
+  // a team (already copied) with a level offset and a gold deficit; notes: what changed, champion by champion (fight() traces)
+  function applyGap(champs, lv, gold, team, notes){
+    for (const x of champs){ const was=x.level, wasItems=x.items.map(k=>ITEMS[k].name);
+      if (lv) x.level=Math.max(1, Math.min(18, x.level+lv));
+      let short=0; if (gold<0) short=goldCut(x, -gold);
+      if (notes && (lv || gold<0)){ const lost=wasItems.filter(n=>!x.items.map(k=>ITEMS[k].name).includes(n));
+        notes.add(`${label(x)} (team ${team}): ${lv?`level ${was} → ${x.level}${was+lv!==x.level?" (clamped to 1–18)":""}`:""}${lv&&gold<0?"; ":""}${gold<0?`${fmt(-gold)} gold behind: ${lost.length?`loses ${lost.join(", ")}`:"keeps every item"}${x.partial?`, keeps ${fmt(Math.round(x.partial.f*100))}% of ${ITEMS[x.partial.key].name}'s stats (no passive)`:""}${short>0?` (the build ran out ${fmt(short)} gold short)`:""}`:""}`); } }
+    return champs; }
+  const GAP_NOTE = "fight(): level and gold gaps are offsets from the teams as built: levels + n (clamped 1–18; skill points follow unless ranks were set), gold − g per champion taken off the build from its last item backwards, an item only partly paid for keeping that share of its stats but no passive or active; one number is team 1's lead (+ lowers team 2, − lowers team 1)";
   function sweep(a, named){
     if (a.length!==3 || typeof a[2]!=="number") throw new Error("fights(team1, team2, seconds, starts: range(0, 1200, 50), levels: {9, 13, 16}, roles: f, bothSides: true)");
-    checkNamed(named, ["starts","levels","roles","bothSides","kite","room","formation","skill","perfectAim"], "fights(…)");
+    checkNamed(named, ["starts","levels","roles","bothSides","kite","room","formation","skill","perfectAim","levelGap","goldGap","levelGaps","goldGaps"], "fights(…)");
     if (!(a[2]>0 && a[2]<=120)) throw new Error("a fight lasts between 0 and 120 seconds");
     const nums = (v, what, eg) => { const xs = v&&v.t==="list" ? v.items : typeof v==="number" ? [v] : null;
       if (!xs || !xs.length || xs.some(x=>typeof x!=="number")) throw new Error(`fights(…, ${what} …) takes a number or a list of numbers, e.g. ${what} ${eg}`); return xs; };
@@ -8573,26 +8632,38 @@ function Interpreter(ast, emitRaw){
     const both = named.bothSides!=null && truthy(named.bothSides);
     const fo = fightOpts({kite:named.kite, room:named.room, formation:named.formation, skill:named.skill, perfectAim:named.perfectAim});
     for (const k of ["kite","room","formation"]) if (named[k]==null) delete fo[k];
-    const n = starts.length*levels.length*fns.length*(both?2:1);
-    if (n > SWEEP_MAX) throw new Error(`fights(…) runs at most ${big(SWEEP_MAX)} fights (this one would run ${big(n)}): use fewer starts, levels or role sets`);
+    // game-state gaps: levelGap:/goldGap: one fixed gap (as in fight); levelGaps:/goldGaps: a sweep axis of team 1's leads
+    if (named.levelGap!=null && named.levelGaps!=null) throw new Error("fights(…): give levelGap: (one gap) or levelGaps: (a list to sweep), not both");
+    if (named.goldGap!=null && named.goldGaps!=null) throw new Error("fights(…): give goldGap: (one gap) or goldGaps: (a list to sweep), not both");
+    const lgFix=gapPair(named.levelGap, "levelGap:", false), ggFix=gapPair(named.goldGap, "goldGap:", true);
+    const lgs = named.levelGaps==null ? [null] : nums(named.levelGaps, "levelGaps:", "range(-3, 3, 1)").map(g=>{ if (!(Math.abs(g)<=17)) throw new Error(`levelGaps: are team 1's level leads from -17 to 17, not ${fmt(g)}`); return Math.round(g); });
+    const ggs = named.goldGaps==null ? [null] : nums(named.goldGaps, "goldGaps:", "range(-3000, 3000, 500)").map(g=>{ if (!Number.isFinite(g)) throw new Error("goldGaps: are gold leads per champion"); return g; });
+    const n = starts.length*levels.length*fns.length*lgs.length*ggs.length*(both?2:1);
+    if (n > SWEEP_MAX) throw new Error(`fights(…) runs at most ${big(SWEEP_MAX)} fights (this one would run ${big(n)}): use fewer starts, levels, gaps or role sets`);
     const teams=[teamOf(a[0]), teamOf(a[1])];
     if (!teams[0].length || !teams[1].length) throw new Error("fights(…): each team needs at least one champion");
     // a team at one level under one role set: level first, then the role function (which may also change items, ranks, …)
-    const prep = (i, L, f) => {
+    // then the level gap before the role function (it sees the level the team fights at) and the gold gap after it (off the final build)
+    const prep = (i, L, f, lp, gp) => {
       let champs = teams[i].map(c=>{ const x=copy(c); if (L!=null) x.level=L; return x; });
-      if (f){ const d=f.decl, lv = L ?? champs[0].level;
+      if (lp && lp[i]) applyGap(champs, lp[i], 0, i+1, null);
+      if (f){ const d=f.decl, lv = champs[0].level;
         const out = invoke(d, [{t:"comp", champs}, lv, i+1].slice(0, d.params.length));
         champs = out && ["comp","champ","list"].includes(out.t) ? teamOf(out).map(copy) : [];
         if (!champs.length || champs.some(c=>!c||c.t!=="champ")) throw new Error(`roles: ${d.name}() must return the team (a TeamComp of champions)`); }
+      if (gp && gp[i]<0) applyGap(champs, 0, gp[i], i+1, null);
       return champs; };
     const rec=[], notes=new Set(), saved=TR; TR=null;
+    if (lgFix || ggFix || named.levelGaps!=null || named.goldGaps!=null) notes.add(GAP_NOTE);
     try {
-      for (let ri=0; ri<fns.length; ri++) for (const L of levels){
-        const A=prep(0, L, fns[ri]), B=prep(1, L, fns[ri]);
+      for (let ri=0; ri<fns.length; ri++) for (const L of levels) for (const lg of lgs) for (const gg of ggs){
+        // a swept gap is team 1's lead (gapPair); it is applied to the teams, so it follows its team when bothSides: swaps them
+        const lp = lg!=null ? gapPair(lg, "levelGaps:", false) : lgFix, gp = gg!=null ? gapPair(gg, "goldGaps:", true) : ggFix;
+        const A=prep(0, L, fns[ri], lp, gp), B=prep(1, L, fns[ri], lp, gp);
         for (const o of both ? [0, 1] : [0]) for (const s of starts){
           const f=runFight(o ? [B, A] : [A, B], a[2], {...fo, start:s, skill: o && fo.skill && fo.skill.side ? {side:[fo.skill.side[1], fo.skill.side[0]]} : fo.skill});   // a per-side skill follows its team
           let a1=0, a2=0; for (const u of f.units) if (u.alive){ if ((u.side===0) === !o) a1++; else a2++; }
-          rec.push({s, L, r:ri+1, o, w: a1&&!a2 ? 1 : a2&&!a1 ? -1 : 0, end:f.end, m:a1-a2});
+          rec.push({s, L, r:ri+1, o, lg, gg, w: a1&&!a2 ? 1 : a2&&!a1 ? -1 : 0, end:f.end, m:a1-a2});
           for (const x of f.notes) if (notes.size<300 && !/^fight\(\): the sides start /.test(x)) notes.add(x);
         }
       }
@@ -8601,6 +8672,32 @@ function Interpreter(ast, emitRaw){
     const v={t:"fights", rec, secs:a[2], nroles:fns.length, both, names:[nm(teams[0]), nm(teams[1])], notes:[...notes]};
     if (TR){ (TR.seenFights ||= new WeakSet()).add(v); sweepTrace(v); }
     return v;
+  }
+  /* crossover(a, b, seconds, axis: "level" | "gold", step:, max:, + fights() options): the gap (team 1's lead, as in levelGaps:)
+     where team 1's share of the sweep crosses 0.5. From gap 0 it walks toward team 1 behind while team 1 still holds 0.5 or more and
+     returns the last gap that held (−2: team 1 can be 2 levels behind and still win half); if team 1 is under 0.5 at 0 it walks
+     toward team 1 ahead and returns the first gap that reaches 0.5 (+1: team 1 needs a level lead). The first crossing from 0 only:
+     a result that turns back further out isn't looked for. No crossing within max: −max (holds at every deficit tried) or Infinity. */
+  function crossover(a, named){
+    named=named||{}; const {axis, step, max, ...rest}=named;
+    const ax = axis==null ? "level" : axis;
+    if (ax!=="level" && ax!=="gold") throw new Error(`crossover(team1, team2, seconds, axis: "level") or axis: "gold"`);
+    for (const k of ["levelGap","goldGap","levelGaps","goldGaps"]) if (rest[k]!=null) throw new Error(`crossover(…) sweeps the gap itself: drop ${k}:`);
+    const st = step==null ? (ax==="level" ? 1 : 500) : step, mx = max==null ? (ax==="level" ? 17 : 10000) : max;
+    if (!(typeof st==="number" && st>0 && (ax==="gold" || Number.isInteger(st)))) throw new Error(`crossover(…, step: n): n is ${ax==="level"?"a whole number of levels (default 1)":"gold per champion (default 500)"}`);
+    if (!(typeof mx==="number" && mx>=st && (ax==="gold" || mx<=17))) throw new Error(`crossover(…, max: n): the largest gap to try, ${ax==="level"?"1–17 levels (default 17)":"gold per champion (default 10000)"}`);
+    const key = ax==="level" ? "levelGaps" : "goldGaps", rows=[], saved=TR; let ans, names;
+    const share = g => { g=Math.round(g*1e6)/1e6; const v=sweep(a, {...rest, [key]:g}); names=v.names; const s=sweepStats(v.rec); rows.push({g, s}); return s.share; };
+    TR=null;
+    try {
+      if (share(0) >= 0.5){ ans=0; for (let g=-st; g>=-mx-1e-9; g-=st){ if (share(g)>=0.5) ans=Math.round(g*1e6)/1e6; else break; } }
+      else { ans=Infinity; for (let g=st; g<=mx+1e-9; g+=st) if (share(g)>=0.5){ ans=Math.round(g*1e6)/1e6; break; } }
+    } finally { TR=saved; }
+    if (TR){ const sg = x => x>0 ? `+${fmt(x)}` : fmt(x), u = x => ax==="level" ? ` level${Math.abs(x)===1?"":"s"}` : " gold";
+      TR.lines.push(`crossover (${ax}): ${names[0]} vs ${names[1]}, ${rows[0].s.total} fights per gap; team 1's share by its ${ax} lead: ${rows.map(r=>`${sg(r.g)} ${pct1(r.s.share)}`).join(", ")}`);
+      TR.lines.push(`  → ${ans===Infinity ? `no lead up to +${fmt(mx)}${u(mx)} gets team 1 to 50%` : ans<0 ? `team 1 still wins half ${fmt(-ans)}${u(ans)} behind${rows[rows.length-1].s.share>=0.5 ? ` (every gap tried, down to −${fmt(mx)})` : ""}` : ans===0 ? "team 1 wins half at an even game, but not one step behind" : `team 1 needs a ${fmt(ans)}${ax==="level" ? "-level" : " gold"} lead`}`);
+      TR.notes.add(`crossover(): the first gap from 0 where team 1's share (wins + draws/2 over the fights() sweep) crosses 0.5; gaps are team 1's lead${ax==="gold" ? " in gold per champion" : " in levels"} (${GAP_NOTE.replace(/^fight\(\): /, "")})`); }
+    return ans;
   }
   function sweepTrace(v){
     TR.lines.push(`fights(): ${v.rec.length} fights of up to ${fmt(v.secs)}s — ${sweepLine(v)}`);
@@ -8648,7 +8745,7 @@ function Interpreter(ast, emitRaw){
     return r;
   }
   function fightOpts(named){ const o={}; named=named||{};
-    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within","skill","perfectAim"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), kite: (false = nobody kites, even with role "kite"), room: (how far a unit can back off; default unlimited), formation: (false = everyone on the front line), skill: (player skill 0–100 for everyone, or {side1, side2}; default 70; a champion's own .skill wins), perfectAim: (true = every ability in reach lands, the pre-skill engine)`);
+    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within","skill","perfectAim"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), kite: (false = nobody kites, even with role "kite"), room: (how far a unit can back off; default unlimited), formation: (false = everyone on the front line), skill: (player skill 0–100 for everyone, or {side1, side2}; default 70; a champion's own .skill wins), perfectAim: (true = every ability in reach lands, the pre-skill engine), and in fight() levelGap: / goldGap: (team 1's lead, or {team 1, team 2} offsets)`);
     // player skill (skillDodged): on by default; perfectAim: true turns it off; skill: n or {n1, n2} for champions without their own .skill
     if (named.perfectAim!=null && truthy(named.perfectAim)) o.skill={perfect:true};
     else if (named.skill!=null){ const s=named.skill, xs = typeof s==="number" ? [s, s] : s && s.t==="list" && s.items.length===2 && s.items.every(v=>typeof v==="number") ? s.items.slice() : null;
