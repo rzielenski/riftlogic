@@ -768,9 +768,9 @@ const ITEM_SIM_NOTES = {
   mejaissoulstealer:"Mejai's Soulstealer: the move speed has no effect",
   actualizer:"Actualizer: basic ability cooldowns started during the 8s tick 30% faster; mana cost is ignored",
   titanichydra:"Titanic Hydra: fighters press the active whenever it is ready; in combos only when listed",
-  bansheesveil:"Banshee's Veil: the spell shield is up when the fight starts and blocks a whole ability cast (all its damage and effects on you)",
-  edgeofnight:"Edge of Night: the spell shield is up when the fight starts and blocks a whole ability cast (all its damage and effects on you)",
-  verdantbarrier:"Verdant Barrier: the spell shield is up when the fight starts and blocks a whole ability cast (all its damage and effects on you)",
+  bansheesveil:"Banshee's Veil: the spell shield is up when the fight starts and blocks one ability: the whole cast, or only what that ability's page says (one hit of a multi-hit ability, only its crowd control, nothing; wiki)",
+  edgeofnight:"Edge of Night: the spell shield is up when the fight starts and blocks one ability: the whole cast, or only what that ability's page says (one hit of a multi-hit ability, only its crowd control, nothing; wiki)",
+  verdantbarrier:"Verdant Barrier: the spell shield is up when the fight starts and blocks one ability: the whole cast, or only what that ability's page says (one hit of a multi-hit ability, only its crowd control, nothing; wiki)",
 };
 const ITEM_ACTIVE_CD = { tiamat:"tiamat", ravenoushydra:"ravenoushydra", profanehydra:"profanehydra", stridebreaker:"stridebreaker", titanichydra:"titanichydra",
   hextechgunblade:"hextechgunblade", hextechrocketbelt:"hextechrocketbelt", zhonyashourglass:"zhonyashourglass", seekersarmguard:"seekersarmguard",
@@ -852,6 +852,9 @@ function simulate(sidesIn, T, simNotes, fo){
     if (S.heal) a.heal=evalCalc({S,rank:a.rank,st,flags:u.flags},S.heal).v*hamp;
     if (S.shield) a.shield=evalCalc({S,rank:a.rank,st,flags:u.flags},S.shield).v*hamp;
     { const ks=kitSpec(u.c, a.slot); if (a.shield && ks && ks.shieldMult) a.shield*=ks.shieldMult(u.c, st, a.rank); }   // Viktor Turbocharge
+    // P3: a "oneHit" ability's hit count from the kit option it names (Syndra R: spheres), for spell shields (oneHitCut)
+    { const sh=a.p && a.p.shieldHits, ks=typeof sh==="string" && sh!=="first" ? kitSpec(u.c, a.slot) : null;
+      if (ks && ks.opts && ks.opts[sh]){ const o=kitOptions(ks, ks.sim ? ks.sim(u, a) : null, u.c, a.slot, st, a.rank); a.shieldN=o[sh]; } }
   }
   function abCd(u, a){
     if (a.cdFixed!=null) return a.cdFixed;
@@ -1027,15 +1030,37 @@ function simulate(sidesIn, T, simNotes, fo){
       P.cancelled=true; n++; say(t, `  ${x.name}'s ${P.slot} ${why==="dies"?"cast is lost (the caster dies before its cast time (or channel) ends)":why==="is interrupted"?`${P.charge?"charge":"channel"} is interrupted: it doesn't land`:`cast is lost (the caster ${why})`}`); }
     x.pend=x.pend.filter(P=>!P.done && !P.cancelled); return n; }
   // spell shields: items (Banshee's, Edge of Night, Verdant Barrier) and abilities (Sivir E, Nocturne W: cast as the ability lands, perfect play)
-  function blocked(u,a,x,t){
+  // what: the part blocked, for the log ("one sphere of", "the crowd control of"; default the whole ability)
+  function blocked(u,a,x,t,what){
+    const w = what ? `${what} ${u.name}'s ${a.slot}` : `${u.name}'s ${a.slot}`;
     const ss=["bansheesveil","edgeofnight","verdantbarrier"].find(k=>has(x,k));
-    if (ss && t>=(x.annulAt??0)){ x.annulAt=t+idv(ss,"Cooldown",40); x.blocks=(x.blocks||0)+1; say(t, `  ${ITEMS[ss].name} blocks ${u.name}'s ${a.slot} on ${x.name}`); return true; }
+    if (ss && t>=(x.annulAt??0)){ x.annulAt=t+idv(ss,"Cooldown",40); x.blocks=(x.blocks||0)+1; say(t, `  ${ITEMS[ss].name} blocks ${w} on ${x.name}`); return true; }
     if (!x.passive && !x.script) for (const s of ["Q","W","E","R"]){ const b=x.abAll[s]; if (!b || b.spellShield==null || (x.cd[s]||0)>t || !canCast(x,t)) continue;
-      x.cd[s]=t+abCd(x,b); x.blocks=(x.blocks||0)+1; say(t, `  ${x.name} blocks ${u.name}'s ${a.slot} with ${s} (spell shield raised as it lands: perfect play)`);
-      simNotes.add(`${x.name} ${s}: spell shield raised just as a hostile ability lands (perfect reaction); blocks all of that ability's damage and crowd control (wiki)`);
+      x.cd[s]=t+abCd(x,b); x.blocks=(x.blocks||0)+1; say(t, `  ${x.name} blocks ${w} with ${s} (spell shield raised as it lands: perfect play)`);
+      simNotes.add(`${x.name} ${s}: spell shield raised just as a hostile ability lands (perfect reaction); it blocks one ability: the whole cast, or only the part the ability's page says (one hit of a multi-hit ability, only its crowd control, …; wiki)`);
       if (b.heal) heal(x,x,b.heal,t,`${s} spell shield block`); return true; }
     return false;
   }
+  /* P3 (interaction audit): spell shields per hit, from the ability's page (a.p.spellShield; SIM_INTERIM_P3 until P1 exports it).
+     Returns null (nothing blocked) | "all" | "one" (one hit: the rest land) | "cc" (only the crowd control) | "dmg" (only the damage).
+     A kit dealing later hits of its own asks blockedHit() per hit (P6). */
+  function shieldHit(u,a,x,t){ const m=(a.p && a.p.spellShield) || "blocks";
+    if (m==="not"){ if (a.p.shieldConsumed && blocked(u,a,x,t,"(consumed without blocking: wiki bug)")) simNotes.add(`${u.name} ${a.slot}: a spell shield is used up but doesn't block it (wiki, a documented bug)`);
+      return null; }
+    if (m==="oneHit"){ const cut=oneHitCut(u,a); if (!cut) return blocked(u,a,x,t) ? "all" : null;
+      return blocked(u,a,x,t,cut.what) ? "one" : null; }
+    if (m==="ccOnly") return (a.cc||[]).length && blocked(u,a,x,t,"the crowd control of") ? "cc" : null;
+    if (m==="damageOnly") return a.parts.length && blocked(u,a,x,t,"the damage of") ? "dmg" : null;
+    return blocked(u,a,x,t) ? "all" : null; }
+  function blockedHit(u,a,x,t,what){ return blocked(u,a,x,t,what||"one hit of"); }
+  /* the hit a spell shield takes from a "oneHit" ability, as fight() deals it: {skip0} a channel's first separate hit (Katarina R),
+     {first} the first damage part (Ahri Q's out pass), {n} 1/n of the damage (Syndra R spheres, Fiddlesticks R ticks, a spread's
+     ticks); null when fight() deals one hit only (the kit deals the others, or the rest aren't modelled): that hit is blocked */
+  function oneHitCut(u,a){ const sh=a.p.shieldHits;
+    if (a.spread>0 && a.S.onHit && dvOf(a.S,"tickspersecond",a.rank)>0) return {skip0:true, what:"one hit of"};
+    if (sh==="first" && a.parts.length>1) return {first:true, what:"one pass of"};
+    const n = typeof sh==="number" ? sh : a.shieldN!=null ? a.shieldN : a.spread>0 ? Math.max(1, Math.round(a.spread/0.5)) : 1;
+    return n>1 ? {n, what:`one ${typeof sh==="string" && sh!=="first" ? sh.replace(/s$/,"") : "hit"} (of ${fmt(n)}) of`} : null; }
   // Kennen's Mark of the Storm (wiki): each ability hit adds a mark for 6 s (MarkDuration); the third consumes them to stun
   // for 1.25 s (StunDuration), 0.5 s (ReducedStunDuration) if the same target was stunned by it in the last 6 s.
   // Slicing Maelstrom marks each target up to 3 times: modelled as marks at 0, 0.5 and 1 s while the target stays inside.
@@ -1292,6 +1317,7 @@ function simulate(sidesIn, T, simNotes, fo){
       if (att.kit && att.kit.hit && kind==="ability" && tgt.alive && !inStasis(tgt,t) && raw>0) att.kit.hit.add(tgt);   // kits that collect a cast's targets (Annie, …) see the hit now
       return 0; }   // resolved after everyone has acted this tick
     if (!tgt.alive || inStasis(tgt,t) || raw<=0) return 0;
+    if (att.side!==tgt.side && invulnTo(att, tgt, t)){ say(t, `  ${tgt.name} is invulnerable: ${att.name}'s ${what||kind} deals no damage`); return 0; }   // P3
     // practice-tool dummy: after 3 s without damage it restores to full health and resets its damage tracking (wiki Practice Tool § Dummy)
     if (tgt.dummy && tgt.hp<tgt.max && t-tgt.lastHurtAt>=DUMMY_RESET-1e-9){ tgt.hp=tgt.max; tgt.dummyTaken=0; say(t, `${tgt.name} resets to full health (no damage for ${DUMMY_RESET}s)`); }
     if (kind!=="dot" && kind!=="abilitydot"){ enterCombat(att,t,true); enterCombat(tgt,t,false); }
@@ -1760,7 +1786,7 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   function cast(u, a, tgt, t, o={}){
     refresh(u,t); u.kitT=t; abNums(u,a); a.cd=abCd(u,a);
-    let cdv=a.cd;
+    let cdv=a.cd; const cd0=u.cd[a.slot], ammo0=a.ammo ? {n:a.ammo.n, at:a.ammo.at} : null, en0=enCost(u,a);   // P3: refunded if the cast is cancelled (rule 3)
     if (has(u,"actualizer") && u.actUntil>t && a.slot!=="R"){ const win=u.actUntil-t, f=1+idv("actualizer","CooldownTick",0.3); cdv = cdv<=win*f ? cdv/f : win+(cdv-win*f); }
     u.cd[a.slot]=t+cdv; u.nextAct=t+(a.channel ? a.spread : castLock(u,a)); u.casts++; (u.castsBy ||= {})[a.slot]=(u.castsBy[a.slot]||0)+1;
     if (a.ammo){ const A=a.ammo, rc=A.rc*100/(100+u.st.haste+(a.slot==="R"?u.st.rhaste:u.st.basichaste));   // ammo: spend a charge; with none left, wait for the next
@@ -1772,9 +1798,10 @@ function simulate(sidesIn, T, simNotes, fo){
     // energy (item 24): the cost is paid at the cast (callers check enShort first); Akali W (perform) restores 100 and raises the cap
     { const c=enCost(u,a); if (c>0) enSpend(u,c,t);
       if (u.en && u.c.champ==="Akali" && a.slot==="W"){ u.en.bonus={v:100, until:t+(dvOf(a.S,"baseduration",a.rank)||5)}; enGain(u, dvOf(a.S,"energyrestore",a.rank)||100, t, "Twilight Shroud"); } }
-    // untargetable from the cast (CAST_UNTARGETABLE; the tick loop applies it to the whole step)
-    { const cu=CAST_UNTARGETABLE[u.c.champ]; if (cu && cu.slot===a.slot){ castStasis(u, t+cu.dur, t); u.nextAct=Math.max(u.nextAct, t+cu.lock); u.nextAA=Math.max(u.nextAA, t+cu.lock);
-        say(t, `${u.name} casts ${a.slot}: untargetable until ${fmt(t+cu.dur)}s`); simNotes.add(`${u.name} ${a.slot}: ${cu.why}`); } }
+    // the caster's own windows from the ability's page (P3; a.p.grants, SIM_INTERIM until P1): untargetable / stasis (modelled as
+    // stasis: nothing lands on it, it doesn't act) and invulnerable (0 damage; still targetable, crowd control still applies).
+    // A window from the press applies to the whole press step (the tick loop: castStartSlot); a later one starts at press + start.
+    castGrants(u, a, t);
     // dashes and blinks move the caster: toward the target (to touching distance, at most the dash range) or away from a chaser (o.away)
     const d0 = tgt ? gap(u,tgt) : 0;
     { const km=CHAMP_MECH[u.c.champ]; if (!o.away && km && km.startCast && km.startCast(u, a, tgt, t, d0)) return; }   // champion kits: delayed resolution (Zed R)
@@ -1794,13 +1821,15 @@ function simulate(sidesIn, T, simNotes, fo){
     if (chan && ct >= dt/2-1e-9) events.push({at:t+ct, fn:(tt)=>{ if (P.cancelled || P.done || !u.alive) return;   // stunned or silenced as the channel starts
       const s=unstopOn(u,tt); if ((locked(u,tt) || !canCast(u,tt)) && !(s && s.slot===a.slot)){ P.cancelled=true; say(tt, `  ${u.name}'s ${a.slot} channel can't start (the caster is disabled as its cast time ends): it doesn't land`); } }});
     // unstoppable abilities (UNSTOPPABLE, item 28): the immunity window, from the press or the dash's start until the landing
-    const US=(UNSTOPPABLE[u.c.champ]||{})[a.slot];
-    if (US){ u.unstop={imm:US.imm, slot:a.slot, why:US.why, from: US.from==="press" ? t : US.from==="dash" ? t+ct : t+US.from, until:t+Math.max(ct, land)};
-      simNotes.add(`${u.name} ${a.slot}: unstoppable — ${US.why}; ${US.imm==="cc"?"immune to all crowd control":"immune to airborne, sleep and the special-cased suppressions; other crowd control still applies but can't stop it"} from ${US.from==="press"?"the press":US.from==="dash"?"the end of its cast time":`${fmt(US.from)} s after the press`} until it lands; spell shields still block it`);
-      if (US.from==="press") unstopClean(u, t); }
+    const US=unstopOf(u, a);
+    if (US){ u.unstop={imm:US.imm, slot:a.slot, why:US.why, from: US.from==="press" ? t : US.from==="dash" ? t+ct : t+US.from, until: US.fixedUntil!=null ? t+US.fixedUntil : t+Math.max(ct, land), fixed:US.fixedUntil!=null};
+      if (US.ccFor) u.ccImmuneUntil=Math.max(u.ccImmuneUntil||0, t+US.ccFor);   // Zaahen R: CC immune over the cast, then displacement immune
+      simNotes.add(`${u.name} ${a.slot}: unstoppable — ${US.why}; ${US.imm==="cc"?"immune to all crowd control":"immune to airborne, sleep and the special-cased suppressions; other crowd control still applies but can't stop it"} from ${US.from==="press"||US.from===0?"the press":US.from==="dash"?"the end of its cast time":`${fmt(US.from)} s after the press`} ${US.fixedUntil!=null?`until ${fmt(US.fixedUntil)} s after it`:"until it lands"}; spell shields still block it`);
+      if (US.from==="press" || US.from===0) unstopClean(u, t); }
     // the numbers at the press: another cast of this ability before this one lands recomputes a.parts (abNums)
-    const snap={parts:a.parts, later:a.later, heal:a.heal, shield:a.shield};
+    const snap={parts:a.parts, later:a.later, heal:a.heal, shield:a.shield, shieldN:a.shieldN};
     const L={started:false, castOk: tgt ? inReach(u,a,tgt) : false, pressT:t, land, deferred:false};
+    targetWatch(u, a, tgt, t, ct, land, P, L, {cd0, ammo0, en0});
     const hsAt = a.p && a.p.delivery!=="self" && tgt && !a.dash ? ct + (u.script && !u.scriptTravel ? 0 : flightTime(a.p, d0)) : ct;
     const km0=CHAMP_MECH[u.c.champ], hsWithLanding = !!(km0 && km0.onCast) && !(km0.shieldAtCast||[]).includes(a.slot);   // kits may change the heal or shield in onCast
     const support=(tt)=>{
@@ -1809,23 +1838,26 @@ function simulate(sidesIn, T, simNotes, fo){
         for (const x of ts){ if (!x.alive) continue; shield(u,x,a.shield,a.shieldDur,tt,`${a.slot}`); if (a.ccImmune && x.shields.length){ x.shields[x.shields.length-1].ccImmune=true; say(tt, `  ${x.name} is immune to crowd control while the shield holds`); } } } };
     // run fn at press + at (now when under half a step), as the combo step that pressed it; the landing counts for that step
     const later=(at, fn)=>{ if (at < dt/2-1e-9){ fn(t); return; }
-      events.push({at:t+at, fn:(tt)=>{ if (P.cancelled) return; const prev=u.curStep, b=u.dealt, pa=a.parts, pl=a.later, ph=a.heal, psh=a.shield;
-        u.curStep=step; u.kitT=tt; a.parts=snap.parts; a.later=snap.later; a.heal=snap.heal; a.shield=snap.shield;
+      events.push({at:t+at, fn:(tt)=>{ if (P.cancelled) return; const prev=u.curStep, b=u.dealt, pa=a.parts, pl=a.later, ph=a.heal, psh=a.shield, pn=a.shieldN;
+        u.curStep=step; u.kitT=tt; a.parts=snap.parts; a.later=snap.later; a.heal=snap.heal; a.shield=snap.shield; a.shieldN=snap.shieldN;
         fn(tt);
-        if (a.parts===snap.parts){ a.parts=pa; a.later=pl; a.heal=ph; a.shield=psh; }   // keep what a later press computed, unless the kit replaced it
+        if (a.parts===snap.parts){ a.parts=pa; a.later=pl; a.heal=ph; a.shield=psh; a.shieldN=pn; }   // keep what a later press computed, unless the kit replaced it
         u.curStep=prev; if (u.script && step!=null && u.stepLog[step]) u.stepLog[step].dmg += u.dealt-b; }}); };
     if (ct >= dt/2-1e-9 || land >= dt/2-1e-9){ u.pend=(u.pend||[]).filter(Q=>!Q.done && !Q.cancelled); u.pend.push(P); }
     let dashed=false;
     if (a.dash && (!u.script || (u.scriptTravel && tgt && !o.away && !a.blink)) && (tgt || o.away) && canDash(u,t)){
       if (!a.di){ try { a.di=dashInfo(u.c, a.slot); } catch(err){ a.di={dist:0, time:0, castTime:0, blink:a.blink}; } }
       const di=a.di, ref=o.away||tgt;
-      const dest=()=>{ const dir = o.away ? (u.x===ref.x ? -face(u) : Math.sign(u.x-ref.x)) : (ref.x===u.x ? face(u) : Math.sign(ref.x-u.x));
+      // P3, DECISIONS 21 (a.p.leapTo "press": Jayce hammer Q): the leap goes to where the target stood at the press
+      const pressX = !o.away && tgt && a.p && a.p.leapTo==="press" ? (tgt.xS ?? tgt.x) : null;
+      const dest=()=>{ if (pressX!=null){ const dir = pressX===u.x ? face(u) : Math.sign(pressX-u.x); return u.x+dir*Math.min(di.dist, Math.max(0, Math.abs(pressX-u.x)-RAD(u)-RAD(tgt))); }
+        const dir = o.away ? (u.x===ref.x ? -face(u) : Math.sign(u.x-ref.x)) : (ref.x===u.x ? face(u) : Math.sign(ref.x-u.x));
         return o.away ? clampRoom(u, u.x+dir*di.dist) : u.x+dir*Math.min(di.dist, Math.max(0, gap(u,tgt)-RAD(u)-RAD(tgt))); };
       const by=Math.abs(dest()-u.x), dct=Math.max(0, di.castTime||0);
       if (by>1){ dashed=true;
         // the dash starts when the cast time ends (backlog 25); its hits land when it arrives, a blink's at once
         const dur = a.blink ? 0 : Math.max(0.05, (di.time-di.castTime)*by/Math.max(1,di.dist)), arrive=dct+dur;
-        if (US){ if (US.from==="dash") u.unstop.from=t+dct; u.unstop.until=t+arrive; }
+        if (US && !u.unstop.fixed){ if (US.from==="dash") u.unstop.from=t+dct; u.unstop.until=t+arrive; }
         /* item 28 (wiki Cast time, Dash, Types of Crowd Control § Airborne): the dash starts when the cast time ends whatever
            happened to the caster meanwhile (the newest movement overrides an older displacement); only a displacement or knockdown
            landing in the step it starts stops it (it would override the dash), and for DASH_CC_STOPS dashes an immobilize or
@@ -1844,8 +1876,13 @@ function simulate(sidesIn, T, simNotes, fo){
         // the hit: lost if the dash was stopped; the reach is tested where the dash ends (item 28: a dash pressed from its dash range
         // but beyond the ability's reach hits once it arrives in reach; the press-time reach also counts: targeted dashes track)
         const hit=(tt)=>{ if (!u.alive) return; if (u.dashNow===D) u.dashNow=null; if (D && D.stopped){ P.done=true; return; } P.done=true;
-          const px = a.blink && D ? D.to : (u.xS ?? u.x), arrOk = !!tgt && Math.abs(px-(tgt.xS ?? tgt.x)) <= abReach(u,a,tgt)+1e-6;
-          resolveCast(u,a,tgt,tt,d0,{...L, deferred:tt>t, castOk:L.castOk || arrOk}); if (!hsWithLanding) return; support(tt); };
+          const px = a.blink && D ? D.to : (u.xS ?? u.x), arrOk = !!tgt && Math.abs(px-(tgt.xS ?? tgt.x)) <= (pressX!=null ? (a.p.leapRadius||0)+RAD(tgt) : abReach(u,a,tgt))+1e-6;
+          if (pressX!=null && !arrOk) say(tt, `  ${u.name}'s ${a.slot} lands where ${tgt.name} stood at the press: ${tgt.name} isn't there (DECISIONS 21)`);
+          resolveCast(u,a,tgt,tt,d0,{...L, deferred:tt>t, castOk: pressX!=null ? arrOk : L.castOk || arrOk}); if (!hsWithLanding) return; support(tt); };
+        // P3: untargetable during a dash (a.p.untargetableDash: Maokai W) from the press to the arrival; a watched targeted dash
+        // (a.p.inFlight: Jarvan IV R, DECISIONS 13): the target untargetable during it takes nothing, he still lands (the kit's arena)
+        if (a.p && a.p.untargetableDash){ castStasis(u, t+arrive, t); say(t, `${u.name} is untargetable until the ${a.slot} dash arrives (${fmt(t+arrive)}s; wiki)`); }
+        if (a.p && a.p.inFlight) flightWatch(u, a, tgt, t, dct, arrive, P, L);
         if (a.blink){ later(dct, (tt)=>{ if (move(tt)) hit(tt); else P.done=true; }); if (!hsWithLanding) later(dct, support); }
         else { let ok=true; later(dct, (tt)=>{ ok=move(tt); }); later(arrive, (tt)=>{ if (ok) hit(tt); else P.done=true; }); if (!hsWithLanding) later(Math.min(hsAt, arrive), support); }
         if (dct >= dt/2-1e-9 || arrive >= dt/2-1e-9) castStart(u, a, t), L.started=true;
@@ -1883,7 +1920,8 @@ function simulate(sidesIn, T, simNotes, fo){
     const chan = p.delayKind==="channel" ? (p.delay||0) : 0;   // a channel after the cast (Karthus R): lands when it completes
     if (mode==="cast" || a.dash || p.delivery==="self" || !tgt || (!a.parts.length && !(a.cc||[]).length && !(a.later||[]).length)) return ct + (mode==="cast" ? 0 : chan);
     const tr = noPos ? (p.fixedTravel || p.minTravel || 0) : flightTime(p, d0);
-    return ct + tr + (mode==="travel" || a.channel ? 0 : (p.delay||0)) + (km && km.landAdd ? km.landAdd(u, a, tgt, d0) : 0);   // a kit's own flight (Syndra W's throw)
+    // a missile launched at the press (p.flightFrom "press": Syndra R, DECISIONS 5) flies during the cast time, as in landTime
+    return (p.flightFrom==="press" && !noPos ? 0 : ct) + tr + (mode==="travel" || a.channel ? 0 : (p.delay||0)) + (km && km.landAdd ? km.landAdd(u, a, tgt, d0) : 0);   // a kit's own flight (Syndra W's throw)
   }
   // effects at the press of any cast (backlog 25: they don't wait for the landing): Spellblade, mana-spent heals, ultimate procs
   function castStart(u, a, t){
@@ -1905,13 +1943,16 @@ function simulate(sidesIn, T, simNotes, fo){
     if (!L || !L.started) castStart(u, a, t);
     const km=CHAMP_MECH[u.c.champ], ktg=tgt||enemiesOf(u,t)[0]||null; if (km && km.onCast){ a.land=L; km.onCast(u, a, ktg, t); }
     if (a.parts.length && tgt){
-      const targets = hitList(u,a,tgt,t,L);
-      if (!targets.length && !u.script) say(t, L && L.deferred ? `${u.name}'s ${a.slot} misses ${tgt.name}${!L.castOk ? ` (out of reach at the cast: ${fmt(d0)} > ${fmt(abReach(u,a,tgt))})` : !tgt.alive ? " (dead)" : inStasis(tgt,t) ? " (untargetable as it lands)" : ""}`
+      const targets = hitList(u,a,tgt,t,L).filter(x=>!(L && L.voided && x===tgt));   // P3: a targeted hit voided in flight (flightWatch)
+      if (!targets.length && !u.script) say(t, L && L.deferred ? `${u.name}'s ${a.slot} misses ${tgt.name}${!L.castOk ? ` (out of reach at the cast: ${fmt(d0)} > ${fmt(abReach(u,a,tgt))})` : !tgt.alive ? " (dead)" : L.voided ? ` (untargetable while it was in flight, from ${fmt(L.voided)}s: its effect is voided)` : inStasis(tgt,t) ? " (untargetable as it lands)" : ""}`
         : `${u.name}'s ${a.slot} misses: ${tgt.name} is out of reach (${fmt(gap(u,tgt))} > ${fmt(abReach(u,a,tgt))})`);
       if (!(L && L.deferred && !targets.length)) say(t, `${u.name}${L && L.deferred ? `'s ${a.slot} lands` : ` casts ${a.slot}`}${a.aoe&&targets.length>1?` (area, ${targets.length} targets)`:""}`);
       let hitAny=false;
       targets.forEach((x, i)=>{
-        if (blocked(u,a,x,t)) return; hitAny=true;
+        // P3: spell shields per hit (shieldHit): "all" blocks the cast on x, "one" one hit (cut), "cc" its crowd control, "dmg" its damage
+        const sh=shieldHit(u,a,x,t); if (sh==="all") return; hitAny=true;
+        const cut = sh==="one" ? oneHitCut(u,a) : null, keep = cut && cut.n ? 1-1/cut.n : 1, noDmg = sh==="dmg";
+        const parts = noDmg ? [] : cut && cut.first ? a.parts.slice(1) : a.parts;
         const tps = a.spread > 0 && a.S.onHit ? dvOf(a.S, "tickspersecond", a.rank) : 0, cid=u.casts;
         if (tps > 0){
           // a channel of separate hits that apply on-hit effects (Katarina R: a dagger every 1/6 s, wiki 0.166 s; each dagger is
@@ -1923,13 +1964,17 @@ function simulate(sidesIn, T, simNotes, fo){
             if (k===0) abilityItems(u,x,tt,a,i===0);
             onHit(u,x,tt,"ability",a); abilityOnHit(u,x,tt,a,hp0);
             u.curStep=prev; if (step!=null && u.stepLog[step]) u.stepLog[step].dmg += u.dealt-b; };
-          for (let k=0;k<n;k++){ if (k===0 && L && L.deferred) hitK(0)(t); else events.push({at:t+k/tps, fn:hitK(k)}); }
+          // a spell shield took the first hit (Katarina R: 'will block and be consumed by only one dagger', wiki): the on-cast item
+          // effects ride the first hit that lands
+          const k0 = cut && cut.skip0 ? 1 : 0;
+          for (let k=k0;k<n;k++){ const fn = k0 && k===k0 ? (tt)=>{ hitK(k)(tt); if (x.alive && u.alive) abilityItems(u,x,tt,a,i===0); } : hitK(k);
+            if (k===0 && L && L.deferred) fn(t); else events.push({at:t+k/tps, fn}); }
         }
-        else if (a.spread > 0){ a.parts.forEach((p,j) => x.dots.push({id:`${a.slot}-spread-${j}`, u, what:`${a.slot} over ${fmt(a.spread)}s`, dps:partDmg(p,x)/a.spread, type:p.type, until:t+a.spread, start:t, next:t+0.5, rampAfter:0, step:u.curStep ?? null, ability:a, abilityDot:true})); }
-        else for (const p of a.parts) deal(u,x,partDmg(p,x),p.type,t,"ability",a.slot);
+        else if (a.spread > 0){ parts.forEach((p,j) => x.dots.push({id:`${a.slot}-spread-${j}`, u, what:`${a.slot} over ${fmt(a.spread)}s`, dps:partDmg(p,x)*keep/a.spread, type:p.type, until:t+a.spread, start:t, next:t+0.5, rampAfter:0, step:u.curStep ?? null, ability:a, abilityDot:true})); }
+        else for (const p of parts) deal(u,x,partDmg(p,x)*keep,p.type,t,"ability",a.slot);
         say(t, `  ${a.slot} hits ${x.name}${x.alive?` → ${fmt(x.hp)}/${fmt(x.max)}`:""}`);
-        if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; }
-        applyCC(u,a,x,t,d0); passiveMarks(u,a,x,t);
+        if (sh!=="cc"){ if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } applyCC(u,a,x,t,d0); }   // "one": the other hits carry it
+        passiveMarks(u,a,x,t);
         if (u.namiE) kitNamiHit(u, x, t, u.casts);   // Nami E on the caster: one charge per cast
         if (tps > 0) return;
         abilityItems(u,x,t,a,i===0);
@@ -1939,7 +1984,7 @@ function simulate(sidesIn, T, simNotes, fo){
       if (hitAny) enOnHit(u, a, t);   // energy restores on a damaging cast (Kennen E, Shen Q/E; item 24)
     }
     if (!a.parts.length && (tgt || (a.p && a.p.delivery==="self")) && (a.immob || a.slows || (a.cc && a.cc.length))){ say(t, `${u.name}${L && L.deferred ? `'s ${a.slot} lands` : ` casts ${a.slot}`}`); a.saidAt=t;
-      for (const x of hitList(u,a,tgt,t,L)){ if (blocked(u,a,x,t)) continue; passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
+      for (const x of hitList(u,a,tgt,t,L)){ if (L && L.voided && x===tgt) continue; { const sh=shieldHit(u,a,x,t); if (sh && sh!=="dmg") continue; } passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
     else if (!a.parts.length && !a.heal && !a.shield && !a.quiet && !(L && L.deferred)) say(t, `${u.name} casts ${a.slot}`);
     if (km && km.afterCast) km.afterCast(u, a, ktg, t);
     a.land=null;
@@ -2056,6 +2101,60 @@ function simulate(sidesIn, T, simNotes, fo){
   /* ---- cast-start untargetability and energy (item 24; tables CAST_UNTARGETABLE / ENERGY_CHAMPS) ---- */
   // a state gained at the cast start: the tick loop makes it count for the whole step (u.castStasisAt)
   function castStasis(u, until, t){ u.stasisUntil=Math.max(u.stasisUntil, until); u.castStasisAt=t; }
+  function numWin(w){ return Array.isArray(w) && typeof w[0]==="number" && typeof w[1]==="number" && w[1]>w[0]; }
+  /* P3 (interaction audit): the caster's own windows from the ability's page (a.p.grants; replaces the hand table CAST_UNTARGETABLE).
+     Kits that set their own (KIT_OWN_GRANTS) are skipped; GRANT_NOTES adds a longer lockout (Master Yi Q) and the log text. */
+  function castGrants(u, a, t){ const k=`${u.c.champ}.${a.slot}`; if (!a.p || KIT_OWN_GRANTS.has(k)) return;
+    const G=a.p.grants||{}, N=GRANT_NOTES[k]||{}; let hide=null;
+    for (const kind of ["untargetable","stasis"]){ const w=G[kind]; if (numWin(w)) hide = hide ? [Math.min(hide[0],w[0]), Math.max(hide[1],w[1])] : [w[0],w[1]]; }
+    if (hide){ const [s,e]=hide, lock=N.lock ?? e;
+      if (s < dt/2-1e-9) castStasis(u, t+e, t); else events.push({at:t+s, fn:()=>{ if (u.alive) u.stasisUntil=Math.max(u.stasisUntil, t+e); }});
+      u.nextAct=Math.max(u.nextAct, t+lock); u.nextAA=Math.max(u.nextAA, t+lock);
+      say(t, `${u.name} casts ${a.slot}: untargetable ${s>=dt/2?`from ${fmt(t+s)}s `:""}until ${fmt(t+e)}s`);
+      simNotes.add(`${u.name} ${a.slot}: ${N.why || `untargetable ${fmt(s)}–${fmt(e)} s after the press (wiki)`} (modelled as stasis: nothing lands on it and it doesn't act)`); }
+    const iv=G.invulnerable;
+    if (numWin(iv)){ (u.invuln ||= []).push({from:t+iv[0], until:t+iv[1], slot:a.slot});
+      simNotes.add(`${u.name} ${a.slot}: ${N.why || `invulnerable ${fmt(iv[0])}–${fmt(iv[1])} s after the press (wiki)`}: it takes no damage, crowd control still lands`); }
+    const F=a.p.invulnFar;
+    if (F){ (u.invuln ||= []).push({from:t+F.from, until:t+F.until, beyond:F.beyond, slot:a.slot});
+      simNotes.add(`${u.name} ${a.slot}: invulnerable ${fmt(F.from)}–${fmt(F.until)} s after the press only to enemies farther than ${fmt(F.beyond)} units (centre to centre; wiki)`); } }
+  /* P3 (interaction audit) — a unit-targeted cast on an enemy, watched step by step between the press and the landing:
+     - DECISIONS 3: during the cast time, the target turning untargetable / stasis (both modelled as stasis), invisible, or leaving the
+       ability's reach cancels the cast: no cooldown, no cost (refunded), the caster is free the next step — unless the page documents a
+       bug that still spends them (a.p.cancelSpends: Lulu W, Evelynn W, Sejuani E; DECISIONS 1). a.p.cancelOn narrows the list
+       (DECISIONS 27: Fiddlesticks Q keeps casting on an unseen target; Syndra R's spheres are already flying; Rek'Sai R).
+     - in flight (from the launch — the end of the cast time, or the press for a.p.flightFrom "press" — to the landing): the target
+       untargetable / in stasis at any step voids the hit (L.voided) for a.p.inFlight "invalidated" | "destroyed" (the default for
+       targeted missiles; DECISIONS 5, 10, 31); "hits" keeps today's rule (only the landing step counts). A targeted dash is watched only
+       when its data says so (Jarvan IV R, DECISIONS 13: he still lands and the arena forms, the target takes nothing).
+     The steps checked are those strictly before the landing step (which hitList already checks). Dashes, kits timing their own
+     effects and scripted combos without positions aren't watched. */
+  function targetWatch(u, a, tgt, t, ct, land, P, L, R){
+    if (!tgt || tgt.side===u.side || !unitTargeted(a) || tgt.pet) return;
+    const p=a.p, km=CHAMP_MECH[u.c.champ]; if (km && km.timing && km.timing[a.slot]==="own") return;
+    const on = p.cancelOn || ["untargetable","stasis","invisible","range"], hid=(tt)=>inStasis(tgt,tt) && (on.includes("untargetable") || on.includes("stasis"));
+    if (!a.dash && on.length && ct >= dt-1e-9) for (let k=1; k*dt < ct-1e-9; k++) events.push({at:t+k*dt, fn:(tt)=>{ if (P.cancelled || P.done || !u.alive || !tgt.alive) return;
+      const why = hid(tt) ? "untargetable" : on.includes("invisible") && unseen(tgt,tt) ? "invisible" : on.includes("range") && !(u.script && !u.scriptTravel) && gap(u,tgt) > abReach(u,a,tgt)+1e-6 ? `out of reach (${fmt(gap(u,tgt))} > ${fmt(abReach(u,a,tgt))})` : null;
+      if (!why) return; P.cancelled=true; P.done=true; u.nextAct=Math.min(u.nextAct, tt+dt);
+      if (!p.cancelSpends){ u.cd[a.slot]=R.cd0; if (R.ammo0 && a.ammo){ a.ammo.n=R.ammo0.n; a.ammo.at=R.ammo0.at; } if (R.en0>0) enGain(u, R.en0, tt, `${a.slot} cancelled: cost refunded`); }
+      say(tt, `  ${u.name}'s ${a.slot} is cancelled: ${tgt.name} is ${why} during its cast time (${p.cancelSpends ? "it still goes on cooldown and costs: a documented bug, wiki" : "no cooldown, no cost"}; DECISIONS 3)`);
+      simNotes.add(`${u.name} ${a.slot}: a unit-targeted cast is cancelled if its target turns untargetable, invisible or leaves its reach during the cast time (DECISIONS 3${p.cancelSpends?"; this one still spends its cooldown and cost: wiki bug":": no cooldown, no cost"})`); }});
+    if (a.dash) return;   // a watched dash: flightWatch from the dash code (its arrival is known there)
+    flightWatch(u, a, tgt, t, p.flightFrom==="press" ? 0 : ct, land, P, L); }
+  function flightWatch(u, a, tgt, t, from, to, P, L){ const p=a.p, fl = p.inFlight || (a.dash ? null : "destroyed");
+    if (!tgt || tgt.side===u.side || tgt.pet || !(fl==="invalidated" || fl==="destroyed") || (u.script && !u.scriptTravel)) return;
+    for (let k=Math.max(1, Math.ceil((from-1e-9)/dt)); k*dt < to-1e-9; k++) events.push({at:t+k*dt, fn:(tt)=>{ if (P.cancelled || L.voided || !inStasis(tgt,tt)) return;
+      L.voided=tt; say(tt, `  ${tgt.name} is untargetable while ${u.name}'s ${a.slot} is in flight: its effect on ${tgt.name} is voided (wiki${p.inFlight?"":": targeted missiles are destroyed"})`); }});
+  }
+  /* P3: an ability's immunity window: the UNSTOPPABLE hand entry (dash / press to landing), else the data's ccImmune /
+     displacementImmune window (fixed: seconds from the press; kits with their own code are skipped) */
+  function unstopOf(u, a){ const H=(UNSTOPPABLE[u.c.champ]||{})[a.slot]; if (H) return H;
+    const k=`${u.c.champ}.${a.slot}`, G=(a.p && a.p.grants)||{}; if (KIT_OWN_GRANTS.has(k)) return null;
+    for (const [kind, imm] of [["ccImmune","cc"],["displacementImmune","displacement"]]) if (numWin(G[kind]))
+      return {imm, from:G[kind][0], fixedUntil:G[kind][1], why:`${kind==="ccImmune"?"crowd control":"displacement"} immune ${fmt(G[kind][0])}–${fmt(G[kind][1])} s after the press (wiki)`};
+    return null; }
+  // invulnerable to this hit (P3: Kayle R, Xin Zhao R beyond 450, Taric R): 0 damage, the unit stays targetable
+  function invulnTo(att, x, t){ return !!x.invuln && x.invuln.some(w=>t>=w.from-1e-9 && t<w.until-1e-9 && (w.beyond==null || gap(att, x) > w.beyond)); }   // the source's own position (sheet: pets and DoTs count if the source is outside)
   function enOf(u){ if (u.en!==undefined) return u.en; const E=ENERGY_CHAMPS[u.c.champ];
     u.en = E && !(u.c.champ==="Akali" && !u.script) ? {v:E.max, max:E.max, regen:E.regen, at:0, bonus:null} : null;   // fight() Akali: her kit's energy
     if (u.en) simNotes.add(`${u.name}: energy ${E.max}, +${E.regen} per second (game data); abilities wait until it covers their cost`);
@@ -4166,7 +4265,7 @@ function simulate(sidesIn, T, simNotes, fo){
      can't have happened (the cast-start state covers the whole step): undone once the early group has acted (item 24). */
   const sumPending=[];
   function sumGuard(u, k, x, t){ const ev0=events.length, snap={exhaust:x.exhaust, grievBy:x.grievBy, grievUntil:x.grievUntil, cd:u.rcd["sum:"+k], nimbus:u.nimbus};
-    const ok=useSummoner(u,k,x,t); if (ok && CAST_START[x.c.champ]) sumPending.push({u, k, x, snap, ev:events.slice(ev0)}); return ok; }
+    const ok=useSummoner(u,k,x,t); if (ok && castStartSlot(x.c.champ)) sumPending.push({u, k, x, snap, ev:events.slice(ev0)}); return ok; }
   function sumUndo(t){ for (const p of sumPending.splice(0)){ if (p.x.castStasisAt!==t) continue; const {u, k, x, snap}=p;
       x.exhaust=snap.exhaust; x.grievBy=snap.grievBy; x.grievUntil=snap.grievUntil; u.rcd["sum:"+k]=snap.cd; u.nimbus=snap.nimbus; if (k==="exhaust") u.xAtUsed=false;
       for (const e of p.ev){ const i=events.indexOf(e); if (i>=0) events.splice(i,1); }
@@ -4314,10 +4413,10 @@ function simulate(sidesIn, T, simNotes, fo){
     // so the others can't target it and no damage resolving this step lands on it (nor starts or cancels its First Strike).
     // Order-independent: the early group acts together and sees none of its own new states; everyone else sees all of them.
     const act2 = u => { if (!u.alive || (t<u.stasisUntil && !(u.actUntil>t))) return; /* actUntil: acts while untargetable (Karthus's Death Defied) */ if (locked(u,t)) u.lockTime=(u.lockTime||0)+dt; if (t>=u.nextAct || locked(u,t)) act(u,t); };
-    let early=false; for (const u of U) if (CAST_START[u.c.champ]){ early=true; act2(u); }
+    let early=false; for (const u of U) if (castStartSlot(u.c.champ)){ early=true; act2(u); }
     if (early) for (const u of U) if (u.castStasisAt===t && u.stasisS!=null) u.stasisS=u.stasisUntil;
     sumUndo(t);   // a summoner spell pressed on such a unit this step (pass 1) is taken back
-    for (const u of U) if (!CAST_START[u.c.champ]) act2(u);
+    for (const u of U) if (!castStartSlot(u.c.champ)) act2(u);
     flush();
     inTick=false;
     for (const u of U){ if (u.nx!=null && u.alive && !(u.move && u.move.t0>=t)) u.x=u.nx; u.nx=null; u.hpS=null; u.xS=null; u.stasisS=null; }
@@ -5941,19 +6040,103 @@ const EMPOWER_NEXT = {
   Garen:{Q:{win:4.5, reset:true}}, Darius:{W:{win:4, reset:true}}, Jax:{W:{win:10, reset:true}}, Leona:{Q:{win:6, reset:true}},
   Trundle:{Q:{win:7, reset:true}}, Kassadin:{W:{win:5, reset:true}}, Yorick:{Q:{win:5, reset:true}}, Volibear:{Q:{win:4, reset:true}},
 };
+/* ===== SIM_INTERIM_P3 (P3 of the interaction audit, 2026-09-24): INTERIM per-ability data for fight()/perform(), DELETE when P1 lands =====
+   Hand-copied from the sheets (data/interactions/<C>.json: blockedBy.spellShield + the wiki quotes in their notes; DECISIONS.md).
+   Read through physOf → simInterim (merge: defaults < this table < P2's SIM_INTERIM < calc.json phys), so fight() sees them on a.p.
+   Fields (the P1 phys names):
+     spellShield   how a spell shield (Banshee's, Edge of Night, Verdant Barrier, Sivir E, Nocturne W) meets the cast on one target:
+                   "blocks" (default: the whole cast) | "not" (never blocked; the shield isn't used up) | "oneHit" (the shield takes one
+                   hit / sphere / dagger / pass / tick, the rest land) | "ccOnly" (only the crowd control is blocked, the damage lands) |
+                   "damageOnly" (the damage is blocked, the crowd control lands)
+     shieldHits    "oneHit" where fight() deals the hits as one number: N (1/N of it is blocked) or "first" (the first damage part is one
+                   pass). Otherwise: a kit's per-hit count (scale(…).hitsN: Syndra R spheres), a channel's separate hits (Katarina R
+                   daggers), else the one hit fight() deals is blocked (a kit deals the later hits: Draven R / Ekko Q returns)
+     shieldConsumed:true   with "not": the shield is used up although nothing is blocked (documented bug)
+     cancelOn      what cancels a unit-targeted cast during its cast time (DECISIONS 3; default untargetable, stasis, invisible, range)
+     cancelSpends:true     a cancelled cast still goes on cooldown and pays its cost (documented bug, DECISIONS 1)
+     inFlight      "invalidated" | "destroyed" (no hit if the target is untargetable/in stasis at any step between launch and landing;
+                   the default for unit-targeted missiles) | "hits"
+     leapTo:"press"   a targeted leap lands where the target stood at the press (DECISIONS 21)
+     grants        the caster's own windows, s from the press (where P2's table has none)
+     untargetableDash:true  untargetable from the press until the dash arrives (the window depends on the distance)
+     invulnFar     {from, until, beyond}: invulnerable only to enemy champions farther than `beyond` (Xin Zhao R) */
+const SIM_INTERIM_P3 = (()=>{
+  const T={
+    // spell shields per hit (sheets' blockedBy.spellShield quotes)
+    "Ahri.Q":{spellShield:"oneHit", shieldHits:"first"},             // 'a shield blocks one pass, the other pass still hits' (out magic, back true)
+    "Syndra.R":{spellShield:"oneHit", shieldHits:"spheres", cancelOn:[]},                 // 'will only block the damage of a single sphere'; spheres fly from the press, 'cannot be interrupted' (DECISIONS 5)
+    "Katarina.R":{spellShield:"oneHit"},                             // 'Spell shield will block and be consumed by only one dagger.'
+    "Fiddlesticks.R":{spellShield:"oneHit", shieldHits:20},          // DECISIONS 32: one tick (damage every 0.25 s for 5 s = 20 ticks)
+    "Lucian.R":{spellShield:"oneHit", shieldHits:22},                // 'Spell shield only blocks one instance of damage.' (up to 22 shots)
+    // DECISIONS 33 (wiki spellshield field empty): persistent damage areas lose one tick; effects riding a basic attack aren't blocked
+    "Vladimir.W":{spellShield:"oneHit", shieldHits:4},               // ticks at 0, 0.5, 1.0, 1.5 s (sheet)
+    "Velkoz.R":{spellShield:"oneHit", shieldHits:13},                // 'hitting every 0.2 s' over the 2.6 s channel
+    "Singed.Q":{spellShield:"oneHit"},
+    "Kayle.P":{spellShield:"not"}, "Ornn.P":{spellShield:"not"}, "Vayne.Q":{spellShield:"not"}, "Xerath.P":{spellShield:"not"},
+    "Garen.Q":{spellShield:"ccOnly"},                                // 'Spell shield will only negate the silence.'
+    "Trundle.Q":{spellShield:"ccOnly"},                              // 'will only block the attack damage reduction and slow'
+    "XinZhao.Q":{spellShield:"ccOnly"},                              // 'Spell shield will only block the knock up.'
+    "Zaahen.Q":{spellShield:"ccOnly"},                               // 'will only block the knock up from the recast'
+    "Soraka.E":{spellShield:"damageOnly"},                           // 'Spell shield will not block the silence.'
+    "Yasuo.R":{spellShield:"not", shieldConsumed:true},              // bug: 'will not prevent Last Breath ... The spell shield is still consumed'
+    // unit-targeted casts (DECISIONS 1, 3, 13, 21) and caster windows the P2 table doesn't have
+    "Lulu.W":{cancelSpends:true}, "Evelynn.W":{cancelSpends:true}, "Sejuani.E":{cancelSpends:true},   // bug: 'will cancel but still go on cooldown and pay its cost'
+    "RekSai.R":{cancelOn:["invisible"]},                             // 'will not be cancelled if the target becomes untargetable during the cast time'; out of sight cancels
+    "Nautilus.R":{inFlight:"hits"},
+    "JarvanIV.R":{inFlight:"invalidated"},                           // DECISIONS 13: lands, the arena forms, the untargetable target takes no damage
+    "Jayce.Q":{leapTo:"press", leapRadius:300},                      // DECISIONS 21; 'physical damage in 300 in front of Jayce' (wiki)
+    "Taric.R":{grants:{invulnerable:[2.75,5.25]}},                   // 'calls down a star ... over 2.5 seconds. Afterwards ... invulnerable for 2.5 seconds' after the 0.25 s cast
+    "Kayn.R":{grants:{untargetable:[0,1.35]}},                       // ≥ 1.35 s (0.25 dash + 0.5 + 0.1 + 0.5 recast delay; sheet)
+    "Maokai.W":{untargetableDash:true},                              // 'dashes to the target enemy while being untargetable'
+    "XinZhao.R":{invulnFar:{from:0.35, until:4.35, beyond:450}},     // 'For the next 4 seconds, Xin Zhao is invulnerable against enemy champions far away from him' (cr 450), after the 0.35 s cast
+  };
+  // oneHit abilities whose other hits fight() or a kit deals separately (the first fight() hit is the one blocked)
+  for (const k of ("Akshan.Q Akshan.E Akshan.R AurelionSol.E Draven.R Ekko.Q Gwen.Q Gwen.R Graves.Q Kaisa.Q Kayn.Q MasterYi.Q Mel.Q MonkeyKing.R "+
+    "Neeko.Q Ornn.E Ornn.R Poppy.Q Samira.W Samira.R Sejuani.W Sejuani.R Sivir.Q Smolder.E Taliyah.Q Talon.R Velkoz.W Xayah.Q Xayah.E Yuumi.R "+
+    "Zac.R Ziggs.E Gangplank.R Rammus.R Viktor.R").split(" ")) T[k]={spellShield:"oneHit", ...(T[k]||{})};
+  // spellshield = False on the hostile abilities' sheets (Karthus W/E, Evelynn W mark, Azir W, Shyvana Q, Renekton R, Miss Fortune E/R, Nasus E, …)
+  for (const k of ("Amumu.W Anivia.W Anivia.R Ashe.Q Azir.W Belveth.E Briar.W Camille.Q Cassiopeia.W Chogath.E Corki.W Corki.E DrMundo.E Draven.Q "+
+    "Evelynn.W Fiora.R Garen.E Gnar.W Gwen.E Hecarim.W Heimerdinger.Q Hwei.Q Hwei.W Hwei.E Ivern.R Jayce.W Jinx.Q Jinx.E Jinx.R Kalista.W Karthus.W "+
+    "Karthus.E Kindred.R Kled.W KogMaw.W Lillia.E Locke.W Malphite.W MasterYi.E Mel.W MissFortune.E MissFortune.R MonkeyKing.W Morgana.W Naafiri.W "+
+    "Nasus.Q Nasus.E Nidalee.E Rammus.W RekSai.Q Renekton.R Rengar.Q Rengar.R Rumble.Q Rumble.R Sett.Q Shaco.Q Shyvana.Q Singed.W Sivir.W Skarner.Q "+
+    "Swain.R Taliyah.R Teemo.E TwistedFate.E TwistedFate.R Twitch.R Udyr.R Urgot.W Vayne.W Vi.W Vladimir.R Warwick.W Yone.E Yorick.Q "+
+    "Yorick.W Yorick.R Yunara.Q Zed.W Zeri.Q Zeri.E Zyra.W").split(" ")) T[k]={...(T[k]||{}), spellShield:"not"};
+  return T; })();
+/* Caster windows that the kits set themselves (the generic grant code in cast() skips them): Zed R, Pantheon E, Naafiri W and Olaf R,
+   Fiora W in CHAMP_MECH; Lissandra R's stasis is only for a self-cast (fight() casts it on an enemy). */
+const KIT_OWN_GRANTS = new Set(["Zed.R","Pantheon.E","Naafiri.W","Olaf.R","Fiora.W","Lissandra.R"]);
+/* extra lockout and log text for cast windows (the windows themselves come from the grants data) */
+const GRANT_NOTES = {
+  "Fizz.E":{lock:1.25, why:"Playful: untargetable at once, 0.75 s on the trident then 0.5 s hopping off (wiki; the Trickster recast isn't modelled)"},
+  "Vladimir.W":{lock:2, why:"Sanguine Pool: untargetable for 2 s from the cast (wiki: cast time none); he can't attack or cast meanwhile (he can move in the game; here he stays put)"},
+  "MasterYi.Q":{lock:1.087, why:"Alpha Strike: vanishes at once; 4 marks 0.2 s apart, reappears at 0.94 s and acts again 1.087 s after the cast (wiki, one target)"},
+  "Kayn.R":{lock:1.35, why:"Umbral Trespass: vanishes at once (0.25 s dash, 0.5 s before the channel, recast after 0.1 s, recast delay 0.5 s: 1.35 s at the earliest; wiki); the exit dash isn't modelled"},
+  "Xayah.R":{why:"Featherstorm: untargetable for 1.5 s from the cast (wiki; DECISIONS 12); she can't attack or cast meanwhile"},
+  "Evelynn.R":{why:"Last Caress: untargetable from the start of the cast time until the blink 0.85 s after the press (wiki)"},
+  "Camille.R":{why:"The Hextech Ultimatum: untargetable during the 0.5 s leap (wiki)"},
+  "Ekko.R":{why:"Chronobreak: stasis from the start of the cast time until he arrives (1 s; wiki)"},
+  "Shaco.R":{why:"Hallucinate: vanishes (untargetable) for 0.5 s after the 0.25 s cast (DECISIONS 14)"},
+  "RekSai.R":{why:"Void Rush: vanished (untargetable) about 0.25–1.15 s after the press (wiki, estimated)"},
+  "Galio.R":{why:"Hero's Entrance: untargetable during the leap, about 1.25–2.25 s after the press (wiki, estimated)"},
+  "Kayle.R":{why:"Divine Judgment: invulnerable (0 damage taken, still targetable, crowd control still applies) for 2.5 s from the start of the cast time (wiki)"},
+};
 /* Cast-start untargetability (AUTOPILOT item 24, syndra-zed r-04): abilities with no cast time that make the caster untargetable
    from the cast (wiki, checked 2026-09-24). In fight()/perform() their casters act first in a step, and the state applies to the
    whole step: a hit resolving on the cast step doesn't land, and can't start or cancel First Strike. Zed R (Death Mark) and
    Pantheon E (Aegis Assault, modelled as untargetable) set theirs in their kits; the rest (no kit of their own) use this table:
-     dur   untargetable (modelled as stasis) from the cast, s;  lock  can't act or attack from the cast, s.
-   Not modelled: Elise's spider-form E (Rappel, untargetable at once for up to 1.95 s): fight() has no spider form. */
-const CAST_UNTARGETABLE = {
-  Fizz:    {slot:"E", dur:1.25, lock:1.25, why:"Playful: untargetable at once, 0.75 s on the trident then 0.5 s hopping off (wiki; the Trickster recast isn't modelled)"},
-  Vladimir:{slot:"W", dur:2,    lock:2,    why:"Sanguine Pool: untargetable for 2 s from the cast (wiki: cast time none); he can't attack or cast meanwhile (he can move in the game; here he stays put)"},
-  MasterYi:{slot:"Q", dur:0.937, lock:1.087, why:"Alpha Strike: vanishes at once; 4 marks 0.2 s apart, reappears at 0.94 s and acts again 1.087 s after the cast (wiki, one target)"},
-  Kayn:    {slot:"R", dur:1.35, lock:1.35, why:"Umbral Trespass: vanishes at once (0.25 s dash, 0.5 s before the channel, recast after 0.1 s, recast delay 0.5 s: 1.35 s at the earliest; wiki); the exit dash isn't modelled"},
-};
-const CAST_START = {Zed:"R", Pantheon:"E", ...Object.fromEntries(Object.entries(CAST_UNTARGETABLE).map(([k,v])=>[k,v.slot]))};
+     P3 (interaction audit, 2026-09-24): the hand table CAST_UNTARGETABLE (Fizz E, Vladimir W, Master Yi Q, Kayn R) is replaced by the
+   sheets' grants windows (a.p.grants: SIM_INTERIM / SIM_INTERIM_P3 until P1 exports them; castGrants in simulate) — which adds Ekko R,
+   Evelynn R, Xayah R, Camille R (from the press) and Shaco R, Rek'Sai R, Galio R (later windows); GRANT_NOTES keeps the lockouts.
+   Not modelled: Elise's spider-form E (Rappel, untargetable at once for up to 1.95 s): fight() has no spider form.
+   castStartSlot(champ): the champions with a window from the press act first in a step (lazily built: the interim tables are
+   declared further down). */
+let CAST_START_MAP = null;
+function castStartSlot(champ){
+  if (!CAST_START_MAP){ CAST_START_MAP = {Zed:"R", Pantheon:"E"};
+    for (const [c, C] of Object.entries(CALC.champs)) for (const s of ["Q","W","E","R"]){ if (!C[s] || KIT_OWN_GRANTS.has(`${c}.${s}`)) continue;
+      const g={...simInterim(c, s), ...(C[s].phys||{})}.grants || {};
+      if (["untargetable","stasis"].some(k=>Array.isArray(g[k]) && g[k][0]===0 && typeof g[k][1]==="number")) CAST_START_MAP[c]=s; } }
+  return CAST_START_MAP[champ] || null; }
 /* Unstoppable (AUTOPILOT item 28; wiki "Crowd control" § Immunity, checked 2026-09-24). "Unstoppable" in the game is displacement
    immunity (its buff icon): immune to airborne (knock-up, knockback, pull), knockdown, sleep, enemy stasis and the special-cased
    suppressions (Ambessa R, Skarner E/R, Sett R, Tahm Kench R); stuns and other CC still apply (wiki Vi R / Nautilus R notes) but
@@ -5963,7 +6146,12 @@ const CAST_START = {Zed:"R", Pantheon:"E", ...Object.fromEntries(Object.entries(
    time" list, wiki Cast time), "dash" (the end of the cast time: the dash's start), or seconds after the press (Galio R: its
    channel can only be interrupted in the first 1.25 s); it lasts until the ability lands (a dash's arrival). Abilities on the
    wiki lists that fight() doesn't model as one cast (Vex R / Nocturne R / Yone E recasts, Kalista R on the Oathsworn, Briar R,
-   Pantheon R, Udyr E, Karthus / Kog'Maw passives) aren't listed; Olaf R, Fiora W and Morgana E have their own immunity code. */
+   Pantheon R, Udyr E, Karthus / Kog'Maw passives) aren't listed; Olaf R, Fiora W and Morgana E have their own immunity code.
+   P3 (interaction audit, 2026-09-24; sheet_checks.py §5 listed 19 sheet immunities missing here): added Zaahen R and Nocturne R;
+   any other ability whose data (a.p.grants) has a ccImmune / displacementImmune window with numbers gets it from there (unstopOf:
+   Briar R's 1–2.25 s, …). Still not modelled (no such cast in fight(), or not CC immunity): Briar R's dash, Dr. Mundo P, Karthus P,
+   Kled P, Kog'Maw P, Malzahar P (CC immunity + 90% damage reduction while Void Shift is up: a kit mechanic, P6), Master Yi R and
+   Sejuani P (slow immunity only), Pantheon R, Udyr E (Awaken), Vex R, Yone E and Yuumi W (recasts / attach). Tahm Kench R removed. */
 const UNSTOPPABLE = {
   Malphite:{R:{imm:"displacement", from:"dash", why:"Unstoppable Force: dashes with displacement immunity; the dash can't be deterred by crowd control (wiki)"}},
   Vi:      {R:{imm:"displacement", from:"dash", why:"Cease and Desist: dashes with displacement immunity; the dash can't be deterred by crowd control, stuns still apply (wiki)"}},
@@ -5980,7 +6168,10 @@ const UNSTOPPABLE = {
   Shyvana: {R:{imm:"displacement", from:"press", why:"Dragon's Descent: displacement immunity from the start of the cast time (wiki Cast time)"}},
   Viego:   {R:{imm:"displacement", from:"press", why:"Heartbreaker: displacement immunity from the start of the cast time (wiki Cast time)"}},
   Illaoi:  {R:{imm:"displacement", from:"press", why:"Leap of Faith: displacement immunity from the start of the cast time (wiki Cast time)"}},
-  TahmKench:{R:{imm:"displacement", from:"press", why:"Devour: displacement immunity (wiki; takes effect at the start of the cast time, wiki Cast time)"}},
+  // P3: Tahm Kench R removed — his sheet quotes 'The untargetability and displacement immunity is granted to the TARGET during
+  // Devour's cast time' (the devoured unit, not Tahm Kench)
+  Zaahen:  {R:{imm:"displacement", from:"press", ccFor:0.5, why:"Grim Deliverance: crowd control immune over the 0.5 s cast, then displacement immune through the dash and the 0.6 s delay (wiki)"}},
+  Nocturne:{R:{imm:"displacement", from:"dash", why:"Paranoia: the recast dash has displacement immunity (wiki)"}},
   Ornn:    {W:{imm:"displacement", from:"press", why:"Bellows Breath: displacement immunity (wiki)"}},
   Warwick: {Q:{imm:"displacement", from:"dash", why:"Jaws of the Beast: displacement immunity (wiki)"},
             R:{imm:"cc", from:"press", why:"Infinite Duress: crowd control immunity from the start of the cast time (wiki)"}},
@@ -6057,9 +6248,72 @@ function levelRangeBonus(c, slot){
     return v>0 ? {v, why:`Draw a Bead +${fmt(v)} (0 to 150 over levels 1–18, game data BonusPassiveRange; wiki: 550 to 700)`} : null; }
   return null;
 }
+/* ===== SIM_INTERIM (P2 of the interaction audit, 2026-09-24): INTERIM per-ability data, DELETE when P1 lands =====
+   Until src/interactions_export.py (P1) exports the sheets' typed `sim` blocks (data/interactions/<C>.json) into calc.json phys,
+   this hand-copied table supplies the fields canDodge needs, with each sheet's wiki evidence in the sheet itself. physOf is the ONE
+   merge point: calc.json phys wins, then this table, then P3's SIM_INTERIM_P3 (region T). Field names are the P1 phys names:
+     hostile:false            the ability has no effect on enemies (heal / buff / ally / self): canDodge says "no enemy effect"
+     reactFrom:"castEnd"      the aim follows the cursor during the cast (DECISIONS 27); otherwise every cast is seen from the press (28)
+     cancelOn:[…]             what cancels a unit-targeted cast during its cast time (DECISIONS 3; default untargetable, stasis,
+                              invisible, range); a rule-27 page can drop one (Fiddlesticks Q keeps casting on an unseen target)
+     inFlight                 "invalidated" | "destroyed" | "hits": what untargetability does to a unit-targeted hit already launched
+     flightFrom:"press", pressMissile   the missile leaves at the key press (Syndra R, DECISIONS 5: initial 1, accel 7500, max 10000)
+     delayMax                 the upper end of a documented delay range (Karthus Q 0.5–0.75 s, DECISIONS 9; the dodge must work at 0.5)
+     grants{kind:[start,end]} the DEFENDER's windows, seconds from its own press (end null = until broken / unknown):
+                              untargetable | stasis | invulnerable | parry (voids hits), invisible | camouflage (can't be targeted),
+                              ccImmune | displacementImmune (cc: option)
+     camouflageDetect         camouflage detection radius (wiki Camouflage: an enemy champion within it sees the unit)
+     destroysInbound:false    untargetability that lets projectiles already in flight hit (wiki Untargetable asterisk list)
+     requires                 a dash/blink that needs a target: "enemy" | "unit" (the attacker can be that target, but the move goes
+                              toward it, so it isn't counted as an escape) | "ally" | "terrain" | "airborne" (not assumed at all) */
+const SIM_INTERIM = (()=>{
+  const T={
+    "Syndra.R":{flightFrom:"press", pressMissile:{speed:1, accel:7500, maxSpeed:10000}, inFlight:"invalidated"},
+    "Karthus.Q":{delayMax:0.75},
+    "Cassiopeia.R":{reactFrom:"castEnd"},
+    "Kennen.W":{fixedTravel:0, cancelOn:["untargetable","stasis"], inFlight:"invalidated"},
+    "Fiddlesticks.Q":{cancelOn:["untargetable","stasis","range"]},
+    // "still hits" pages (wiki): Irelia Q and Diana E hit a target that turns untargetable during the dash
+    "Irelia.Q":{inFlight:"hits"}, "Diana.E":{inFlight:"hits"},
+    "Lissandra.R":{inFlight:"invalidated", grants:{untargetable:[0,2.5], stasis:[0,2.5]}},
+    "MasterYi.Q":{inFlight:"invalidated", grants:{untargetable:[0,0.937]}, requires:"enemy"},
+    "Fizz.E":{grants:{untargetable:[0,1.25]}}, "Vladimir.W":{grants:{untargetable:[0,2]}}, "Zed.R":{grants:{untargetable:[0,0.95]}, requires:"enemy"},
+    "Ekko.R":{grants:{stasis:[0,1]}}, "Olaf.R":{grants:{ccImmune:[0,3]}}, "Fiora.W":{grants:{parry:[0,0.75], ccImmune:[0,0.75]}},
+    "Evelynn.R":{grants:{untargetable:[0,0.85]}}, "Xayah.R":{grants:{untargetable:[0,1.5]}}, "Kayle.R":{grants:{invulnerable:[0,2.5]}},
+    "Camille.R":{grants:{untargetable:[0,0.5], displacementImmune:[0,0.5]}, requires:"enemy"},
+    "Galio.R":{grants:{untargetable:[1.25,2.25], ccImmune:[1.25,2.75]}, requires:"ally"},
+    "RekSai.R":{grants:{untargetable:[0.25,1.15]}, requires:"enemy"}, "Naafiri.W":{grants:{untargetable:[0.75,1.75]}, requires:"enemy"},
+    "Shaco.R":{grants:{untargetable:[0.25,0.75]}},
+    "Akali.W":{grants:{invisible:[0,5]}}, "Khazix.R":{grants:{invisible:[0,1.25]}}, "MonkeyKing.W":{grants:{invisible:[0,1]}}, "Neeko.W":{grants:{invisible:[0,0.5]}},
+    "Evelynn.P":{grants:{camouflage:[0,null]}, camouflageDetect:700}, "Akshan.W":{grants:{camouflage:[0.5,null]}, camouflageDetect:800},
+    "Viego.E":{grants:{camouflage:[0,null]}, camouflageDetect:450}, "Rengar.R":{grants:{camouflage:[2,14]}, camouflageDetect:710},
+    "Senna.E":{grants:{camouflage:[1,null]}, camouflageDetect:400}, "Twitch.Q":{grants:{camouflage:[1,null]}, camouflageDetect:500},
+    "Pyke.W":{grants:{camouflage:[0,5]}},
+    "Ambessa.R":{grants:{displacementImmune:[0,1.45]}, requires:"enemy"}, "Illaoi.R":{grants:{displacementImmune:[0,0.5]}},
+    "Ornn.W":{grants:{displacementImmune:[0,0.75]}}, "Volibear.R":{grants:{displacementImmune:[0,1]}}, "Briar.R":{grants:{ccImmune:[1,2.25]}},
+  };
+  // dashes and blinks that need a target (sheets' grantsSelf.dash/blink; P0 sim dash/blink.requires)
+  for (const [req, list] of [["enemy","Akali.R Alistar.W Diana.E Evelynn.E Fizz.Q Hecarim.E JarvanIV.R Jayce.Q Kayn.R Maokai.W MonkeyKing.E Nocturne.R Pantheon.W Poppy.E Qiyana.E Quinn.E Sylas.W Talon.Q Vi.R XinZhao.E"],
+                             ["unit","Irelia.Q Jax.Q Katarina.E Nilah.E Samira.E Yasuo.E"], ["ally","LeeSin.W Braum.W Rakan.E Yuumi.W"],
+                             ["terrain","Akshan.E Camille.E Bard.E"], ["airborne","Yasuo.R"]])
+    for (const k of list.split(" ")) T[k] = {...(T[k]||{}), requires:req};
+  // no effect on enemy champions (P0 sim hostile:false: heals, shields, buffs, ally and self abilities; left out here: the ones
+  // whose empowered attacks, summons, landings or recasts do hit enemies, e.g. Nasus Q, Heimerdinger Q, Tahm Kench W, Zed W)
+  for (const k of ("Aatrox.E Aatrox.R Akali.W Akshan.W Alistar.R Annie.E Aphelios.W Aphelios.E Ashe.E AurelionSol.W Aurora.W Bard.W Bard.E Blitzcrank.W Braum.W Braum.E "+
+    "DrMundo.R Draven.W Elise.R Gangplank.W Garen.W Graves.E Gwen.W Heimerdinger.R Ivern.W Janna.E Jayce.R "+
+    "KSante.E Kaisa.E Kaisa.R Karma.E Karma.R Katarina.W Kayle.W Kayle.R Kayn.E Khazix.R LeeSin.W Lucian.E Lux.W MasterYi.W "+
+    "MasterYi.R Milio.W Milio.E Milio.R MissFortune.W Mordekaiser.W Morgana.E Nami.E Nasus.R Neeko.W Nidalee.R Nilah.W Nocturne.W "+
+    "Olaf.W Olaf.R Pyke.W Qiyana.W Quinn.W Quinn.R Rakan.E Renata.W Riven.E Rumble.W Ryze.R Senna.E Seraphine.W Shen.W "+
+    "Shen.R Singed.R Sivir.E Sivir.R Sona.W Sona.E Soraka.W Soraka.R TahmKench.E Talon.E Taric.Q Taric.W Taric.R Teemo.W Thresh.W Tristana.Q "+
+    "Trundle.W Tryndamere.Q Tryndamere.R Twitch.Q Udyr.W Vayne.R Viego.E Xayah.W Yasuo.W Yunara.E Yunara.R Yuumi.W Yuumi.E "+
+    "Zilean.W Zilean.R Zoe.R").split(" ")) T[k] = {...(T[k]||{}), hostile:false};
+  return T; })();
+/* read accessor (one interim path, shared with P3): the interim fields for champ.slot, P2's over P3's */
+function simInterim(champ, slot){ const k=`${champ}.${slot}`, p3=(typeof SIM_INTERIM_P3!=="undefined" && SIM_INTERIM_P3[k]) || {};
+  return {...p3, ...(SIM_INTERIM[k]||{})}; }
 function physOf(c, slot){
   const S=CALC.champs[c.champ][slot]||{}, w=WORLD.champ(c.champ), sl=w.slots[slot]||{tags:{}};
-  const p={speed:0, castTime:0.25, delay:0, ...(S.phys||{})};
+  const p={speed:0, castTime:0.25, delay:0, ...simInterim(c.champ, slot), ...(S.phys||{})};
   // the ability's rank at this level (auto-allocated like .damage and .range), not rank 1: Nocturne R reaches 4000 at rank 3
   const rank=Math.max(1, (c.ranks && c.ranks[slot]!=null ? c.ranks[slot] : c.dummy ? 1 : rankOf(c, slot)) || 1);
   p.range = sl.range && sl.range.length ? (sl.range[rank-1] ?? sl.range[0]) : 0;
@@ -6178,10 +6432,12 @@ function delayNote(c, slot, p){
    One rule for .arrival, canDodge, fight() and perform() (fight() adds the per-kit exceptions in its landOf). */
 function abilityHits(c, slot){ const S=(CALC.champs[c.champ]||{})[slot]||{}, k=kitSpec(c, slot);
   return !!(S.main || (S.mainparts||[]).length || (S.cc||[]).length || (k && k.parts) || S.heal || S.shield); }
-function landTime(p, d){ return (p.castTime||0) + chargeTime(p, d) + flightTime(p, d) + (p.delay||0); }
+// a missile that leaves at the key press (phys.flightFrom "press": Syndra R's spheres, DECISIONS 5) doesn't wait for the cast time
+function landTime(p, d){ return (p.flightFrom==="press" ? 0 : (p.castTime||0)) + chargeTime(p, d) + flightTime(p, d) + (p.delay||0); }
 /* The flight to a target d units away: a fixed-time missile (phys.fixedTravel: Zilean Q 0.45 s), a missile with a minimum flight
    (phys.minTravel: Corki Q 0.227 s), a dash with no missile (phys.dashSpeed: Poppy E, Wukong E), else the missile's own travel */
 function flightTime(p, d){ if (p.fixedTravel!=null) return p.fixedTravel;
+  if (p.flightFrom==="press" && p.pressMissile && !p.speed) return travelTime({...p, ...p.pressMissile}, travelDist({...p, ...p.pressMissile}, d));
   const tr = !p.speed && p.dashSpeed ? travelTime({...p, speed:p.dashSpeed}, d) : travelTime(p, travelDist(p, d));   // a dash covers the whole distance
   return p.minTravel ? Math.max(p.minTravel, tr) : tr; }
 /* A charged ability (phys.charge, Xerath Q; data/delivery_overrides.json): the range grows by `per` every `step` seconds after an
@@ -6198,8 +6454,12 @@ function arrivalTime(c, slot, d, p0){
   const t = landTime(p, d);
   line(`${describePhys(`${label(c)}.${slot}`, p)}`);
   line(`  ${deliveryLine(c, p, d, tr, travel)}`);
-  const how = !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
+  const how = p.fixedTravel!=null ? (p.fixedTravel ? ` + ${fmt(p.fixedTravel)}s fixed flight` : "") : !p.speed || !travel ? "" : p.accel ? ` + ${fmt(tr)}s travel (accelerating ${fmt(p.speed)}→${fmt(p.maxSpeed||p.minSpeed||(p.speed+p.accel*tr))}, average ${fmt(travel/Math.max(tr,1e-9))}/s)` : ` + ${fmt(travel)}/${fmt(p.speed)} travel`;
   const ch = p.charge ? ` + ${fmt(chargeTime(p, d))}s charging to reach ${fmt(Math.min(d, p.charge.max))} (${fmt(p.charge.base)} + ${fmt(p.charge.per)} per ${fmt(p.charge.step)}s after ${fmt(p.charge.init)}s)` : "";
+  if (p.flightFrom==="press"){ const M=p.pressMissile||p;
+    line(`  launched at the key press (the ${fmt(p.castTime)}s cast time runs alongside): ${fmt(travel)} units at ${fmt(M.speed)}/s accelerating ${fmt(M.accel)}/s² to ${fmt(M.maxSpeed)} = ${fmt(tr)}s${p.delay?` + ${fmt(p.delay)}s`:""} = ${fmt(t)}s after the press`);
+    if (TR) TR.notes.add(`${label(c)}.${slot}: the missile leaves at the key press and accelerates (DECISIONS 5; game files initial ${fmt(M.speed)}, accel ${fmt(M.accel)}, max ${fmt(M.maxSpeed)}): lands √(2d/${fmt(M.accel)}) s after the press`);
+    return t; }
   line(`  arrives at ${fmt(d)} units after ${fmt(p.castTime)}s cast${ch}${how}${p.delay?` + ${fmt(p.delay)}s ${p.delayKind==="missile_travel"?"flight time":p.delayKind==="arm"?"arming delay":p.delayKind==="channel"?"channel":p.delayKind==="lockout"?"release lockout":"appear-delay"}`:""} = ${fmt(t)}s from the start of the cast`);
   delayNote(c, slot, p);
   const who=`${label(c)}.${slot}`;
@@ -6209,9 +6469,13 @@ function arrivalTime(c, slot, d, p0){
   if (TR && p.delivery==="placed" && !p.delay) TR.notes.add(`${who}: no appear-delay is known for this placed ability (counted as 0); set one with ${champName(c)}.${slot}.setPhysics(delay: …)`);
   return t;
 }
-/* When the defender can first see where it will land: the end of the cast (the missile or ground marker
-   appears then) unless the data says the telegraph shows later (Rumble R) — setPhysics(reveal: seconds). */
-function revealOf(p){ return p.revealAt ?? p.castTime; }
+/* When the defender can first react, from the attacker's key press (DECISIONS 3/4/18/19/24/28, 2026-09-24): EVERY cast can be
+   reacted to from the press (the wind-up, the locked aim or the unit-targeted cast is visible), unless the aim follows the cursor
+   during the cast (phys.reactFrom "castEnd", a rule-27 page: Cassiopeia R), when it's the end of the cast; a telegraph the data says
+   shows later still wins (Rumble R, Tahm Kench W; setPhysics(reveal: seconds)). */
+function revealOf(p){ return p.revealAt ?? (p.reactFrom==="castEnd" ? (p.castTime||0) : 0); }
+function revealWhy(p){ return p.revealAt!=null ? "when the first of it shows" : p.reactFrom==="castEnd" ? "the end of the cast time: its aim follows the cursor during the cast (wiki; DECISIONS 27)"
+  : p.flightFrom==="press" ? "the key press: the missile leaves then (DECISIONS 5)" : (p.castTime||0)>0 ? "the key press: the wind-up shows where it's going (DECISIONS 3/4/19/28)" : "the key press: no cast time"; }
 function dashInfo(c, slot){
   const p=physOf(c, slot), tags=WORLD.champ(c.champ).slots[slot].tags;
   const blink = tags.blink!==undefined && tags.dash===undefined;
@@ -6225,14 +6489,17 @@ function canDodge(def, ab, named){
   if (def.dummy) throw new Error("canDodge: the practice-tool Target Dummy never moves, so it dodges nothing. Use a champion as the defender (its move speed decides the dodge)");
   if (ab && ab.t==="ability" && ab.owner.dummy) throw new Error("canDodge: the Target Dummy has no abilities");
   if (!ab || ab.t!=="ability") throw new Error("the second argument is an ability, e.g. syndra.E");
-  checkNamed(named, ["distance","using","reaction","preBuff","hitbox","recast"], "canDodge(…)");
+  checkNamed(named, ["distance","using","reaction","preBuff","hitbox","recast","cc"], "canDodge(…)");
   const d=named.distance; if (typeof d!=="number" || !(d>=0) || !Number.isFinite(d)) throw new Error("canDodge needs distance: (units between the two champions, 0 or more)");
   if (named.reaction!=null && !(typeof named.reaction==="number" && named.reaction>=0 && Number.isFinite(named.reaction))) throw new Error("reaction: is a reaction time in seconds (0 or more)");
   if (named.hitbox!=null && !(typeof named.hitbox==="number" && named.hitbox>=0)) throw new Error("hitbox: is the defender's gameplay radius in units, e.g. hitbox: 90");
+  if (named.cc!=null && typeof named.cc!=="boolean") throw new Error("cc: is true (ask whether the ability's crowd control lands) or false");
   const react=named.reaction ?? 0, a=ab.owner, s=ab.slot, p=physOf(a,s), who=`${label(a)}.${s}`;
   const HB = named.hitbox ?? hitboxOf(def), hbFrom = named.hitbox!=null ? "set with hitbox:" : "game files: character record";
   if (TR){ TR.notes.add(`${label(def)}'s gameplay radius (hitbox) is ${fmt(HB)} units (${hbFrom}); the ability is aimed perfectly at the defender`);
     if (named.hitbox==null && SIZE_NOTES[def.champ]) TR.notes.add(`${label(def)}: size modifiers scale the hitbox (wiki "Size"): ${SIZE_NOTES[def.champ]}; test a bigger one with hitbox:`); }
+  // heals, shields, buffs, ally and self abilities (phys.hostile false; interaction sheets): nothing reaches the enemy
+  if (p.hostile===false){ line(`${describePhys(who,p)}`); line(`  no enemy effect: ${who} is a heal, shield, buff or ally/self ability (interaction sheet data/interactions/${a.champ}.json), so there is nothing to dodge`); return true; }
   const selfArea = p.delivery==="self" && (p.radius || p.speed);
   const edge = p.kind==="line" ? (p.halfWidth||0) : p.kind==="cone" ? Math.min(p.coneLength||p.range, d)*Math.tan((p.coneAngle||30)*Math.PI/360) : (p.radius||0);
   const RC = hitboxOf(a), reach = hitReach(p, RC, HB, stats(a).range);   // the shared reach rule (see hitReach)
@@ -6240,6 +6507,8 @@ function canDodge(def, ab, named){
   if (p.kind==="self" && !selfArea){ line(`${describePhys(who,p)}; it isn't a projectile or area ability, so dodging doesn't apply`); return false; }
   if (d > reach + 1e-6){ line(`${describePhys(who,p)}`); line(`  ${fmt(d)} units is beyond its reach (${reachText}): dodged by standing still`); return true; }
   let T = arrivalTime(a, s, d, p);
+  if (p.delayMax!=null){ line(`  its delay is a documented range ${fmt(p.delay)}–${fmt(p.delayMax)}s (wiki; DECISIONS 9): a dodge counts only if it works at ${fmt(p.delay)}s, the earliest`);
+    if (TR) TR.notes.add(`${who}: the wiki documents an inconsistent delay of ${fmt(p.delay)}–${fmt(p.delayMax)} s; canDodge uses ${fmt(p.delay)} s (DECISIONS 9)`); }
   // a stacking field (Viktor W, phys.stackStun): what must be dodged is the stun on the last stack, (stacks − 1) × every after it activates;
   // the defender only needs to be outside by then, and is slowed while inside the active field (viktor-akali G3)
   const G=p.stackStun; let slowSpec=null;
@@ -6248,57 +6517,111 @@ function canDodge(def, ab, named){
     line(`  active at ${fmt(act)}s: a stack every ${fmt(G.every)}s inside (slowed ${fmt(100*pct)}% while inside), the ${G.stacks}th stuns at ${fmt(T)}s; ${label(def)} dodges the stun by being outside the field then (stacks drop ${fmt(G.debuff)}s after leaving)`);
     if (TR) TR.notes.add(`${who}: the stun lands on the ${G.stacks}th stack, ${fmt(T)} s after the cast starts (wiki Viktor_W); the field is placed on the defender (perfect aim); walking out needs its radius + the hitbox, slowed once the field is active`);
     slowSpec={pct, need:0, atAbs:act}; }
-  const reveal = Math.min(revealOf(p), T), win = T - reveal, avail = win - react;
-  line(`  it becomes visible ${fmt(reveal)}s into the cast (${p.revealAt!=null?"when the first of it shows":"the end of the cast time: the aim can't be seen before"}) and ${G?"stuns":"lands"} ${fmt(win)}s later; ${label(def)} has ${fmt(win)}s − ${fmt(react)}s reaction = ${fmt(avail)}s to respond`);
-  // already invisible (preBuff: true with a stealth ability in using:): a point-and-click spell can't be cast on an unseen unit at
-  // all (wiki Invisibility), whatever the reaction time or distance: the same rule fight() applies (unseen → no point-and-click)
-  if (p.kind==="targeted" && named.preBuff && named.using){
-    const pre=(named.using.t==="list" ? named.using.items : [named.using]).map(y=>dodgeAction(def, y, true, stats(def), !!named.recast)).find(x=>x.unseen && x.unseen.pre);
-    if (pre){ line(`  ${pre.label}: ${label(def)} is already invisible in the shroud, so ${who} (point-and-click) can't be cast on her → dodged (reaction time doesn't matter: there is nothing to target)`); return true; } }
-  if (avail<=0){ line("  → hit: no time to respond"); stormLine(def, a, s, p, d, HB, stats(def)); return false; }
-  const ds=stats(def), need = selfArea ? Math.max(0, (p.radius||reachOf(p)) + HB - d) : edge + HB;
+  const reveal = Math.min(revealOf(p), T), tp0 = reveal + react, win = T - reveal, avail = win - react;
+  line(`  ${label(def)} can react from ${fmt(reveal)}s (${revealWhy(p)}); it ${G?"stuns":"lands"} ${fmt(win)}s later: ${fmt(win)}s − ${fmt(react)}s reaction = ${fmt(avail)}s to respond`);
+  const ds=stats(def), Y=named.using;
+  const acts = Y ? (Y.t==="list" ? Y.items : [Y]).map(y=>dodgeAction(def, y, !!named.preBuff, ds, !!named.recast, a, d)) : [];
+  const fmtW = w => `${fmt(w.s)}–${Number.isFinite(w.e) ? fmt(w.e) : "…"}s`;
+  // the hit lands: does its crowd control? (cc: true asks exactly that; otherwise the answer is the hit, with the CC note in the trace)
+  const hit = why => { line(`  → ${why||"hit"}`); stormLine(def, a, s, p, d, HB, ds);
+    const rank=Math.max(1, rankOf(a,s)||1), types=[...new Set((ccList(a, s, rank).list||[]).map(e=>e.type).filter(Boolean))];
+    if (!types.length){ if (named.cc){ line(`  ${who} has no crowd control: none lands`); return true; } return false; }
+    const imm=[]; for (const x of acts) for (const w of x.ccImm||[]) if (tp0 + w.s <= T + 1e-9) imm.push({x, w});
+    const covers = t => imm.some(({w}) => w.kind==="cc" || (w.kind==="displacement" && (DISP_CC_TYPES.has(t) || (t==="suppression" && inTable(DISP_SUPPRESS, a.champ, s)) || (t==="stun" && inTable(DISP_STUN, a.champ, s)))));
+    const stopped=types.filter(covers), lands=types.filter(t=>!covers(t));
+    if (stopped.length) line(`  the ${stopped.join(" and ")} doesn't apply: ${imm.map(({x,w})=>`${x.label} ${w.kind==="cc"?"crowd control":"displacement"} immunity ${fmtW(w)} after its press`).join("; ")} covers the landing at ${fmt(T)}s (wiki Crowd control § Immunity)`);
+    if (named.cc){ if (lands.length){ line(`  its ${lands.join(" and ")} lands`); return false; } line(`  → none of its crowd control lands`); return true; }
+    return false; };
+  const targeted = p.kind==="targeted";
+  // already unseen (preBuff: true with an invisibility / camouflage tool): a point-and-click spell can't be cast on a unit its caster
+  // can't see (wiki Invisibility) — unless camouflage is within its detection radius of the caster (wiki Camouflage)
+  if (targeted && named.preBuff) for (const x of acts) if (x.unseen && x.unseen.pre){
+    if (x.unseen.kind==="camouflage" && !(d > (x.unseen.detect ?? Infinity))){
+      line(`  ${x.label}: camouflage, but ${label(a)} is ${fmt(d)} units away, within its ${x.unseen.detect!=null?`${fmt(x.unseen.detect)} detection radius`:"detection radius (unknown: assumed seen)"} (wiki Camouflage), so ${label(def)} can be targeted`); continue; }
+    line(`  ${x.label}: ${label(def)} is already ${x.unseen.kind==="camouflage"?`camouflaged beyond its ${fmt(x.unseen.detect)} detection radius`:"invisible"}, so ${who} (point-and-click) can't be cast on her → dodged (reaction time doesn't matter: there is nothing to target)`); return true; }
+  if (avail<=0) return hit("hit: no time to respond");
+  // void windows (untargetable / stasis / invulnerable / parry), pressed at tp0 or later: it covers the landing at T iff tp0 + start ≤ T
+  const voids=[]; for (const x of acts) for (const w of x.void||[]) voids.push({x, w, ok: tp0 + w.s <= T + 1e-9, press: Math.max(tp0, T - w.e)});
+  if (targeted){
+    const cancelOn = p.cancelOn || ["untargetable","stasis","invisible","range"];
+    const L = p.flightFrom==="press" ? 0 : (p.castTime||0), cw = L - tp0;
+    const cxl = p.cancelSpends ? " (a documented bug: it still goes on cooldown and pays its cost)" : "";
+    if (L>0){
+      line(`  unit-targeted with a ${fmt(L)}s cast time: going untargetable, into stasis, unseen or out of range before it ends cancels it (DECISIONS 3; no cooldown, no cost); ${label(def)} has ${fmt(L)}s − ${fmt(tp0)}s = ${fmt(cw)}s for that`);
+      if (cw >= -1e-9){
+        for (const {x, w} of voids) if ((w.kind==="untargetable" || w.kind==="stasis") && cancelOn.includes(w.kind) && tp0 + w.s <= L + 1e-9){
+          line(`  ${x.label}: ${w.kind} ${fmtW(w)} after its press, from ${fmt(tp0 + w.s)}s ≤ ${fmt(L)}s → ${who} is cancelled${cxl} (dodged)`); return true; }
+        for (const x of acts) if (x.unseen && !x.unseen.pre && tp0 + x.unseen.s <= L + 1e-9){
+          if (x.unseen.kind==="camouflage" && !(d > (x.unseen.detect ?? Infinity))){ line(`  ${x.label}: camouflage within ${label(a)}'s reach of its ${x.unseen.detect!=null?fmt(x.unseen.detect):"unknown"} detection radius: still seen`); continue; }
+          if (!cancelOn.includes("invisible")){ line(`  ${x.label}: unseen from ${fmt(tp0 + x.unseen.s)}s, but ${who} still casts on a target it loses sight of (its wiki page; DECISIONS 27)`); continue; }
+          line(`  ${x.label}: ${x.unseen.kind==="camouflage"?"camouflaged (beyond the detection radius)":"invisible"} from ${fmt(tp0 + x.unseen.s)}s ≤ ${fmt(L)}s → ${who} is cancelled${cxl} (dodged)`); return true; }
+        if (cancelOn.includes("range")){ const gap = reach - d, mv = bestMove(def, acts, ds, cw, null);
+          line(`  out of range: ${fmt(gap)} more units puts it beyond its reach (${reachText}); in ${fmt(cw)}s: ${mv.plan} → ${fmt(mv.dist)} units`);
+          if (mv.dist > gap + 1e-6){ line(`  → ${who} is cancelled${cxl}: ${label(def)} leaves its range during the cast (dodged)`); return true; } }
+      } else line(`  too late to cancel it during the cast (${fmt(tp0)}s > ${fmt(L)}s)`);
+    }
+    // cast: the hit is on its way. What untargetability does to it now (phys.inFlight; wiki Untargetable: "most untargetabilities destroy
+    // inbound projectiles"; the abilities whose page says they still hit, e.g. Irelia Q, Diana E)
+    const flying = p.speed>0 || p.flightFrom==="press" || p.fixedTravel>0;
+    const inF = p.inFlight || (flying ? "destroyed" : "lands");
+    for (const {x, w, ok, press} of voids){
+      if (!ok){ line(`  ${x.label}: ${w.kind} from ${fmt(tp0 + w.s)}s at the earliest, after it lands at ${fmt(T)}s`); continue; }
+      if (w.kind!=="untargetable"){ line(`  ${x.label}: ${w.kind} ${fmtW(w)} after its press; pressed at ${fmt(press)}s it covers the landing at ${fmt(T)}s: ${who} does nothing → dodged`); return true; }
+      if (inF==="hits"){ line(`  ${x.label}: untargetable, but ${who} was already cast and still hits an untargetable target (its wiki page)`); continue; }
+      if (inF==="destroyed" && w.destroys===false){ line(`  ${x.label}: untargetable, but it doesn't destroy projectiles already in flight (wiki Untargetable), so ${who} still hits`); continue; }
+      const how = inF==="invalidated" ? `untargetable while it is in flight voids it (wiki; phys.inFlight)` : inF==="destroyed" ? `going untargetable destroys the inbound projectile (wiki Untargetable)` : `untargetable when it lands, so it isn't applied`;
+      line(`  ${x.label}: untargetable ${fmtW(w)} after its press, from ${fmt(tp0 + w.s)}s ≤ ${fmt(T)}s: ${how} → dodged`); return true; }
+    for (const x of acts) if (x.unseen && !x.unseen.pre && tp0 + x.unseen.s > (p.flightFrom==="press" ? 0 : (p.castTime||0)) + 1e-9) line(`  ${x.label}: unseen only after ${who} was cast; a point-and-click spell already cast still lands (set preBuff: true if ${label(def)} was already unseen)`);
+    line(`  ${who} is point-and-click: once cast, walking can't dodge it`);
+    return hit();
+  }
+  const need = selfArea ? Math.max(0, (p.radius||reachOf(p)) + HB - d) : edge + HB;
   if (slowSpec){ slowSpec.need=need; slowSpec.at=slowSpec.atAbs-reveal-react; }
   const needText = selfArea ? `${fmt(need)} units outward (${fmt(p.radius||reachOf(p))} radius + ${fmt(HB)} hitbox − ${fmt(d)} already between them)`
     : G ? `${fmt(need)} units out (${fmt(edge)} radius + ${fmt(HB)} hitbox)` : `${fmt(need)} units sideways (${fmt(edge)} ${p.kind==="line"?"half-width":p.kind==="cone"?"cone half-width here":"radius"} + ${fmt(HB)} hitbox)`;
   const walk = slowSpec ? walkWith(ds, [], 0, avail, slowSpec).dist : ds.ms*avail;
-  if (p.kind!=="targeted"){
-    line(`  must move ${needText}; walking at ${fmt(ds.ms)}${slowSpec&&slowSpec.pct?` (${fmt(msCap((ds.msuncapped||ds.ms)*(1-slowSpec.pct)))} once slowed inside)`:""} covers ${fmt(walk)} (needs ${fmt(need/avail)} move speed${slowSpec?" unslowed":""})`);
-    if (walk>=need){ line("  → dodged by walking"); stormLine(def, a, s, p, d, HB, ds); return true; }
-  } else line(`  ${who} is point-and-click: walking can't dodge it`);
-  const Y=named.using;
-  if (Y){
-    const acts=(Y.t==="list" ? Y.items : [Y]).map(y=>dodgeAction(def, y, !!named.preBuff, ds, !!named.recast));
-    for (const x of acts) if (x.untarget){
-      const ok = x.untarget.cast<=avail;
-      line(`  ${x.label} makes ${label(def)} untargetable after ${fmt(x.untarget.cast)}s ${ok?"≤":">"} ${fmt(avail)}s`);
-      if (ok){ line("  → dodged"); return true; }
-    }
-    // invisibility (wiki Invisibility): a point-and-click spell can't be cast on an unseen unit; one already cast still lands
-    if (p.kind==="targeted") for (const x of acts) if (x.unseen){
-      if (x.unseen.pre){ line(`  ${x.label}: ${label(def)} is already invisible in the shroud, so ${who} (point-and-click) can't be cast on her → dodged`); return true; }
-      line(`  ${x.label} makes ${label(def)} invisible only ${fmt(x.unseen.at)}s after its cast starts; a point-and-click spell is locked on when it's cast, so ${who} still lands (set preBuff: true if she was already in the shroud)`); }
-    if (p.kind!=="targeted"){
-      for (const x of acts) line(`  ${x.text}`);
-      const mv=acts.filter(x=>x.buff||x.dash);
-      if (mv.length){
-        // perfect play: the combination that moves the defender farthest (using nothing = walking, above)
-        let best={dist:walk, plan:"walking only", top:ds.ms};
-        for (let mask=1; mask<(1<<Math.min(mv.length,6)); mask++){
-          const pick=mv.filter((_,i)=>mask&(1<<i)); let t=0, disp=0; const buffs=[];
-          for (const x of pick) if (x.buff && !x.dash){ if (!x.buffPre) t+=x.buff.cast; buffs.push({spec:x.buff, start:x.buffPre?0:t}); }
-          for (const x of pick) if (x.dash){ t+=x.dash.time; disp+=x.dash.dist; if (x.buff) buffs.push({spec:x.buff, start:t}); }
-          if (t>avail+1e-9) continue;
-          const w=walkWith(ds, buffs, t, avail, slowSpec && {...slowSpec, from:disp}); disp+=w.dist;
-          if (disp>best.dist+1e-9) best={dist:disp, top:w.top, plan:pick.map(x=>x.short).join(" + "), still:pick.some(x=>x.buff && !x.buffPre && x.buff.cast>0), buffed:buffs.length>0};
-        }
-        line(`  best use: ${best.plan} → ${fmt(best.dist)} units in ${fmt(avail)}s${best.top>ds.ms+0.01?` (up to ${fmt(best.top)} move speed)`:""}; needs ${fmt(need)}`);
-        if (TR && best.top>415) TR.notes.add(`move speed above 415 is soft-capped (×0.8 from 415, ×0.5 from 490)`);
-        if (TR && acts.some(x=>x.buff && !x.buffPre && x.buff.cast>0)) TR.notes.add(`canDodge: ${label(def)} stands still while casting a speed boost; perfect play skips the boost when walking without it goes farther (set preBuff: true if it was cast before the ability appeared)`);
-        if (best.dist>=need){ line(best.buffed ? "  → dodged by walking with the speed boost" : "  → dodged"); stormLine(def, a, s, p, d, HB, ds); return true; }
-      }
+  line(`  must move ${needText}; walking at ${fmt(ds.ms)}${slowSpec&&slowSpec.pct?` (${fmt(msCap((ds.msuncapped||ds.ms)*(1-slowSpec.pct)))} once slowed inside)`:""} covers ${fmt(walk)} (needs ${fmt(need/avail)} move speed${slowSpec?" unslowed":""})`);
+  if (walk>=need){ line("  → dodged by walking"); stormLine(def, a, s, p, d, HB, ds); return true; }
+  for (const {x, w, ok, press} of voids){
+    line(`  ${x.label}: ${w.kind} ${fmtW(w)} after its press${ok?`; pressed at ${fmt(press)}s it covers the landing at ${fmt(T)}s`:`: from ${fmt(tp0 + w.s)}s at the earliest, after it lands at ${fmt(T)}s`}`);
+    if (ok){ line("  → dodged"); return true; } }
+  if (acts.length){
+    for (const x of acts) line(`  ${x.text}`);
+    if (acts.some(x=>(x.buff||x.dash) && !x.noMove)){
+      const best=bestMove(def, acts, ds, avail, slowSpec);
+      line(`  best use: ${best.plan} → ${fmt(best.dist)} units in ${fmt(avail)}s${best.top>ds.ms+0.01?` (up to ${fmt(best.top)} move speed)`:""}; needs ${fmt(need)}`);
+      if (TR && best.top>415) TR.notes.add(`move speed above 415 is soft-capped (×0.8 from 415, ×0.5 from 490)`);
+      if (TR && acts.some(x=>x.buff && !x.buffPre && x.buff.cast>0)) TR.notes.add(`canDodge: ${label(def)} stands still while casting a speed boost; perfect play skips the boost when walking without it goes farther (set preBuff: true if it was cast before the ability appeared)`);
+      if (TR && best.partial) TR.notes.add(`canDodge: a dash still under way when the ability lands counts the distance covered by then (dash distance × elapsed / dash time)`);
+      if (best.dist>=need){ line(best.buffed ? "  → dodged by walking with the speed boost" : "  → dodged"); stormLine(def, a, s, p, d, HB, ds); return true; }
     }
   }
-  line("  → hit"); stormLine(def, a, s, p, d, HB, ds); return false;
+  return hit();
+}
+/* crowd control a displacement immunity stops (wiki Crowd control § Displacement immunity; the special-cased suppressions and
+   knock-up stuns are DISP_SUPPRESS / DISP_STUN) */
+const DISP_CC_TYPES = new Set(["airborne","knockup","knockback","pull","knockdown","sleep","stasis"]);
+/* The farthest the defender can move in `avail` seconds with the `using:` tools (perfect play; using nothing = walking). Dashes run
+   one after another; the last one may still be under way at `avail` and counts the distance covered by then (partial dash). */
+function bestMove(def, acts, ds, avail, slowSpec){
+  const walk = slowSpec ? walkWith(ds, [], 0, avail, slowSpec).dist : ds.ms*Math.max(0, avail);
+  let best={dist:walk, plan:"walking only", top:ds.ms};
+  if (!(avail>0)) return {dist:0, plan:"no time", top:ds.ms};
+  const mv=acts.filter(x=>(x.buff||x.dash) && !x.noMove);
+  for (let mask=1; mask<(1<<Math.min(mv.length,6)); mask++){
+    const pick=mv.filter((_,i)=>mask&(1<<i)); let t=0, disp=0, bad=false, partial=false; const buffs=[];
+    for (const x of pick) if (x.buff && !x.dash){ if (!x.buffPre) t+=x.buff.cast; buffs.push({spec:x.buff, start:x.buffPre?0:t}); }
+    const dashes=pick.filter(x=>x.dash);
+    dashes.forEach((x, i) => { if (bad) return;
+      const room=avail-t, D=x.dash, cast=D.cast||0;
+      if (D.time <= room+1e-9){ t+=D.time; disp+=D.dist; if (x.buff) buffs.push({spec:x.buff, start:t}); }
+      else if (i===dashes.length-1 && !D.blink && room>cast && D.time>cast){ disp+=D.dist*(room-cast)/(D.time-cast); t=avail; partial=true; }
+      else bad=true; });
+    if (bad || t>avail+1e-9) continue;
+    const w=walkWith(ds, buffs, t, avail, slowSpec && {...slowSpec, from:disp}); disp+=w.dist;
+    if (disp>best.dist+1e-9) best={dist:disp, top:w.top, plan:pick.map(x=>x.short).join(" + ")+(partial?" (the dash still under way)":""), still:pick.some(x=>x.buff && !x.buffPre && x.buff.cast>0), buffed:buffs.length>0, partial};
+  }
+  return best;
 }
 /* Viktor R (wiki Viktor_R): the storm then follows the nearest champion hit at 300/s within 300 of Viktor down to 200/s at 900+ (linear;
    ×1.25 with Perfect Storm) and strikes once a second, 6 times. canDodge adds how many strikes land if the defender walks straight
@@ -6323,7 +6646,18 @@ function withNimbus(def, y, r){
   if (TR) TR.notes.add(`Nimbus Cloak: +${fmt(100*p)}% move speed after ${summName(y.key)} (cooldown ${fmt(summCd(y.key, def))}s bracket: ≤100 s 15%, ≤250 s 35%, above 45%; wiki), decaying linearly over 2s`);
   return r;
 }
-function dodgeAction(def, y, preBuff, ds, recast){
+/* a sheet window bound: a number, or {min,max} (by rank / charge): the later start and the earlier end (conservative); no end = open */
+function winBound(v, end){ if (v==null) return end ? Infinity : 0; if (typeof v==="number") return v; if (typeof v==="object" && v.min!=null) return end ? v.min : v.max; return end ? Infinity : 0; }
+/* stasis items in using: (DECISIONS / P2): Zhonya's Hourglass and the Stopwatch line (Seeker's Armguard here): stasis from the press */
+const STASIS_ITEMS = {zhonyashourglass:"Zhonya's Hourglass", seekersarmguard:"Stopwatch (Seeker's Armguard)"};
+function dodgeAction(def, y, preBuff, ds, recast, att, dist){
+  if (y && (y.t==="item" || typeof y==="string")){
+    const key = typeof y==="string" ? (/^\s*stop\s*watch\s*$/i.test(y) ? "seekersarmguard" : /zhonya/i.test(y) ? "zhonyashourglass" : null) : y.key;
+    if (!key || !STASIS_ITEMS[key]) throw new Error(`using: ${typeof y==="string"?`"${y}"`:(ITEMS[y.key]||{}).name||y.key} isn't a dodge tool; the items canDodge knows are Zhonya's Hourglass and the Stopwatch ("Stopwatch" or SeekersArmguard): stasis from the press`);
+    const dv=((CALC.items[key]||{}).dv||{}).duration, dur=(dv && dv[1]) || 2.5, nm=STASIS_ITEMS[key];
+    if (TR){ TR.notes.add(`${nm}: stasis for ${fmt(dur)} s from the press (game files Duration; wiki Stasis: untargetable and invulnerable)`);
+      if (!(def.items||[]).includes(key)) TR.notes.add(`${label(def)} is assumed to have ${nm} ready (it isn't in its items)`); }
+    return {label:nm, short:nm, void:[{kind:"stasis", s:0, e:dur, destroys:true}], ccImm:[], text:`${nm}: stasis 0–${fmt(dur)}s from the press`}; }
   if (y && y.t==="summoner") return withNimbus(def, y, (()=>{
     if (y.owner && y.owner.champ!==def.champ) throw new Error(`using: ${label(y.owner)}.${summName(y.key)} belongs to another champion; use the defender's (or plain ${summName(y.key)})`);
     if (def.summoners && def.summoners.length && !def.summoners.includes(y.key)) throw new Error(`using: ${label(def)} took ${def.summoners.map(summName).join(" and ")}, not ${summName(y.key)}`);
@@ -6339,9 +6673,29 @@ function dodgeAction(def, y, preBuff, ds, recast){
       return {label:nm, short:preBuff?"Heal (pre-applied)":"Heal", buffPre:preBuff, buff:{unit:"frac", cast:0, mk:()=>u=>u<=dur?b:0}, text:`Heal: +${fmt(100*b)}% move speed for ${fmt(dur)}s`}; }
     return {label:nm, short:nm, text:`${nm} doesn't move ${label(def)} or make it untargetable`};
   })());
-  if (!y || y.t!=="ability" || y.owner.champ!==def.champ) throw new Error("using: must be the defender's abilities or summoner spells, e.g. using: fizz.E, using: Flash or using: {orianna.W, Flash}");
-  const tags=WORLD.champ(def.champ).slots[y.slot].tags, py=physOf(def, y.slot), lb=`${label(def)}.${y.slot}`, x={label:lb, short:lb, text:""}, bits=[];
-  if (tags.untargetable!==undefined || tags.invuln!==undefined) x.untarget={cast:py.castTime};
+  if (!y || y.t!=="ability" || y.owner.champ!==def.champ) throw new Error("using: must be the defender's abilities, summoner spells or a stasis item, e.g. using: fizz.E, using: Flash, using: Zhonyas or using: {orianna.W, Flash}");
+  const tags=WORLD.champ(def.champ).slots[y.slot].tags, py=physOf(def, y.slot), lb=`${label(def)}.${y.slot}`, x={label:lb, short:lb, text:"", void:[], ccImm:[]}, bits=[];
+  // what it does for the defender, as windows in seconds from ITS press (phys.grants from the interaction sheets; the kb tags only
+  // when an ability has no sheet data yet: then untargetable from the end of its cast, open-ended, as before)
+  const Gr=py.grants;
+  if (Gr){
+    for (const k of ["untargetable","stasis","invulnerable","parry"]) if (Gr[k]) x.void.push({kind:k, s:winBound(Gr[k][0]), e:winBound(Gr[k][1], true), destroys: py.destroysInbound!==false});
+    for (const k of ["invisible","camouflage"]) if (Gr[k] && !x.unseen) x.unseen={kind:k, s:winBound(Gr[k][0]), e:winBound(Gr[k][1], true), detect:py.camouflageDetect, pre:!!preBuff};
+    if (Gr.ccImmune) x.ccImm.push({kind:"cc", s:winBound(Gr.ccImmune[0]), e:winBound(Gr.ccImmune[1], true)});
+    if (Gr.displacementImmune) x.ccImm.push({kind:"displacement", s:winBound(Gr.displacementImmune[0]), e:winBound(Gr.displacementImmune[1], true)});
+    for (const w of x.void) bits.push(`${w.kind} ${fmt(w.s)}–${Number.isFinite(w.e)?fmt(w.e):"…"}s after its press${w.kind==="untargetable"&&!w.destroys?" (doesn't destroy projectiles already in flight)":""}`);
+    for (const w of x.ccImm) bits.push(`${w.kind==="cc"?"crowd control":"displacement"} immune ${fmt(w.s)}–${Number.isFinite(w.e)?fmt(w.e):"…"}s`);
+  } else if (tags.untargetable!==undefined || tags.invuln!==undefined){ x.void.push({kind:"untargetable", s:py.castTime||0, e:Infinity, destroys:true, fromTags:true}); bits.push(`untargetable after its ${fmt(py.castTime||0)}s cast (kb tag; no sheet window yet)`); }
+  // displacement / CC immunity from the UNSTOPPABLE table when the sheet data has none
+  const U=UNSTOPPABLE[def.champ] && UNSTOPPABLE[def.champ][y.slot];
+  if (U && !x.ccImm.length){ x.ccImm.push({kind:U.imm, s: typeof U.from==="number" ? U.from : U.from==="press" ? 0 : (py.castTime||0), e:Infinity}); bits.push(`${U.imm==="cc"?"crowd control":"displacement"} immune (${U.why})`); }
+  // a dash or blink that needs a target (phys.requires): the attacker can be the enemy it needs if in range, but that move goes toward
+  // it (not an escape); an ally, a wall or an airborne target isn't assumed, and then nothing of the ability is usable
+  const R=recast ? null : py.requires;   // a recast dash (Akali R2) goes anywhere
+  if (R){ x.noMove=true; const inR=(R==="enemy"||R==="unit") && att && dist!=null && dist <= (py.range||0)+1e-6;
+    if (!inR){ x.void=[]; x.unseen=null; x.ccImm=[]; }
+    bits.push(R==="enemy"||R==="unit" ? `needs ${R==="enemy"?"an enemy":"a unit"} to target: ${inR?`${label(att)} is within its ${fmt(py.range)} range, but the move goes toward it, so it isn't counted as an escape`:`${label(att)||"the attacker"} is beyond its ${fmt(py.range||0)} range and no other target is assumed, so it can't be used`}`
+      : `needs ${R==="ally"?"an ally":R==="terrain"?"a wall":R==="airborne"?"an airborne enemy":"a "+R} to use (not assumed): not a free escape`); }
   // recast: the ability's second cast (phys.recastDash: Akali R2, 800 units at 3000/s with no cast time)
   if (recast){ if (!py.recastDash) throw new Error(`recast: ${lb} has no recast dash in the engine (only abilities with one, e.g. Akali R)`);
     const P=py.recastDash, time=(P.castTime||0)+P.dist/P.speed; x.short=x.label=`${lb} recast`; x.dash={dist:P.dist, time};
@@ -6350,12 +6704,13 @@ function dodgeAction(def, y, preBuff, ds, recast){
     x.text=`${x.label} ${bits.join("; ")}`; return x; }
   // Shuriken Flip (phys.flipBack): the first cast flips her back `dist` units from `at` s into the cast, at the dash speed (any
   // direction: she aims the throw the other way); the gap-closing recast is a dash to the mark, not a dodge
-  if (py.flipBack){ const F=py.flipBack, sp=py.dashSpeed||1500, time=F.at+F.dist/sp; x.dash={dist:F.dist, time};
+  if (py.flipBack){ const F=py.flipBack, sp=py.dashSpeed||1500, time=F.at+F.dist/sp; x.dash={dist:F.dist, time, cast:F.at};
     bits.push(`flips back ${fmt(F.dist)} units from ${fmt(F.at)}s at ${fmt(sp)}/s (done at ${fmt(time)}s; she throws the shuriken the other way)`);
     if (TR) TR.notes.add(`${lb}: the first cast flips ${label(def)} back ${fmt(F.dist)} units starting ${fmt(F.at)} s into the cast at ${fmt(sp)}/s (wiki); the recast dashes to the marked target instead`); }
-  else if (tags.dash!==undefined || tags.blink!==undefined){ const di=dashInfo(def, y.slot); x.dash={dist:di.dist, time:di.time, blink:di.blink}; bits.push(`${di.blink?"blinks":"dashes"} ${fmt(di.dist)} units in ${fmt(di.time)}s`); }
+  else if (tags.dash!==undefined || tags.blink!==undefined){ const di=dashInfo(def, y.slot); x.dash={dist:di.dist, time:di.time, blink:di.blink, cast:di.castTime||0}; bits.push(`${di.blink?"blinks":"dashes"} ${fmt(di.dist)} units in ${fmt(di.time)}s`); }
   // invisibility (tag stealth; wiki Invisibility): point-and-click spells and attacks can't be cast on her once she's unseen
-  if (tags.stealth!==undefined){ const at=(py.castTime||0)+(def.champ==="Akali" ? 0.25 : 0); x.unseen={at, pre:!!preBuff};
+  if (x.unseen) bits.push(`${x.unseen.kind==="camouflage"?`camouflaged (enemies within ${x.unseen.detect!=null?fmt(x.unseen.detect):"its detection radius (unknown)"} see it)`:"invisible"} ${preBuff?"(already)":`${fmt(x.unseen.s)}–${Number.isFinite(x.unseen.e)?fmt(x.unseen.e):"…"}s after its press`}: can't be targeted by point-and-click spells or attacks it hides from (skillshots and areas still hit)`);
+  else if (!Gr && tags.stealth!==undefined){ const at=(py.castTime||0)+(def.champ==="Akali" ? 0.25 : 0); x.unseen={kind:"invisible", s:at, e:Infinity, pre:!!preBuff};
     bits.push(`invisible ${preBuff?"(already, in the shroud)":`from ${fmt(at)}s`}: can't be targeted by point-and-click spells or attacks (skillshots and areas still hit)`);
     if (TR && def.champ==="Akali") TR.notes.add(`${lb}: invisible once in the shroud: the smoke bomb lands 250 units away 0.25 s after the 0.25 s cast (missile 1000/s; wiki target range 250), so from 0.5 s (an assumption); revealed while dashing and for 1–0.625 s after attacking or casting (wiki)`); }
   if (py.msBuff && KIT[def.champ] && KIT[def.champ].evolved && /augment/i.test(String(py.msBuff.key||"")) && !kitEvolved(def).includes(y.slot)){
@@ -6364,7 +6719,7 @@ function dodgeAction(def, y, preBuff, ds, recast){
     if (x.buffPre && !x.buff.passive) x.short=`${lb} (pre-applied)`;
     bits.push(`${x.buff.desc}${x.buff.passive?" (passive, already active)":x.buffPre?" (pre-applied: active when the window opens)":x.buff.cast>0?` after its ${fmt(x.buff.cast)}s cast`:""}`);
     if (TR) TR.notes.add(x.buff.note); }
-  if (!bits.length && !x.untarget) bits.push("has no dash, blink, untargetability or move-speed boost");
+  if (!bits.length) bits.push("has no dash, blink, untargetability or move-speed boost");
   x.text=`${lb} ${bits.join("; ")}`;
   return x;
 }
@@ -7327,6 +7682,6 @@ function run(text, libs, opts){
 }
 return {run, parse, KB, CALC, ITEMS, ITEMKEYS, CLASSES, SLOTS, IDX, TAGS, KEYWORDS, TYPES, STATLABEL, RUNE_KEYS,
         norm, fmt, fmtc, show, label, champName, runeName, findItem, findRune, typeName, sweepStats, sweepGrid,
-        _internals:{itemCalc, stats, MODELLED_ITEMS}};
+        _internals:{itemCalc, stats, MODELLED_ITEMS, simInterim}};
 }
 if (typeof module !== "undefined") module.exports = createRiftLogic;
