@@ -1364,6 +1364,10 @@ function simulate(sidesIn, T, simNotes, fo){
       if (t<=co.until) v*=red;                                                  // Blessed, lingering 2s after the first hit
       else if (t>=co.cdAt){ co.until=t+idv("celestialopposition","ShieldLingerAfterInitiallyPopped",2); co.cdAt=co.until+cd; v*=red; }
       else co.cdAt=Math.max(co.cdAt, t+cd); }                                  // the cooldown restarts on champion damage
+    // Fizz's Nimble Fighter (wiki Template:Data_Fizz/Nimble_Fighter, checked 2026-09-24): "reduces every instance of pre-mitigation
+    // damage taken by 4 (+ 1% AP), up to a maximum of 50% reduction" (14 against monsters: fight() has none)
+    if (tgt.c && tgt.c.champ==="Fizz" && !tgt.pet && !tgt.dummy && v>0){ const pv=CALC.champs.Fizz.P, f=(dvOf(pv,"damagereduction",1) ?? 4)+(dvOf(pv,"apratio",1) ?? 0.01)*tgt.st.ap;
+      v=Math.max(v*(1-(dvOf(pv,"damagereductionmax",1) ?? 0.5)), v-f); }
     if (type!=="true"){
       const magic = type==="magic";
       let R = magic ? tgt.st.mr : tgt.st.armor;
@@ -4207,6 +4211,93 @@ function simulate(sidesIn, T, simNotes, fo){
         simNotes.add(`${u.name} W: Seastone Trident — his attacks bleed ${fmt(tot)} magic over 3 s (a new attack restarts it); the active empowers his next attack (reset), then 5 s of on-hit damage`);
         return b.length ? {bonus:b} : null; },
     },
+    Sivir: {
+      // Boomerang Blade: the return pass hits again: the blade flies on to its 1250 range at 1450/s, then back at 1200/s (wiki). Ricochet:
+      // 4 s of bonus attack speed (an attack reset only if it wasn't already active: wiki); attacks bounce to up to 8 other enemies within
+      // 500 (chained; each once) for the bounce damage.
+      onCast(u, a, tgt, t){ if (a.slot!=="W") return; const on=u.buffs.some(b=>b.id==="sivirW" && b.until>t);
+        addBuff(u, "sivirW", t+(dvOf(a.S,"buffduration",a.rank)||4), {bonusAS:dvOf(a.S,"ricochetattackspeed",a.rank)||0.4}, t); if (!on) u.nextAA=Math.min(u.nextAA, t);
+        simNotes.add(`${u.name} W: Ricochet — 4 s of +${fmt(100*(dvOf(a.S,"ricochetattackspeed",a.rank)||0.4))}% attack speed (attack reset); attacks bounce to other enemies within 500`); },
+      afterCast(u, a, tgt, t){ if (a.slot!=="Q" || !tgt) return; const r=(a.later||[]).find(p=>p.later==="return"); if (!r) return;
+        const R=(a.p && a.p.range)||1250, d=Math.min(R, gap(u,tgt)), back=t+(R-d)/((a.p && a.p.speed)||1450)+(R-d)/1200;
+        for (const x of hitList(u,a,tgt,t,a.land)) if (x.alive && x.side!==u.side) kitLater(u, x, back, r, "Q return");
+        simNotes.add(`${u.name} Q: Boomerang Blade hits again on the way back (out to 1250 at 1450/s, back at 1200/s)`); },
+      attack(u, tgt, t, mult){ const W=u.abAll.W; if (!W || !u.buffs.some(b=>b.id==="sivirW" && b.until>t)) return null;
+        const v=evalCalc({S:W.S, rank:W.rank, st:u.st, flags:u.flags},"bouncedamage").v*mult, step=u.curStep ?? null, mx=dvOf(W.S,"maxbounces",W.rank)||8, hit=new Set([tgt]);
+        let from=tgt; for (let i=0;i<mx;i++){ const fx=from.xS ?? from.x, nx=enemiesOf(u,t).filter(y=>!hit.has(y) && Math.abs((y.xS ?? y.x)-fx) <= 500+RAD(y)).sort((p,q)=>Math.abs((p.xS ?? p.x)-fx)-Math.abs((q.xS ?? q.x)-fx))[0];
+          if (!nx) break; hit.add(nx); kitDealNow(u, nx, t, {v:nx.pet||nx.minion ? v*(dvOf(W.S,"miniondamagemod",W.rank)||0.65) : v, type:"physical"}, "W Ricochet bounce", step); from=nx; }
+        return null; },
+    },
+    Zyra: {
+      // Rampant Growth: a Seed where the target stands (60 s, 2 charges). Deadly Spines / Grasping Roots landing on a Seed (within 150 of the
+      // target: perfect aim) grow a Thorn Spitter (575 range) / Vine Lasher (400 range, attacks slow 30% 2 s): an attack every 1.25 s (0.8
+      // attack speed) for 8 s on the nearest enemy in range, the first at once. The plants' health and Garden of Thorns' seeds aren't modelled.
+      onCast(u, a, tgt, t){ if (a.slot==="W" && tgt){ const K=u.kit; K.seeds=(K.seeds||[]).filter(s=>s.until>t); K.seeds.push({x:tgt.xS ?? tgt.x, until:t+(dvOf(a.S,"seedduration",a.rank)||60)}); } },
+      afterCast(u, a, tgt, t){ if (!(a.slot==="Q" || a.slot==="E") || !tgt) return; const K=u.kit, cx=tgt.xS ?? tgt.x; K.seeds=(K.seeds||[]).filter(s=>s.until>t);
+        const S=K.seeds.find(s=>Math.abs(s.x-cx)<=150); if (!S) return; K.seeds=K.seeds.filter(s=>s!==S);
+        const P=CALC.champs.Zyra.P, lasher=a.slot==="E", range=lasher?400:575, dur=dvOf(P,"plantduration",1)||8, every=1/0.8, step=u.curStep ?? null;
+        for (let k=0; k*every < dur-1e-9; k++) events.push({at:t+k*every, fn:(tt)=>{ if (!u.alive) return;
+          const x=enemiesOf(u,tt).filter(y=>Math.abs((y.xS ?? y.x)-S.x) <= range+RAD(y)).sort((p,q)=>Math.abs((p.xS ?? p.x)-S.x)-Math.abs((q.xS ?? q.x)-S.x))[0]; if (!x) return;
+          kitDealNow(u, x, tt, {v:evalCalc({S:P, rank:1, st:u.st, flags:u.flags},"plantdamage").v, type:"magic"}, lasher ? "Vine Lasher" : "Thorn Spitter", step);
+          if (lasher && x.alive) applyCC(u, {slot:"E", S:a.S, p:{}, cc:[{type:"slow", pct:(dvOf(a.S,"slowamountplantattack",a.rank)||30)/100, dur:dvOf(a.S,"slowdurationplantattack",a.rank)||2}]}, x, tt, 0); }});
+        say(t, `  ${u.name}: a ${lasher ? "Vine Lasher" : "Thorn Spitter"} grows from the Seed`);
+        simNotes.add(`${u.name}: Rampant Growth — a Seed at the target's feet; Deadly Spines / Grasping Roots on it grow a Thorn Spitter / Vine Lasher that attacks every 1.25 s for 8 s (the plants' health isn't modelled)`); },
+    },
+    Xayah: {
+      // Feathers (all taken to lie on the line through the target, perfect aim): Double Daggers plants 2 where they land, Featherstorm 5,
+      // and each attack under Clean Cuts 1 (an ability cast gives 3 stacks, 8 s, 5 max). Bladecaller recalls those planted within 6 s:
+      // each hits the target, 5% less per feather already hit (10% minimum), and 3 or more root it 1.25 s. Deadly Plumage: 4 s of attack
+      // speed, each attack + 25% of its damage.
+      pressCast(u, a, tgt, t){ const K=u.kit, P=CALC.champs.Xayah.P, C=K.cc && K.cc.until>t ? K.cc : {n:0};
+        C.n=Math.min(dvOf(P,"pstackmax",1)||5, C.n+(dvOf(P,"pstackspercast",1)||3)); C.until=t+(dvOf(P,"pempoweredduration",1)||8); K.cc=C;
+        if (a.slot==="W") addBuff(u, "xayahW", t+(dvOf(a.S,"wattackspeedduration",a.rank)||4), {bonusAS:(dvOf(a.S,"wattackspeedamount",a.rank)||55)/100}, t); },
+      onCast(u, a, tgt, t){ const K=u.kit, life=dvOf(CALC.champs.Xayah.P,"pfeatherduration",1)||6; K.fe=(K.fe||[]).filter(f=>f.t>t-life);
+        if (a.slot==="E"){ const n=K.fe.length, f=dvOf(a.S,"featherfalloff",a.rank)||0.05; let m=0; for (let k=0;k<n;k++) m+=Math.max(0.1, 1-f*k); K.fe=[];
+          const v=evalCalc({S:a.S, rank:a.rank, st:u.st, flags:u.flags},"featherdamage").v; a.parts = n ? [{v:v*m, type:"physical"}] : [];
+          a.ccAll ??= a.cc||[]; a.cc = n>=(dvOf(a.S,"featherthreshold",a.rank)||3) ? a.ccAll : a.ccAll.filter(e=>e.type!=="root");
+          say(t, `  ${u.name}: Bladecaller recalls ${n} feather${n===1?"":"s"}${n>=3?" (root)":""}`);
+          simNotes.add(`${u.name}: feathers — Double Daggers plants 2, Featherstorm 5, each attack under Clean Cuts 1 (3 stacks per ability cast); Bladecaller recalls those planted within 6 s through the target (−5% per feather already hit), 3+ root`); } },
+      afterCast(u, a, tgt, t){ const K=u.kit; if (a.slot==="E" && a.ccAll) a.cc=a.ccAll;
+        const n = a.slot==="Q" ? 2 : a.slot==="R" ? 5 : 0; for (let i=0;i<n;i++) (K.fe ||= []).push({t}); },
+      attack(u, tgt, t, mult){ const K=u.kit; if (K.cc && K.cc.until>t && K.cc.n>0){ K.cc.n--; (K.fe ||= []).push({t}); }
+        const W=u.abAll.W; if (W && u.buffs.some(b=>b.id==="xayahW" && b.until>t)) return {bonus:[{v:(dvOf(W.S,"bonusdamagepercent",W.rank)||25)/100*u.st.ad*mult, type:"physical", what:"Deadly Plumage feather"}]};
+        return null; },
+    },
+    Milio: {
+      // Fired Up!: his abilities on himself enchant his next attack: + 7/11/15% (levels 1/6/9) of his AD magic + a burn of 10–50 by level
+      // (+20% AP) magic over 1.5 s. Modelled for Milio only (allies' attacks have no kit hook): Cozy Campfire and Breath of Life always
+      // include him; Warm Hugs only when he's alone (fight() gives the shield to the lowest ally). The enchant is assumed to last 4 s
+      // (no duration in the wiki text or the game data read).
+      onCast(u, a, tgt, t){ if (!(a.slot==="W" || a.slot==="R" || (a.slot==="E" && alliesOf(u).length<=1))) return; u.kit.fu={until:t+4}; },
+      attack(u, tgt, t){ const K=u.kit; if (!(K.fu && K.fu.until>t)) return null; K.fu=null; const P=CALC.champs.Milio.P, L=u.st.level;
+        let r=evalCalc({S:P, rank:1, st:u.st, flags:u.flags},"adburstratio").v; if (!(r>0 && r<1)) r=L>=9?0.15:L>=6?0.11:0.07;
+        const burn=(dvOf(P,"basedamagestart",1)||10)+((dvOf(P,"basedamageend",1)||50)-(dvOf(P,"basedamagestart",1)||10))*(L-1)/17+0.2*u.st.ap, dur=dvOf(P,"burnduration",1)||1.5;
+        for (let i=1;i<=6;i++) kitLater(u, tgt, t+dur*i/6, {v:burn/6, type:"magic"}, "Fired Up! burn");
+        simNotes.add(`${u.name}: Fired Up! — his abilities on himself enchant his next attack: + ${fmt(100*r)}% AD magic and a ${fmt(burn)} magic burn over 1.5 s (allies' enchants not modelled; 4 s assumed)`);
+        return {bonus:[{v:r*u.st.ad, type:"magic", what:"Fired Up!"}]}; },
+    },
+    Tryndamere: {
+      // Battle Fury: Fury from his attacks (5, 10 on a crit: expected 5 × (1 + crit)) and Spinning Slash champion hits (5 each), 100 max;
+      // 0.5% crit chance per Fury (buff tryndP). Bloodlust: + 5–80 bonus AD growing with missing health to the maximum at 90% missing; its
+      // heal adds 0.05–2.3 (+1.2% AP) per Fury and uses all of it. Undying Rage: + 50/75/100 Fury and he can't drop below 30/50/70 health
+      // for 5 s; fight() casts it when he falls below 15% health (or at a fatal hit if it's ready). Fury decay out of combat isn't modelled.
+      init(u){ u.kit.fury=0; },
+      act(u, tgt, t){ const R=u.abAll.R; if (!R || (u.cd.R||0)>t || (u.kit.r && u.kit.r.until>t) || u.hp>0.15*u.max) return false;
+        say(t, `${u.name} is low: Undying Rage`); cast(u, R, tgt||u, t); return true; },
+      onCast(u, a, tgt, t){ const K=u.kit;
+        if (a.slot==="R"){ K.r={until:t+(dvOf(a.S,"tryndrduration",a.rank)||5), min:dvOf(a.S,"tryndrminhealth",a.rank)||70}; kitTryndFury(u, dvOf(a.S,"tryndrfurygain",a.rank)||100, t);
+          simNotes.add(`${u.name} R: Undying Rage — +${fmt(dvOf(a.S,"tryndrfurygain",a.rank)||100)} Fury, and his health can't drop below ${fmt(K.r.min)} for 5 s`); }
+        if (a.slot==="Q"){ const f=K.fury||0; a.heal=(a.heal||0)+f*evalCalc({S:a.S, rank:a.rank, st:u.st, flags:u.flags},"healperfury").v; kitTryndFury(u, -f, t);
+          events.push({at:t, fn:(tt)=>kitTryndAD(u, tt)}); } },
+      afterCast(u, a, tgt, t){ if (a.slot!=="E" || !tgt) return; let n=0; for (const x of hitList(u,a,tgt,t,a.land)) if (x.alive && x.side!==u.side && !x.pet && !x.minion) n++;
+        if (n) kitTryndFury(u, n*(dvOf(a.S,"champfurygain",a.rank)||5), t); },
+      onHurt(u, att, v, type, t){ events.push({at:t, fn:(tt)=>{ const R=u.kit.r; if (u.alive && R && R.until>tt && u.hp<R.min) u.hp=R.min; kitTryndAD(u, tt); }}); },
+      onFatal(u, att, t){ const K=u.kit, R=u.abAll.R;
+        if (K.r && K.r.until>t){ u.hp=K.r.min; return true; }
+        if (R && !((u.cd.R||0)>t)){ u.hp=1; say(t, `${u.name} would die: Undying Rage just in time`); cast(u, R, att||u, t); u.hp=Math.max(u.hp, dvOf(R.S,"tryndrminhealth",R.rank)||70); return true; }
+        return false; },
+      attack(u, tgt, t){ events.push({at:t, fn:(tt)=>{ if (u.alive) kitTryndFury(u, 5*(1+u.st.crit), tt); }}); return null; },
+    },
     Sion: {
       // Roar of the Slayer: −25% armor for 4 s on the champion hit (after the hit). Glory in Death: fatal damage → 1.5 s of stasis, then full
       // health draining 1 + level per 0.25 s, +70% of that each tick (the audit's reading of the wiki: 2–19 by level), 1.75 attack speed,
@@ -4296,6 +4387,10 @@ function simulate(sidesIn, T, simNotes, fo){
     applyCC(u, {slot:"P", S:P, p:{}, cc:[{type:"stun", dur:evalCalc(ctx,"stunduration").v}], hard:true}, x, t, 0);
     const b={v:evalCalc(ctx,"totaldamage").v, type:"magic", what:"Concussive Blows"}; if (now){ kitDealNow(u, x, t, b, "Concussive Blows", u.curStep ?? null); return null; } return {bonus:[b]}; }
   // batch 8 helpers
+  // Tryndamere: Fury (0–100) and its crit chance (0.5% each, wiki Battle Fury); Bloodlust's bonus AD by missing health (maximum at 90% missing)
+  function kitTryndFury(u, d, t){ const K=u.kit; K.fury=Math.max(0, Math.min(100, (K.fury||0)+d)); addBuff(u, "tryndP", 1e9, {crit:0.005*K.fury}, t); }
+  function kitTryndAD(u, t){ const Q=u.abAll.Q; if (!Q) return; const th=dvOf(Q.S,"remaininghealththreshold",Q.rank)||0.1, miss=Math.min(1, Math.max(0, 1-u.hp/u.max)/(1-th));
+    const v=Math.round((dvOf(Q.S,"maximumbonusad",Q.rank)||80)*miss*10)/10, B=u.buffs.find(b=>b.id==="tryndQ"); if (B && B.mods.bonusad===v) return; addBuff(u, "tryndQ", 1e9, {bonusad:v}, t); }
   // Darius Hemorrhage: a stack on x (5 max, the 5 s refreshed); the bleed ticks every 1.25 s (a quarter of a stack's damage per stack).
   // At 5 stacks on a champion: Noxian Might, + 30–230 AD by level for 5 s, every application meanwhile goes straight to 5 (wiki)
   function kitDariusBleed(u, x, t){ if (!x.alive) return; const P=CALC.champs.Darius.P, K=u.kit, mx=dvOf(P,"maxstacks",1)||5, dur=dvOf(P,"bleedduration",1)||5, every=dur/4;
@@ -5992,6 +6087,36 @@ const KIT = {
       parts(x){ const d=x.o.distance, p=x.part("smallsharkdamage","magic"), m=kitFizzShark(d, x.S, x.rank).m; return [m===1 ? {...p, label:"Chum the Waters (Guppy)"} : {...scale(p, m, d>910?"(Gigalodon)":"(Chomper)"), label:`Chum the Waters (${d>910?"Gigalodon":"Chomper"})`}]; }},
     // Playful: the splash slows 35–60% for 2 s (game data SlowAmount, SlowDuration)
     cc: {E:(S,r)=>[{type:"slow", pct:dvOf(S,"slowamount",r)||0.6, dur:dvOf(S,"slowduration",r)||2, src:{pct:"dv:SlowAmount", dur:"dv:SlowDuration"}, text:"slowed 35–60% for 2 s by the splash"}]},
+  },
+  Sivir: {
+    // Boomerang Blade: the same damage on the way out and back (each enemy once per pass; wiki Total ×2); game data TotalDamage (with the
+    // 40% crit scaling)
+    Q: {opts:{passes:{min:1, max:2, dflt:2, what:"passes that hit the target (out and back)"}}, sim:()=>({passes:2}),
+      parts(x){ const p=x.part("totaldamage","physical"); return x.o.passes>=2 ? [p, {...p, label:p.label+" (return pass)", later:"return"}] : [p]; }},
+    // Ricochet: 4 s of +15–40% attack speed (attack reset); attacks bounce for 37.5–50% AD to other enemies (none on a lone target)
+    W: {parts(x){ return [{...x.part("bouncedamage","physical"), label:"Ricochet: a bounce to another enemy (fight(): none on a lone target)", later:"bounce"}]; }},
+  },
+  Zyra: {
+    // Rampant Growth: a Seed (60 s); fight(): planted at the target's feet, grown by the next Deadly Spines (Thorn Spitter) or Grasping
+    // Roots (Vine Lasher) that hits there: 8 s of attacks (0.8 attack speed) for the plant damage (game data PlantDamage, PlantDuration)
+    W: {parts(x){ return [{label:"Rampant Growth: a Seed (no damage; fight(): Q/E on it grow a plant)", v:0, s:"0", type:"magic", later:"seed"}]; }},
+  },
+  Xayah: {
+    P: {none:"Clean Cuts has no damage of its own: an ability cast makes her next 3 attacks within 8 s (5 stacks max) plant a feather each (fight())"},
+    // Double Daggers: two daggers, each 45–105 (+50% bonus AD) (wiki Total ×2); each plants a feather (fight())
+    Q: {opts:{hits:{min:1, max:2, dflt:2, what:"daggers that hit the target"}}, sim:()=>({hits:2}),
+      parts(x){ const p=x.part("totaldamage","physical"), n=x.o.hits; return [n===1 ? p : {...scale(p, n, "daggers"), label:"Double Daggers: both daggers"}]; }},
+    // Deadly Plumage: 4 s of +30–55% attack speed; each attack fires an extra feather for 25% of its damage (game data BonusDamagePercent)
+    W: {parts(x){ const f=(x.dv("bonusdamagepercent")||25)/100; return [{label:`Deadly Plumage: ${fmt(100*f)}% of each attack for 4 s (fight())`, v:f*x.st.ad, s:`${fmt(f)} × AD ${fmt(x.st.ad)}`, type:"physical", pctOf:null, later:"attack"}]; }},
+    // Bladecaller: each recalled feather 50–110 (+40% bonus AD) (×(1 + 50% crit × (crit damage − 1))), each later one on the same enemy 5%
+    // less (game data FeatherFalloff; at least 10%); fight(): the feathers planted within 6 s, all passing through the target (perfect aim)
+    E: {opts:{feathers:{min:0, max:30, dflt:1, what:"feathers that hit the target"}}, sim:()=>({feathers:1}),
+      parts(x){ const n=x.o.feathers, f=x.dv("featherfalloff")||0.05, p=x.part("featherdamage","physical"); let m=0; for (let k=0;k<n;k++) m+=Math.max(0.1, 1-f*k);
+        return [n===1 ? p : {...scale(p, m, `(${n} feathers: ${fmt(m)}×)`), label:`Bladecaller: ${n} feathers`}]; }},
+  },
+  Tryndamere: {
+    P: {none:"Battle Fury has no damage: Fury (5 per attack, 10 per crit, 5 per champion hit by Spinning Slash; 100 max) gives 0.5% crit chance each (fight())"},
+    R: {parts(x){ return [{label:"Undying Rage (no damage: +50/75/100 Fury, minimum health 30/50/70 for 5 s; fight(): cast when about to die)", v:0, s:"0", type:"physical", later:"buff"}]; }},
   },
   Sion: {
     P: {none:"Glory in Death has no damage of its own: on death 1.5 s of stasis, then he fights on at full health that drains away (fight(): 100% life steal, attacks + 10% of the target's maximum health, no abilities)"},
