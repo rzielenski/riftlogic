@@ -6278,7 +6278,9 @@ const KIT = {
     // P6 F6: Ragnarok's move speed is "+20% MS for the first second toward visible enemy champions within 2000" (wiki; sheet): toward
     // the enemy, never an escape, so canDodge doesn't count it (the export gave the game data's Haste in every direction). No
     // untargetability either: only crowd control immunity (phys.grants)
-    phys(c, slot, p){ if (slot==="R" && p.msBuff){ p.msBuffToward=p.msBuff; p.msBuff=null; } },
+    // Reckless Swing (wiki): cast time "0.25 to 0.175" by bonus attack speed "0 to 125 by 12.5" (steps of 0.0075 s per 12.5%)
+    phys(c, slot, p){ if (slot==="R" && p.msBuff){ p.msBuffToward=p.msBuff; p.msBuff=null; }
+      if (slot==="E"){ const b=Math.max(0, stats(c).bonusas||0), k=Math.min(10, Math.floor(b/0.125+1e-9)); p.castTime=0.25-0.0075*k; p.castTimeSource=`wiki: 0.25 − 0.0075 per 12.5% bonus attack speed (${k} steps, at most 10)`; } },
   },
   Karma: {
     P: {none:"Gathering Fire has no damage: each enemy champion hit by her damaging abilities cuts Mantra's cooldown 4 s (fight())"},
@@ -6525,8 +6527,7 @@ const KIT = {
   /* ---- champion audit batch 5 (2026-09-24): the next most-played champions in solo queue without a test file (draft_stats.json);
      live wiki Template:Data_<Champ>/<ability> and the game files (data/raw/cdragon_bins); game files win where they disagree ---- */
   Viego: {
-    P: {none:"Sovereign's Domination has no damage: a takedown lets him possess the champion (not modelled)"},
-    Q: {parts(x){ x.note("the passive (2–6% of the target's current health on his attacks) and the mark's second strike (20% AD + 15% AP) are dealt in fight()/perform()");
+    P: {none:"Sovereign's Domination has no damage: a takedown lets him possess the champion (not modelled)"},    Q: {parts(x){ x.note("the passive (2–6% of the target's current health on his attacks) and the mark's second strike (20% AD + 15% AP) are dealt in fight()/perform()");
       return [x.part("totaldamage","physical")]; }},
     E: {parts(x){ x.note(`Harrowed Path deals no damage: +${fmt((x.dv("attackspeed")||0)*100)}% attack speed in the mist (fight())`);
       return [{label:"Harrowed Path (no damage: attack speed in the mist)", v:0, s:"0", type:"physical", later:"buff"}]; }},
@@ -6572,6 +6573,8 @@ const KIT = {
     // Make It Rain (wiki): a 2 s storm "slowing them by 40% (+ 6% per 100 AP)" while inside; fight() deals the storm as one hit, so the
     // slow lasts the storm (the target assumed to stay in it; game data BaseDuration 2)
     cc: {E:(S,r)=>((S && S.cc) || []).map(e=>e.type==="slow" ? {...e, dur:dvOf(S,"baseduration",r)||2, src:{...(e.src||{}), dur:"dv:BaseDuration (the storm)"}} : e)},
+    // Double Up (wiki): "cast time = Basic Attack Timer": her attack windup at her attack speed (read like Kog'Maw Q, DECISIONS 37)
+    phys(c, slot, p){ if (slot!=="Q") return; const st=stats(c); p.castTime=attackTiming(c.champ, st, st.ranged).windup; p.castTimeSource="wiki: her attack windup (Basic Attack Timer)"; },
   },
   Renata: {
     // Handshake (wiki): roots the first enemy hit 1 s; the recast "knock[s] the target in the target direction" (airborne, 275 units:
