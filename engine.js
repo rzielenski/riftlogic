@@ -711,13 +711,13 @@ function kitRankKey(c){ const k=KIT[c.champ]; return k && (k.stats || k.statsFin
 
 /* ================= fight simulator ================= */
 const SIM_ASSUMPTIONS = [
-  "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range (range + both radii for the game files' castRangeUseBoundingBoxes spells: Tristana E/R, Vayne E, Viktor Q, …), other abilities their reach + the target's hitbox, except skillshots the wiki marks centred ({{tip|cr}}: the reach itself) or edge ({{tip|er}}: + both hitboxes) (wiki Range; one rule shared with canDodge)",
+  "fight(): positions on one line (1-D): the fronts start: units apart (default 0 = contact), centred on 0 (side 1's front at −start/2); each unit stands max(0, attack range − 175) behind its front (formation: false = all on the front); champions can back off without limit unless room: is given; everyone acts at once each 0.05 s step (damage, deaths, moves and new crowd control land at the end of the step); no terrain, walls or body blocking; attacks need edge range (range + both gameplay radii), point-and-click abilities centred range (range + both radii for the game files' castRangeUseBoundingBoxes spells: Tristana E/R, Vayne E, Viktor Q, …), other abilities their reach + the target's hitbox, except those the wiki marks centred ({{tip|cr}}: the reach itself) or edge ({{tip|er}}: + both hitboxes); an area marked {{tip|cr}} needs the target's centre inside, no hitbox added (DECISIONS 29); global abilities (Karthus R, Ezreal R, …) reach any distance (wiki Range; one rule shared with canDodge)",
   "fight(): every ability and attack in range hits (perfect aim, no dodging in fight(); use canDodge for that), except the kit mechanics that say otherwise (Viktor's Gravity Field stuns only a unit still inside on its 5th stack, Aftershock can be sidestepped, his storm moves, Akali's shroud hides her from attacks and point-and-click spells); an ability's effects land after its cast time, flight and appear-delay (the same timing as .arrival and canDodge: Lux Q 0.67 s at 500, Lux R 1 s, Karthus Q 0.75 s); cooldown, cost and cast lock start at the press; crowd control never cancels a cast time (wiki Cast time: only death does), it cancels channels (Karthus R) and charges (Vi Q, Sion Q); dashes start when the cast time ends and hit on arrival if the target is in reach there (or was at the press); a displacement or knockdown stops a dash under way, a stun or root doesn't (wiki Dash; Akshan E, Camille E, Rakan W/E, Yasuo E, Yuumi W are also stopped by immobilizing CC); unstoppable abilities (Malphite R, Vi R, Hecarim R, Jarvan IV R, …) are immune to displacements and can't be stopped (wiki Crowd control § Displacement Immunity), spell shields still block them; self-casts, heals and shields apply when the cast time ends",
   "fight(): basic attacks start when the attack timer allows (timer, on-attack effects) and land at the end of their windup (wiki Attack speed: attack time × windup %, scaled by the champion's windup modifier; .windup), a ranged one after its missile's flight too (.missileSpeed; 0 = instant); the attacker can't act during the windup; a stun, knock-up or death during it cancels the attack (the timer resets), a silence doesn't; a target dead or in stasis when it lands isn't hit; empowered-attack abilities (Nasus Q, Garen Q, Darius W, Jax W, Leona Q…) resolve with the next attack, and attack resets reset the timer at the press",
   "fight(): abilities are cast as soon as they're off cooldown (each ability locks its caster for its cast time: game data checked against the wiki's cast time field, calc.json phys.castTime; an ability with none frees the caster on the next step); mana is ignored, energy is not (Zed, Akali, Lee Sin, Kennen, Shen: abilities wait until it covers their cost); a champion whose ability makes it untargetable from the cast (the ability pages' windows: Zed R, Fizz E, Vladimir W, Master Yi Q, Kayn R, Ekko R, Evelynn R, Xayah R, Camille R, and Pantheon E's kit) is untargetable for that whole step",
   "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground and root prevent starting a dash, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
   "fight(): default roles: ranged = kite (keep max attack range from shorter-ranged enemies, peel them with hard CC, knockbacks held for peel, dashes/blinks used to escape), melee = dive (walk or dash to the lowest-health enemy, use everything on it but knockbacks); knockbacks are held to peel an enemy that dives an ally (except role engage); a stacking-stun field (Viktor W) is held until the enemy commits (moving in within the field's radius + both hitboxes, in its attack reach, unable to move, or diving an ally), not cast on cooldown at range; set x.role = \"kite\" | \"dive\" | \"peel\" | \"engage\" | \"fight\"",
-  "fight(): area abilities hit every enemy within their radius on the line (lines and cones: every enemy within reach); ability damage over time lands up front",
+  "fight(): area abilities hit every enemy within their radius on the line (lines and cones: every enemy within reach ahead of the caster; behind it only a rectangle's stated reach, Rell Q 220); ability damage over time lands up front",
   "fight(): attacks without a set target go to the enemy with the lowest health",
   "fight(): each ability does what its tooltip formula says; special mechanics (clones, stored damage, stacks, empowered recasts) are not simulated, except for the champions with a kit in the engine (KIT / CHAMP_MECH: Syndra, Viktor, Gwen, Dr. Mundo, Kai'Sa, Smolder, Ezreal, Katarina, Yone, Samira, Zed, Akali, Yasuo, Caitlyn)",
 ];
@@ -1034,6 +1034,80 @@ function simulate(sidesIn, T, simNotes, fo){
         const s=unstopOn(x,t); if (s && s.slot===P.slot) continue; }                        // unstoppable (Galio R after 1.25 s)
       P.cancelled=true; n++; say(t, `  ${x.name}'s ${P.slot} ${why==="dies"?"cast is lost (the caster dies before its cast time (or channel) ends)":why==="is interrupted"?`${P.charge?"charge":"channel"} is interrupted: it doesn't land`:`cast is lost (the caster ${why})`}`); }
     x.pend=x.pend.filter(P=>!P.done && !P.cancelled); return n; }
+  /* ---- P4 (interaction audit, 2026-09-25): projectile walls (WALLS: Yasuo W, Samira W, Braum E, Mel W; wiki Projectile) ----
+     A wall is an object on the 1-D line {owner, side, kind, x (line), r (aura), from, until}: Yasuo W a fixed wall just in front of
+     him (between him and the enemy side); Samira W / Mel W a barrier of radius r around the owner (it moves with her); Braum E his
+     shield (it moves with him). An enemy projectile (phys.projectile; ranged basic-attack missiles, except the Projectile page's
+     exceptions) that crosses a wall while it is up is stopped as its sheet says (wallVerdict: phys.hits[*].walls); Braum intercepts:
+     the hit lands on him instead (a pass-through area projectile just stops there). Mel W replicates what it destroys back at the
+     source (melReflect). Perfect play (like the spell-shield rule): Yasuo W, Mel W and Samira W are raised by their owner just as an
+     enemy projectile ability that the wall would stop reaches her, if ready; Yasuo W and Mel W are never cast otherwise, Samira W and
+     Braum E still are (their normal casts put the wall up too). perform() without distance: (no positions) ignores walls. */
+  const walls=[];
+  const WALL_ATTACK_EXEMPT = new Set(["Azir","Senna","Thresh","Velkoz","Zeri"]), WALL_MELEE_EXEMPT = new Set(["Fiddlesticks","Kayle"]);
+  for (const u of U){ const W=WALLS[u.c.champ]; if (!W) continue;
+    for (const s of Object.keys(W)) if (W[s].kind!=="braum" && u.ab[s] && (W[s].reflects || !u.ab[s].parts.length)) delete u.ab[s]; }
+  function addWall(u, slot, t){ const b=u.abAll[slot], W=wallSpecOf(u.c.champ, slot, b ? b.rank : 1); if (!W) return null;
+    const w={...W, owner:u, side:u.side, slot, from:t, until:t+W.dur, x: W.kind==="line" ? (u.xS ?? u.x)+face(u)*(RAD(u)+1) : null};
+    walls.push(w);
+    say(t, `  ${u.name}: ${W.name} ${W.kind==="line"?`(a wall at ${fmt(w.x)})`:W.kind==="aura"?`(a ${fmt(W.r)}-radius barrier around ${u.name})`:"(his shield, facing the enemy)"} until ${fmt(w.until)}s: it ${W.kind==="braum"?"intercepts":W.reflects?"destroys and reflects":"destroys"} enemy projectiles`);
+    simNotes.add(`${u.name} ${slot}: ${W.name} — ${W.kind==="line"?`a wall placed just in front of ${u.name} for ${fmt(W.dur)} s`:W.kind==="aura"?`a ${fmt(W.r)}-radius barrier around ${u.name} for ${fmt(W.dur)} s`:`the shield in front of Braum for ${fmt(W.dur)} s: projectiles aimed at allies behind him hit him instead`}; enemy projectiles crossing it are ${W.reflects?"destroyed and replicated back at their source":"stopped"} as each ability's page says (wiki Projectile; the sheets' walls rules)`);
+    return w; }
+  // is wall w between u's projectile and its target x while it's up? (spd: the missile speed, for when it crossed the wall)
+  function wallBetween(w, u, x, t, spd){ const ux=u.xS ?? u.x, xx=x.xS ?? x.x; let cross;
+    if (w.side===u.side || w.from > t+1e-9) return false;
+    if (w.kind==="line"){ if (!((w.x-ux)*(xx-w.x) > 0)) return false; cross=Math.abs(xx-w.x); }
+    else { if (!w.owner.alive || x.side!==w.side) return false; const ox=w.owner.xS ?? w.owner.x;
+      if (w.kind==="aura"){ if (Math.abs(xx-ox) > w.r+1e-6) return false; cross=Math.max(0, w.r-Math.abs(xx-ox)); }
+      else { if (x===w.owner || !((ox-ux)*(xx-ox) > 0)) return false; cross=Math.abs(xx-ox); } }
+    return w.until >= (spd>0 ? t-cross/spd : t) - 1e-9; }
+  const wallExempt = (u, x, t) => WALL_ATTACK_EXEMPT.has(u.c.champ) || u.c.champ==="Samira"   /* her attacks are blade attacks within 200 here */
+    || (WALL_MELEE_EXEMPT.has(u.c.champ) && gap(u,x) <= 125+RAD(u)+RAD(x)+1e-6) || (u.kit && u.kit.discharge && u.kit.discharge.until>t);   // Viktor Q's Discharge attack
+  /* the wall that stops u's projectile (ability a, or o.attack) on x at its landing t: null, or {w, intercept: Braum} */
+  function wallStop(u, a, x, t, o={}){
+    if (u.pet || (u.script && !u.scriptTravel) || !x || x.side===u.side) return null;
+    const atk=!!o.attack; if (!atk && !(a && a.p && a.p.projectile)) return null;
+    const spd = atk ? o.speed : (a.p.speed || (a.p.pressMissile||{}).maxSpeed || 0), ux=u.xS ?? u.x;
+    const verdict = w => { if (atk) return {b:true, refl:!!w.reflects};
+      const V=wallVerdict(a.p, w.key, {skip:wallSkip(u.c, a.slot), partial:()=>!(u.c.champ==="Viktor" && a.slot==="E" && w.kind==="line" && Math.abs(w.x-ux) <= (a.p.range||550)+1e-6)});
+      return {b: V.out.length ? V.out[0].b : V.v==="blocked", refl: !!w.reflects && V.out.some(q=>q.b && q.r==="reflected")}; };
+    let hit=null;
+    for (const w of walls){ if (!wallBetween(w, u, x, t, spd)) continue; const r=verdict(w); if (r.b){ hit={w, ...r}; break; } }
+    if (!hit && !atk) hit=raiseWall(u, a, x, t, verdict);
+    if (!hit) return null;
+    const w=hit.w, own=w.owner, what = atk ? `${u.name}'s attack` : `${u.name}'s ${a.slot}`;
+    if (w.kind==="braum"){ say(t, `  ${own.name}'s Unbreakable intercepts ${what} aimed at ${x.name}: it hits ${own.name}`); return {w, intercept:own}; }
+    own.blocks=(own.blocks||0)+1;
+    say(t, `  ${own.name}'s ${w.name} ${hit.refl?"destroys and reflects":"stops"} ${what} on ${x.name}`);
+    if (hit.refl) melReflect(own, u, a, t, atk);
+    return {w}; }
+  // perfect play: x raises a ready wall that would stop it just as it arrives (Yasuo W, Mel W by hand; Samira W is cast, slashes included)
+  function raiseWall(u, a, x, t, verdict){ const W=WALLS[x.c.champ]; if (!W || x.passive || x.script || !x.alive || inStasis(x,t) || !canCast(x,t)) return null;
+    for (const s of Object.keys(W)){ const b=x.abAll[s]; if (W[s].kind==="braum" || !b || (x.cd[s]||0)>t+1e-9 || enShort(x,b,t)) continue;
+      const pw={...wallSpecOf(x.c.champ, s, b.rank), x:(x.xS ?? x.x)+face(x)*(RAD(x)+1)}; if (!pw.key) continue; const r=verdict(pw); if (!r.b) continue;
+      let w;
+      if (b.parts.length){ const n=walls.length; cast(x, b, u, t); w=walls.length>n ? walls[walls.length-1] : null; }
+      else { refresh(x,t); abNums(x,b); x.cd[s]=t+abCd(x,b); say(t, `${x.name} casts ${s} as ${u.name}'s ${a.slot} arrives (perfect reaction)`); w=addWall(x, s, t);
+        if (b.shield) shield(x, x, b.shield, W[s].reflects ? (dvOf(b.S,"duration",b.rank)||0.75) : b.shieldDur, t, s); }
+      if (!w) continue; w.from=-Infinity;   // raised in time (perfect play)
+      simNotes.add(`${x.name} ${s}: raised just as an enemy projectile ability it stops arrives (perfect reaction), if ready`);
+      return {w, ...r}; }
+    return null; }
+  /* Mel W (wiki Rebuttal): the destroyed projectile is replicated as Mel's own, "retain[ing] a ratio of the damage that the original ones
+     would deal" — 40–60% (+5% per 100 AP) (W damagepercent), all magic, physical first reduced to 70%; scaled by the source's stats,
+     only Mel's damage modifiers and magic penetration. Unit-targeted / auto-targeted missiles (and attacks) come back homing at the
+     source; the rest fly toward it with their own range. Its crowd control comes along ("Spell effects ... vary based on the original
+     missile"). DECISIONS 23 (each Syndra R sphere), 30 (Viktor E, from Mel's centre). */
+  function melReflect(mel, src, a, t, atk){ const b=mel.abAll.W; if (!b || !src.alive) return;
+    const pct=evalCalc({S:b.S, rank:b.rank, st:mel.st, flags:mel.flags}, "damagepercent").v;
+    const parts = atk ? [{v:src.st.ad*(1+src.st.crit*(critVs(src,src)-1)), type:"physical"}] : (a.parts||[]);
+    let v=0; for (const p of parts) v += partDmg(p, src)*(p.type==="physical" ? 0.7 : 1);
+    v*=pct; const homing = atk || a.p.delivery==="unit" || a.p.kind==="targeted", g=gap(mel, src);
+    if (!homing && g > abReach(src, a, mel)+1e-6){ say(t, `  ${mel.name}'s copy of ${src.name}'s ${a.slot} flies toward ${src.name} but falls short (${fmt(g)} > its reach)`); return; }
+    const spd = atk ? attackData(src).msl : (a.p.speed || (a.p.pressMissile||{}).maxSpeed || 0), what=`W reflect: ${atk?"attack":a.slot}`;
+    simNotes.add(`${mel.name} W: Rebuttal replicates destroyed projectiles back at their source: ${fmt(100*pct)}% of the damage as magic (physical at 70%), with their crowd control (wiki Mel W; DECISIONS 23/30)`);
+    const fn=(tt)=>{ if (!src.alive || !mel.alive) return; if (v>0) deal(mel, src, v, "magic", tt, "proc", what); if (!atk && a.cc && a.cc.length) applyCC(mel, a, src, tt, g); };
+    const at = spd>0 ? g/spd : 0; if (at < dt/2) fn(t); else events.push({at:t+at, fn}); }
   // spell shields: items (Banshee's, Edge of Night, Verdant Barrier) and abilities (Sivir E, Nocturne W: cast as the ability lands, perfect play)
   // what: the part blocked, for the log ("one sphere of", "the crowd control of"; default the whole ability)
   function blocked(u,a,x,t,what){
@@ -1701,6 +1775,10 @@ function simulate(sidesIn, T, simNotes, fo){
        the landing (u.aaT0 = the start, for the timers they set). */
     const land=(t)=>{
     if (!tgt.alive || inStasis(tgt,t)){ if (ATTACK_TIMING) say(t, `${u.name}'s attack on ${tgt.name} misses (${!tgt.alive?"dead":"untargetable"} as it lands)`); return; }
+    // P4: a ranged attack's missile is stopped by a projectile wall (wiki Projectile: not Azir/Senna/Thresh/Vel'Koz/Zeri, melee-range
+    // Fiddlesticks/Kayle, Samira's blade attacks, Viktor's Discharge); Braum E intercepts it: the attack lands on Braum
+    if (u.ranged && !u.pet && walls.length && !wallExempt(u, tgt, t)){ const ms=attackData(u).msl;
+      if (ms>0){ const wb=wallStop(u, null, tgt, t, {attack:true, speed:ms}); if (wb){ if (!wb.intercept || !wb.intercept.alive) return; tgt=wb.intercept; } } }
     { const kd=!tgt.pet && CHAMP_MECH[tgt.c.champ]; if (kd && kd.dodgeAttack && kd.dodgeAttack(tgt, u, t)){ say(t, `${tgt.name} dodges ${u.name}'s attack`); return; } }   // Jax E, Counter Strike
     refresh(u,t); u.aaT0=t0;
     // the attack's damage (critical strikes at their expected value)
@@ -1789,9 +1867,15 @@ function simulate(sidesIn, T, simNotes, fo){
     if (!a.aoe) return tgt && tgt.alive && !inStasis(tgt,t) && aimed(tgt) ? [tgt] : [];
     const p=a.p||{}, r=p.radius||0, foes=enemiesOf(u,t);
     let list;
-    if (p.delivery==="self") list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6);
-    else if (tgt && r>0 && (p.kind==="area" || ["placed","lobbed","remote"].includes(p.delivery))) list = foes.filter(x=>gap(x,tgt)<=r+RAD(x)+1e-6 && aimed(tgt));
-    else { list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6);        // lines and cones: on one line, everything within reach
+    // P5: global (Karthus R): every targetable enemy CHAMPION (wiki "all targetable enemy champions"), so no pets
+    if (p.delivery==="self") list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6 && !(p.global && x.pet));
+    // areas centred on the target (perfect aim): DECISIONS 29 — a {{tip|cr}} radius needs the other unit's centre inside, else + its hitbox
+    else if (tgt && r>0 && (p.kind==="area" || ["placed","lobbed","remote"].includes(p.delivery))) list = foes.filter(x=>gap(x,tgt)<=r+areaPad(p.radiusMode, RAD(x))+1e-6 && aimed(tgt));
+    else { // lines and cones: on one line, everything within reach — ahead of the caster (aimed at tgt); P5: behind it, a line or cone
+      // from the caster reaches only its rectangle's `behind` (Rell Q 220, Qiyana Q 40, Viego Q 25; 0 for the rest) + the hitbox (er)
+      const dir = tgt ? Math.sign((tgt.xS ?? tgt.x)-(u.xS ?? u.x)) : 0, fwd = dir!==0 && (p.delivery==="skillshot" || p.delivery==="cone");
+      const behindOk = x => !fwd || Math.sign((x.xS ?? x.x)-(u.xS ?? u.x))!==-dir || gap(u,x) <= (p.behind||0) + areaPad(p.kind==="cone" ? p.angleMode : p.widthMode, RAD(x)) + 1e-6;
+      list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6 && behindOk(x));
       if (L && L.deferred && L.castOk && tgt && foes.includes(tgt) && !list.includes(tgt)) list.push(tgt); }   // aimed at it at the press
     return list;
   }
@@ -1813,6 +1897,9 @@ function simulate(sidesIn, T, simNotes, fo){
     // stasis: nothing lands on it, it doesn't act) and invulnerable (0 damage; still targetable, crowd control still applies).
     // A window from the press applies to the whole press step (the tick loop: castStartSlot); a later one starts at press + start.
     castGrants(u, a, t);
+    // P4: a projectile wall goes up at the press (Yasuo W "starts blocking projectiles on-cast"; Samira W / Mel W / Braum E have no cast
+    // time); Mel W's "damage" is the replicated projectiles' ratio (melReflect), not a hit of its own
+    if (WALLS[u.c.champ] && WALLS[u.c.champ][a.slot]){ addWall(u, a.slot, t); if (WALLS[u.c.champ][a.slot].reflects) a.parts=[]; }
     // dashes and blinks move the caster: toward the target (to touching distance, at most the dash range) or away from a chaser (o.away)
     const d0 = tgt ? gap(u,tgt) : 0;
     { const km=CHAMP_MECH[u.c.champ]; if (!o.away && km && km.startCast && km.startCast(u, a, tgt, t, d0)) return; }   // champion kits: delayed resolution (Zed R)
@@ -1960,6 +2047,9 @@ function simulate(sidesIn, T, simNotes, fo){
       if (!(L && L.deferred && !targets.length)) say(t, `${u.name}${L && L.deferred ? `'s ${a.slot} lands` : ` casts ${a.slot}`}${a.aoe&&targets.length>1?` (area, ${targets.length} targets)`:""}`);
       let hitAny=false;
       targets.forEach((x, i)=>{
+        // P4: a projectile wall between u and x stops it (wallStop); Braum E intercepts a single-target one (it hits him instead) and
+        // stops a pass-through one at him (the targets behind take nothing; he is hit if he's in the list)
+        { const wb=wallStop(u,a,x,t); if (wb){ if (!wb.intercept || a.aoe || !wb.intercept.alive) return; x=wb.intercept; } }
         // P3: spell shields per hit (shieldHit): "all" blocks the cast on x, "one" one hit (cut), "cc" its crowd control, "dmg" its damage
         const sh=shieldHit(u,a,x,t); if (sh==="all") return; hitAny=true;
         const cut = sh==="one" ? oneHitCut(u,a) : null, keep = cut && cut.n ? 1-1/cut.n : 1, noDmg = sh==="dmg";
@@ -1995,7 +2085,7 @@ function simulate(sidesIn, T, simNotes, fo){
       if (hitAny) enOnHit(u, a, t);   // energy restores on a damaging cast (Kennen E, Shen Q/E; item 24)
     }
     if (!a.parts.length && (tgt || (a.p && a.p.delivery==="self")) && (a.immob || a.slows || (a.cc && a.cc.length))){ say(t, `${u.name}${L && L.deferred ? `'s ${a.slot} lands` : ` casts ${a.slot}`}`); a.saidAt=t;
-      for (const x of hitList(u,a,tgt,t,L)){ if (L && L.voided && x===tgt) continue; { const sh=shieldHit(u,a,x,t); if (sh && sh!=="dmg") continue; } passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
+      for (let x of hitList(u,a,tgt,t,L)){ if (L && L.voided && x===tgt) continue; { const wb=wallStop(u,a,x,t); if (wb){ if (!wb.intercept || a.aoe || !wb.intercept.alive) continue; x=wb.intercept; } } { const sh=shieldHit(u,a,x,t); if (sh && sh!=="dmg") continue; } passiveMarks(u,a,x,t); if (a.hardcc){ x.impairedBy=u; x.impairedUntil=t+1; } ccItems(u,x,t,a); applyCC(u,a,x,t,d0); } }
     else if (!a.parts.length && !a.heal && !a.shield && !a.quiet && !(L && L.deferred)) say(t, `${u.name} casts ${a.slot}`);
     if (km && km.afterCast) km.afterCast(u, a, ktg, t);
     a.land=null;
@@ -6694,39 +6784,77 @@ function physOf(c, slot){
 const DELIVERIES = {skillshot:"skillshot", lobbed:"lobbed", placed:"placed", vector:"vector", remote:"remote", unit:"point-and-click", self:"centred on the caster", cone:"cone"};
 /* THE REACH RULE — one rule for canDodge, fight() and combos. The greatest centre-to-centre distance at which
    something hits a target, given the caster's gameplay radius rc and the target's rt (wiki "Range", Calculations
-   + "Targeted abilities"; game data: the spell record's castRangeUseBoundingBoxes flag, calc.json phys.edgeRange):
+   + "Targeted abilities"; game data: the spell record's castRangeUseBoundingBoxes flag, calc.json phys.edgeRange; the wiki's
+   {{tip|cr}} / {{tip|er}} marks per ability, via the interaction sheets: calc.json phys.reachMode / radiusMode / widthMode / angleMode):
+   - global abilities (calc.json phys.global, the sheets' range "global": Karthus R, Ezreal R, Lillia R, Mel R, …): any distance
+     (Infinity). Karthus R hits every targetable enemy champion; only untargetability/stasis at completion or a spell shield avoid it
    - basic attacks: edge range, always: attack range + rc + rt (Annie 625 + 65 + 65 = 755 vs a 65-radius target)
    - point-and-click spells: centred range: the cast range itself (Annie Q 625 reaches a centre 625 away,
      whatever the target's size; wiki: "Annie q and normal attack same 625 range, but normal attack range longer")
      — except the spells whose record sets castRangeUseBoundingBoxes (Tristana E/R, Vayne E, Viktor Q, Ryze W/E,
-     Anivia E, Lucian Q, …; the same list as the wiki's edge-range table): edge range, range + rc + rt
-   - everything else (skillshots, areas, cones): centre to edge: its reach (reachOf) + rt; except skillshots whose wiki
-     range icon marks the files' number (calc.json phys.reachMode): {{tip|cr}} centred (reach), {{tip|er}} edge (reach + rc + rt)
+     Anivia E, Lucian Q, …; the same list as the wiki's edge-range table) or whose wiki range is marked {{tip|er}}
+     (phys.reachMode "edge": Tahm Kench R): edge range, range + rc + rt. A {{tip|cr}} mark wins over the files' flag
+     (DECISIONS 2, the wiki wins: Bel'Veth R 450)
+   - areas — DECISIONS 29 (user-confirmed 2026-09-24, generalising rule 11): an area radius marked {{tip|cr}} hits a target only
+     if its CENTRE is inside (no hitbox added: Cho'Gath Q 125, Rell R 450, Janna R 700, Darius Q 460); marked {{tip|er}} or
+     unmarked, any part of the hitbox counts (+ rt). A ground-targeted area (placed, lobbed, remote) adds its cast range, from
+     the caster's centre ({{tip|cr}} or unmarked) or edge ({{tip|er}}: + rc). The same test (areaPad) sets canDodge's `need`
+     (also for line half-widths, phys.widthMode, and cone edges, phys.angleMode) and fight()'s hitList
+   - everything else (skillshots, cones, vectors, lines from another object): its reach (reachOf) with the wiki's range mark
+     (phys.reachMode): {{tip|cr}} centred (reach), {{tip|er}} edge (reach + rc + rt), unmarked centre to edge (reach + rt)
    - abilities whose hits are basic attacks (p.attackRangeBonus: Twitch R): attack range + bonus + rc + rt
    A point-and-click ability without a cast range of its own (an empowered attack) uses the attack reach. */
 function attackReach(range, rc, rt){ return range + rc + rt; }
+// DECISIONS 29: the hitbox a wiki mark adds to an area radius, a line's half-width or a cone's edge: cr → none (centre inside), er / unmarked → rt
+function areaPad(mode, rt){ return mode==="cr" ? 0 : rt; }
+// the area part of reachOf: the radius around the landing point (placed, lobbed, remote areas) or the caster (self); 0 for lines,
+// cones, vectors and fixed reaches (p.reach)
+function areaRadiusOf(p){
+  if (p.reach!=null) return 0;
+  switch (p.delivery){
+    case "lobbed": case "placed": case "self": return p.radius||0;
+    case "remote": return p.kind==="area" ? (p.radius||0) : 0;
+    case "vector": case "cone": case "skillshot": return 0;
+    default: return p.kind==="area" ? (p.radius||0) : 0;
+  }
+}
 function hitReach(p, rc, rt, atkRange){
+  // P5: global abilities (the sheets' range "global"; calc.json phys.global) reach every distance
+  if (p.global) return Infinity;
   // p.attackRangeBonus (data/delivery_overrides.json): the ability's hits are basic attacks at the attack range + a bonus (Twitch R +300): edge range
   if (p.attackRangeBonus!=null) return attackReach((atkRange||0) + p.attackRangeBonus, rc, rt);
   // p.reach (data/delivery_overrides.json): a dash or orbit before the homing bolt (Ahri W/R, Ezreal E, Kindred Q): centred too
-  if (p.delivery==="unit"){ const r=p.reach ?? p.range; return !(r>0) ? attackReach(atkRange||0, rc, rt) : p.edgeRange ? r + rc + rt : r; }
+  if (p.delivery==="unit"){ const r=p.reach ?? p.range; if (!(r>0)) return attackReach(atkRange||0, rc, rt);
+    return p.reachMode==="centre" ? r : (p.reachMode==="edge" || p.edgeRange) ? r + rc + rt : r; }
   const r=reachOf(p); if (!(r>0)) return attackReach(atkRange||0, rc, rt);
-  // skillshots: the wiki's range icon per ability (calc.json phys.reachMode, backlog 23): {{tip|cr}} centred (the target's centre
+  // areas (DECISIONS 29): cast range (+ rc when {{tip|er}}) + radius (+ rt unless {{tip|cr}})
+  const R=areaRadiusOf(p);
+  if (R>0){ const cast=Math.max(0, r-R); return cast + (cast>0 && p.reachMode==="edge" ? rc : 0) + R + areaPad(p.radiusMode, rt); }
+  // the wiki's range icon per ability (calc.json phys.reachMode, backlog 23): {{tip|cr}} centred (the target's centre
   // must be within the range: wiki Range, "in most cases the target's center has to be within the maximum range"), {{tip|er}} edge
   // range (range + both hitboxes); without an icon centre to edge (range + the target's hitbox)
-  if (p.delivery==="skillshot" && p.reachMode==="centre") return r;
-  if (p.delivery==="skillshot" && p.reachMode==="edge") return r + rc + rt;
+  if (p.reachMode==="centre") return r;
+  if (p.reachMode==="edge") return r + rc + rt;
   return r + rt;
 }
 // the working for hitReach, in words
 function reachWhy(p, rc, rt, atkRange){ const v=hitReach(p, rc, rt, atkRange), r = p.delivery==="unit" ? p.reach ?? p.range : reachOf(p);
   if (p.attackRangeBonus!=null) return `its hits are basic attacks: attack range ${fmt(atkRange||0)} + ${fmt(p.attackRangeBonus)} + ${fmt(rc)} + ${fmt(rt)} hitboxes = ${fmt(v)} (edge range, wiki Range)`;
+  if (p.global) return `global: every distance (the interaction sheet's range "global", calc.json phys.global)`;
   if (!(r>0)) return `attack range ${fmt(atkRange||0)} + ${fmt(rc)} + ${fmt(rt)} hitboxes = ${fmt(v)} (edge range, wiki Range)`;
-  if (p.delivery==="skillshot" && p.reachMode==="centre") return `reach ${fmt(r)}, centre to centre (the wiki marks its range {{tip|cr}}: the target's centre must be within it)`;
-  if (p.delivery==="skillshot" && p.reachMode==="edge") return `reach ${fmt(r)} + ${fmt(rc)} caster hitbox + ${fmt(rt)} hitbox = ${fmt(v)} (the wiki marks its range {{tip|er}}: edge range)`;
-  if (p.delivery!=="unit") return `reach ${fmt(r)} + ${fmt(rt)} hitbox = ${fmt(v)} (centre to edge, wiki Range)`;
-  if (p.edgeRange) return `${fmt(r)} + ${fmt(rc)} caster hitbox + ${fmt(rt)} hitbox = ${fmt(v)} (edge range: the game files' castRangeUseBoundingBoxes; wiki Range "Targeted abilities")`;
-  return `${fmt(v)}, centre to centre (point-and-click spells use centred range, wiki Range: the hitboxes don't extend it)`; }
+  if (p.delivery==="unit"){
+    if (p.reachMode==="centre") return `${fmt(v)}, centre to centre (the wiki marks its range {{tip|cr}}${p.edgeRange ? "; it wins over the files' castRangeUseBoundingBoxes, DECISIONS 2" : ""})`;
+    if (p.reachMode==="edge" || p.edgeRange) return `${fmt(r)} + ${fmt(rc)} caster hitbox + ${fmt(rt)} hitbox = ${fmt(v)} (edge range: ${p.reachMode==="edge" ? "the wiki marks its range {{tip|er}}" : "the game files' castRangeUseBoundingBoxes; wiki Range \"Targeted abilities\""})`;
+    return `${fmt(v)}, centre to centre (point-and-click spells use centred range, wiki Range: the hitboxes don't extend it)`; }
+  const R=areaRadiusOf(p);
+  if (R>0){ const cast=Math.max(0, r-R);
+    const castT = cast>0 ? `cast range ${fmt(cast)}${p.reachMode==="edge" ? ` + ${fmt(rc)} caster hitbox ({{tip|er}})` : p.reachMode==="centre" ? " ({{tip|cr}})" : ""} + ` : "";
+    const radT = p.radiusMode==="cr" ? `radius ${fmt(R)} ({{tip|cr}}: the target's centre must be inside, DECISIONS 29)`
+      : `radius ${fmt(R)} + ${fmt(rt)} hitbox (${p.radiusMode==="er" ? "{{tip|er}}: any part of the hitbox counts, DECISIONS 29" : "unmarked: centre to edge, wiki Range"})`;
+    return `${castT}${radT} = ${fmt(v)}`; }
+  if (p.reachMode==="centre") return `reach ${fmt(r)}, centre to centre (the wiki marks its range {{tip|cr}}: the target's centre must be within it)`;
+  if (p.reachMode==="edge") return `reach ${fmt(r)} + ${fmt(rc)} caster hitbox + ${fmt(rt)} hitbox = ${fmt(v)} (the wiki marks its range {{tip|er}}: edge range)`;
+  return `reach ${fmt(r)} + ${fmt(rt)} hitbox = ${fmt(v)} (centre to edge, wiki Range)`; }
 /* How far from the caster the ability can hit (to the edge of its area). */
 function reachOf(p){
   if (p.reach!=null) return p.reach;
@@ -6749,6 +6877,44 @@ function travelDist(p, d){
     case "self": return p.speed ? d : 0;
     default: return d;
   }
+}
+/* P5 — shapes projected onto fight()'s one line. canDodge asks how far the defender must step to be out of the shape when it
+   lands; each shape states its perfect-play assumption. Aim: the ability is aimed at the defender (its centre line / the centre
+   of its area on the defender's centre at the press). The defender: steps out the shortest way. Returns {edge, pad, need, what,
+   note}: edge = the shape's half-extent across the aim line at distance d, pad = the hitbox the wiki's cr/er mark adds
+   (DECISIONS 29), need = the distance to step. */
+// Twisted Fate Q's side cards (wiki Wild Cards: "three cards at −28°, 0°, +28°", each 80 wide, 1450 range; each enemy is hit once)
+const SIDE_CARDS = {"TwistedFate.Q": 28};
+// growing areas: the edge is reached after the growth (phys.delay carries it); the front outruns any walker, so being outside the
+// full radius by then is exactly what dodges it
+const GROWING = {
+  "Seraphine.Q": "the area expands over 0.4 s from the landing (wiki: \"expands in a radius over 0.4 seconds\", 875 units/s): the front outruns any walker, so the defender must be outside the full 350 radius when it finishes — canDodge's landing time already includes the 0.4 s (phys.delay)",
+  "Zyra.R": "the thicket's initial damage grows outward from the landing; the knock-up 2 s later covers the full 560 radius at once (wiki), and that is what canDodge times" };
+function shapeNeed(p, d, key, HB){
+  const tanD = deg => Math.tan(deg*Math.PI/180), notes=[];
+  if (GROWING[key]) notes.push(`${key}: ${GROWING[key]}`);
+  if (p.shapeKind==="arc") notes.push(`${key}: the bolt travels in an arc to the target point (wiki); projected as a straight line of the same width ending on the defender (perfect aim), with the chord's travel time — the arc's longer path would only add time`);
+  if (p.shapeKind==="wall") notes.push(`${key}: a wall across the fight line (its length runs sideways); the shortest way out is along the line, out of its ${fmt(p.radius||0)} half-thickness (perfect play). Crossing it later by walking through it is a zone effect, not a landing`);
+  if (p.shapeKind==="ring" && p.innerRadius) notes.push(`${key}: a ring (inner ${fmt(p.innerRadius)}, outer ${fmt(p.radius||0)}); the inner area still hits (the sheet: "all-in-area"), so only leaving the outer radius dodges it`);
+  if (p.behind) notes.push(`${key}: its rectangle also reaches ${fmt(p.behind)} behind the caster (fight(): enemies behind are hit within that)`);
+  const note = notes.join("; ");
+  if (SIDE_CARDS[key] && p.kind==="line" && p.halfWidth){
+    // the side cards cross the defender's distance d at d × tan(angle) to either side (within their range × cos(angle))
+    const w=p.halfWidth, pad=areaPad(p.widthMode, HB), ang=SIDE_CARDS[key], reach=(p.range||0)*Math.cos(ang*Math.PI/180);
+    if (d > reach) return {edge:w, pad, need:w+pad, what:`${fmt(w)} half-width of the centre card (the ±${ang}° side cards end before ${fmt(d)})`, note};
+    const off=d*tanD(ang), gapTo=off-w-pad, fan=`${key}: the ±${ang}° side cards cross ${fmt(d)} units out ${fmt(off)} to either side of the centre card (perfect play: the defender steps to the nearest spot no card touches; each enemy is hit once)`;
+    if (gapTo > w+pad) return {edge:w, pad, need:w+pad, what:`${fmt(w)} half-width of the centre card, into the gap before the side card (clear up to ${fmt(gapTo)})`, note:[note, fan].filter(Boolean).join("; ")};
+    return {edge:off+w, pad, need:off+w+pad, what:`no gap between the cards for this hitbox at ${fmt(d)}: past the side card, ${fmt(off)} out + its ${fmt(w)} half-width`, note:[note, fan].filter(Boolean).join("; ")};
+  }
+  if (p.kind==="line" && p.coneAngle){   // a fan of missiles (Akali Q): the cone's half-width at d + one missile's half-width
+    const L=Math.min(p.coneLength||p.range, d), e=L*tanD(p.coneAngle/2)+(p.halfWidth||0), pad=areaPad(p.widthMode, HB);
+    return {edge:e, pad, need:e+pad, what:`a fan of missiles: ${fmt(L)} × tan ${fmt(p.coneAngle/2)}° + ${fmt(p.halfWidth||0)} missile half-width = ${fmt(e)}`, note};
+  }
+  if (p.kind==="line"){ const e=p.halfWidth||0, pad=areaPad(p.widthMode, HB); return {edge:e, pad, need:e+pad, what:`${fmt(e)} half-width`, note}; }
+  if (p.kind==="cone"){ const e=Math.min(p.coneLength||p.range, d)*Math.tan((p.coneAngle||30)*Math.PI/360), pad=areaPad(p.angleMode, HB);
+    return {edge:e, pad, need:e+pad, what:`${fmt(e)} cone half-width here`, note}; }
+  const e=p.radius||0, pad=areaPad(p.radiusMode, HB);
+  return {edge:e, pad, need:e+pad, what:`${fmt(e)} ${p.shapeKind==="wall" ? "wall half-thickness" : "radius"}`, note};
 }
 function describePhys(who, p){
   return `${who}: ${DELIVERIES[p.delivery]||p.delivery} (${p.kind}), range ${fmt(p.range)}${p.minRange?` (charged from ${fmt(p.minRange)} over ${fmt(p.chargeTime)}s)`:""}${p.delivery==="vector"&&p.length?` + ${fmt(p.length)} length`:""}${p.delivery==="remote"?`, from ${p.origin||"another object"}`:""}, cast time ${fmt(p.castTime)}s${p.speed?`, speed ${fmt(p.speed)}/s${p.accel?` accelerating ${p.maxSpeed||p.minSpeed?`to ${fmt(p.maxSpeed||p.minSpeed)}`:`by ${fmt(p.accel)}/s²`}`:""}`:""}${p.halfWidth?`, width ${fmt(2*p.halfWidth)}`:""}${p.kind!=="line"&&p.radius?`, radius ${fmt(p.radius)}`:""}${p.delay?`, delay ${fmt(p.delay)}s`:""}`;
@@ -6855,7 +7021,8 @@ function canDodge(def, ab, named){
   // heals, shields, buffs, ally and self abilities (phys.hostile false; interaction sheets): nothing reaches the enemy
   if (p.hostile===false){ line(`${describePhys(who,p)}`); line(`  no enemy effect: ${who} is a heal, shield, buff or ally/self ability (interaction sheet data/interactions/${a.champ}.json), so there is nothing to dodge`); return true; }
   const selfArea = p.delivery==="self" && (p.radius || p.speed);
-  const edge = p.kind==="line" ? (p.halfWidth||0) : p.kind==="cone" ? Math.min(p.coneLength||p.range, d)*Math.tan((p.coneAngle||30)*Math.PI/360) : (p.radius||0);
+  const SH = shapeNeed(p, d, `${a.champ}.${s}`, HB), edge = SH.edge;   // P5: the shape on the 1-D line (shapeNeed; DECISIONS 29 cr/er)
+  if (TR && SH.note) TR.notes.add(SH.note);
   const RC = hitboxOf(a), reach = hitReach(p, RC, HB, stats(a).range);   // the shared reach rule (see hitReach)
   const reachText = reachWhy(p, RC, HB, stats(a).range);
   if (p.kind==="self" && !selfArea){ line(`${describePhys(who,p)}; it isn't a projectile or area ability, so dodging doesn't apply`); return false; }
@@ -6893,6 +7060,8 @@ function canDodge(def, ab, named){
     if (x.unseen.kind==="camouflage" && !(d > (x.unseen.detect ?? Infinity))){
       line(`  ${x.label}: camouflage, but ${label(a)} is ${fmt(d)} units away, within its ${x.unseen.detect!=null?`${fmt(x.unseen.detect)} detection radius`:"detection radius (unknown: assumed seen)"} (wiki Camouflage), so ${label(def)} can be targeted`); continue; }
     line(`  ${x.label}: ${label(def)} is already ${x.unseen.kind==="camouflage"?`camouflaged beyond its ${fmt(x.unseen.detect)} detection radius`:"invisible"}, so ${who} (point-and-click) can't be cast on her → dodged (reaction time doesn't matter: there is nothing to target)`); return true; }
+  // P4: walls and spell shields among the using: tools (blockCheck); a partial block goes on to walking and the other tools
+  if (acts.some(x=>x.wall || x.shield) && blockCheck(def, a, s, p, d, HB, acts, tp0, T, who, named)===true) return true;
   if (avail<=0) return hit("hit: no time to respond");
   // void windows (untargetable / stasis / invulnerable / parry), pressed at tp0 or later: it covers the landing at T iff tp0 + start ≤ T
   const voids=[]; for (const x of acts) for (const w of x.void||[]) voids.push({x, w, ok: tp0 + w.s <= T + 1e-9, press: Math.max(tp0, T - w.e)});
@@ -6929,10 +7098,12 @@ function canDodge(def, ab, named){
     line(`  ${who} is point-and-click: once cast, walking can't dodge it`);
     return hit();
   }
-  const need = selfArea ? Math.max(0, (p.radius||reachOf(p)) + HB - d) : edge + HB;
+  // DECISIONS 29: a {{tip|cr}} radius / width / angle adds no hitbox (the defender's centre must leave it); global: no distance is out of it
+  const selfPad = areaPad(p.radiusMode, HB), padT = x => x ? ` + ${fmt(x)} hitbox` : ` (the wiki marks it {{tip|cr}}: the centre must leave it, DECISIONS 29)`;
+  const need = selfArea ? (p.global ? Infinity : Math.max(0, (p.radius||reachOf(p)) + selfPad - d)) : SH.need;
   if (slowSpec){ slowSpec.need=need; slowSpec.at=slowSpec.atAbs-reveal-react; }
-  const needText = selfArea ? `${fmt(need)} units outward (${fmt(p.radius||reachOf(p))} radius + ${fmt(HB)} hitbox − ${fmt(d)} already between them)`
-    : G ? `${fmt(need)} units out (${fmt(edge)} radius + ${fmt(HB)} hitbox)` : `${fmt(need)} units sideways (${fmt(edge)} ${p.kind==="line"?"half-width":p.kind==="cone"?"cone half-width here":"radius"} + ${fmt(HB)} hitbox)`;
+  const needText = selfArea ? (p.global ? `out of a global area: no distance is enough (it reaches every targetable enemy champion)` : `${fmt(need)} units outward (${fmt(p.radius||reachOf(p))} radius${padT(selfPad)} − ${fmt(d)} already between them)`)
+    : G ? `${fmt(need)} units out (${fmt(edge)} radius${padT(SH.pad)})` : `${fmt(need)} units sideways (${SH.what}${padT(SH.pad)})`;
   const walk = slowSpec ? walkWith(ds, [], 0, avail, slowSpec).dist : ds.ms*avail;
   line(`  must move ${needText}; walking at ${fmt(ds.ms)}${slowSpec&&slowSpec.pct?` (${fmt(msCap((ds.msuncapped||ds.ms)*(1-slowSpec.pct)))} once slowed inside)`:""} covers ${fmt(walk)} (needs ${fmt(need/avail)} move speed${slowSpec?" unslowed":""})`);
   if (walk>=need){ line("  → dodged by walking"); stormLine(def, a, s, p, d, HB, ds); return true; }
@@ -7004,10 +7175,100 @@ function withNimbus(def, y, r){
 function winBound(v, end){ if (v==null) return end ? Infinity : 0; if (typeof v==="number") return v; if (typeof v==="object" && v.min!=null) return end ? v.min : v.max; return end ? Infinity : 0; }
 /* stasis items in using: (DECISIONS / P2): Zhonya's Hourglass and the Stopwatch line (Seeker's Armguard here): stasis from the press */
 const STASIS_ITEMS = {zhonyashourglass:"Zhonya's Hourglass", seekersarmguard:"Stopwatch (Seeker's Armguard)"};
+/* ===== P4 (interaction audit, 2026-09-25): projectile walls and spell shields — shared by canDodge and fight() =====
+   WALLS: the four walls of the wiki Projectile page, by champion and slot: the sheet key of phys.hits[*].walls and the wall on the
+   1-D line. line: Yasuo W, a fixed wall placed in front of him (wiki: "starts blocking projectiles on-cast", 4 s, WallLife);
+   aura: a barrier around the owner that moves with her (Samira W: radius 325 er, 0.75 s from the press, "destroying all hostile
+   non-turret projectiles within the area"; Mel W: radius 175 cr, 0.75 s, destroys and replicates them); braum: Braum E, his shield
+   in front of him (3–4 s, ShieldHoldDuration): intercepted projectiles hit Braum instead ("Projectiles whose effects trigger on
+   collision will still trigger"). Turret shots are never blocked (no turrets in fight()). */
+const WALLS = {
+  Yasuo:{W:{key:"yasuoW", kind:"line", name:"Wind Wall", durKey:"walllife", dflt:4}},
+  Samira:{W:{key:"samiraW", kind:"aura", name:"Blade Whirl", durKey:"slashduration", dflt:0.75, r:325}},
+  Braum:{E:{key:"braumE", kind:"braum", name:"Unbreakable", durKey:"shieldholdduration", dflt:4}},
+  Mel:{W:{key:"melW", kind:"aura", name:"Rebuttal", durKey:"duration", dflt:0.75, r:175, rKey:"shieldradius", reflects:true}},
+};
+function wallSpecOf(champ, slot, rank){ const w=(WALLS[champ]||{})[slot]; if (!w) return null; const S=(CALC.champs[champ]||{})[slot]||{};
+  return {...w, dur:dvOf(S, w.durKey, rank) || w.dflt, r: w.rKey ? (dvOf(S, w.rKey, rank) || w.r) : w.r}; }
+const WALL_STOPS = new Set(["blocked","stopped","destroyed","reflected"]);
+/* what a wall (sheet key) does to an ability's hits (phys.hits[*].walls, from its own wiki page, DECISIONS 15/16):
+   blocked / stopped / destroyed / reflected stop the hit; partial: only the part past the wall is blocked (o.partial(h) decides;
+   for a target behind the wall that is all of it); zone-lands (Singed W) and pass: it lands. A hit that depends on a stopped one
+   (dependsOn: Thresh Q's tug, Aatrox W's pull) or a non-projectile hit listed after a stopped projectile with no time of its own
+   (Zac Q's second slam, Illaoi E's slow, Ryze E's spread) doesn't happen either. o.skip(h): hits that don't occur this cast.
+   → {v: "blocked" | "partly" | "pass", n hits, k stopped, out:[{h, r, b}]} */
+function wallVerdict(p, key, o={}){
+  const hs=(p.hits||[]).filter(h=>!(o.skip && o.skip(h)));
+  if (!hs.length) return p.projectile ? {v:"blocked", n:1, k:1, out:[{h:{id:"projectile"}, r:"blocked (a projectile; no per-hit data)", b:true}]} : {v:"pass", n:0, k:0, out:[]};
+  const out=[], stopped=new Set(); let lastProj=null;
+  for (const h of hs){ let r=(h.walls||{})[key] ?? (h.projectile ? "blocked" : "pass"), b=false;
+    if (WALL_STOPS.has(r)) b=true;
+    else if (r==="partial"){ b = o.partial ? o.partial(h) : true; r = b ? "partial: blocked past the wall" : "partial: not blocked here"; }
+    if (!b && h.dependsOn && stopped.has(h.dependsOn)){ b=true; r=`needs ${h.dependsOn} to land`; }
+    else if (!b && !h.projectile && h.at==null && lastProj && stopped.has(lastProj)){ b=true; r=`follows ${lastProj}`; }
+    if (b) stopped.add(h.id); if (h.projectile) lastProj=h.id;
+    out.push({h, r, b}); }
+  const k=out.filter(x=>x.b).length;
+  return {v: k===out.length ? "blocked" : k ? "partly" : "pass", n:out.length, k, out}; }
+/* the hits that don't occur: count 0 / null (optional, e.g. Syndra E's thrown spheres), Viktor E's Aftershock without the E augment */
+function wallSkip(c, slot){ return h => h.count===null || h.count===0 || (c.champ==="Viktor" && slot==="E" && h.id==="aftershock" && !String(kitEvolved(c)).includes("E")); }
+/* how many separate hits a spell shield sees ("oneHit" abilities): phys.shieldHits when it's a number, else the hits' counts (a range
+   counts its minimum; optional hits don't count) */
+function shieldHitCount(c, slot, p){ if (typeof p.shieldHits==="number") return p.shieldHits;
+  let n=0; for (const h of (p.hits||[]).filter(h=>!wallSkip(c, slot)(h))) n += typeof h.count==="number" ? h.count : (h.count && h.count.min!=null ? h.count.min : 1);
+  return Math.max(1, n); }
+/* canDodge: the using: tools that stop the ability instead of moving the defender — walls (x.wall) and spell shields (x.shield:
+   Sivir E, Nocturne W, Banshee's Veil, Edge of Night; NOT Morgana E, DECISIONS 17). Perfect play: the wall is placed right in front
+   of the defender (or the barrier is around it), so it must be up by the time the projectile would reach the defender (its cast
+   time + the reaction count, DECISIONS: the wall's cast from tp0); a spell shield must be up by the first hit. "Dodged" means the
+   whole ability: a multi-hit ability with hits left over is "partly blocked" and the answer goes on (walking may still dodge it).
+   → true (dodged) or null */
+function blockCheck(def, a, s, p, d, HB, acts, tp0, T, who, named){
+  // the projectile reaches the wall at the landing, minus an appear-delay that comes after a modelled flight (Singed W's goo, Vel'Koz W);
+  // with no modelled flight the delay is the missile's time in the air (Varus E's arrows), so it still counts
+  const flown = p.speed>0 || p.fixedTravel>0 || p.flightFrom==="press";
+  const post = flown && ["ground","arm","effect"].includes(p.delayKind) ? (p.delay||0) : 0, Tw = T - post, skip = wallSkip(a, s);
+  for (const x of acts){
+    if (x.wall){ const W=x.wall, up=tp0+W.cast;
+      if (!p.projectile){ line(`  ${x.label} (${W.name}): ${who} isn't a projectile (wiki Projectile; the ability's sheet), so the wall doesn't stop it`); continue; }
+      if (W.kind==="line" && d <= HB + hitboxOf(a) + 1e-6){ line(`  ${x.label} (${W.name}): ${fmt(d)} units leaves no room for a wall between them`); continue; }
+      if (up > Tw + 1e-9){ line(`  ${x.label} (${W.name}): up at ${fmt(up)}s at the earliest (${fmt(tp0)}s + ${fmt(W.cast)}s cast), after ${who} reaches it at ${fmt(Tw)}s`); continue; }
+      // DECISIONS 7 (Yasuo W; Viktor E): a laser started past the wall isn't blocked — Viktor starts it within its cast range (p.range)
+      // of himself, so it is blocked only when the defender's near edge is beyond that; an area wall destroys it inside, wherever it starts (Samira W: DECISIONS 35)
+      const partial = h => !(a.champ==="Viktor" && s==="E" && W.kind==="line" && d - HB <= (p.range||550) + 1e-6);
+      const V=wallVerdict(p, W.key, {skip, partial}), list=V.out.map(o=>`${o.h.id}: ${o.r}`).join(", ");
+      if (W.kind==="braum"){
+        line(`  ${x.label} (${W.name}): ${who} is intercepted by the shield, and an intercepted projectile hits Braum ("Projectiles whose effects trigger on collision will still trigger - dealing damage, applying debuffs", wiki Braum E): the first champion damage from the front is reduced by 100%, then ${fmt(100*(W.dr||0.35))}% less for ${fmt(W.dur)}s; it protects the allies behind him, not Braum (DECISIONS 34)`);
+        if (TR) TR.notes.add(`${x.label}: Unbreakable doesn't dodge for Braum himself: intercepted projectiles still hit him (damage reduced, crowd control applies); fight() makes it intercept projectiles aimed at allies behind him`);
+        continue; }
+      if (V.v==="blocked"){
+        line(`  ${x.label} (${W.name}): up at ${fmt(up)}s, before ${who} reaches it at ${fmt(Tw)}s; ${list} (walls.${W.key}, the ability's wiki page) → dodged`);
+        if (W.reflects && V.out.some(o=>o.r==="reflected")) line(`  Rebuttal replicates it back at ${label(a)} (${p.delivery==="unit"||p.kind==="targeted"?"homing":"fired toward its source"}; 40–60% (+5% per 100 AP) of its damage as magic, physical at 70%; wiki Mel W)`);
+        if (TR) TR.notes.add(`${x.label}: ${W.name} is placed between ${label(def)} and the projectile (perfect play); it must be up before the projectile reaches it (wiki Projectile)`);
+        return true; }
+      line(V.v==="partly" ? `  ${x.label} (${W.name}): partly blocked (${V.k} of ${V.n} hits: ${list}): the rest still lands` : `  ${x.label} (${W.name}): doesn't stop it (${list || "no projectile hits"})`); }
+    if (x.shield){ const S=x.shield, m=p.spellShield || "blocks";
+      if (!S.pre && tp0 + S.s > T + 1e-9){ line(`  ${x.label}: spell shield up at ${fmt(tp0+S.s)}s at the earliest, after ${who} lands at ${fmt(T)}s`); continue; }
+      const when = S.pre ? "already up" : `raised from ${fmt(tp0+S.s)}s, before it lands at ${fmt(T)}s`;
+      if (m==="not"){ line(`  ${x.label}: spell shield ${when}, but ${who} isn't blocked by spell shields (its wiki page)${p.shieldConsumed?"; it still uses the shield up (a documented bug)":""}`); continue; }
+      if (m==="ccOnly"){ if (named.cc){ line(`  ${x.label}: spell shield ${when}: it blocks ${who}'s crowd control (its wiki page) → none of its crowd control lands`); return true; }
+        line(`  ${x.label}: spell shield ${when}: it blocks only ${who}'s crowd control (its wiki page); the damage lands`); continue; }
+      if (m==="damageOnly"){ if (!named.cc){ line(`  ${x.label}: spell shield ${when}: it blocks ${who}'s damage (its wiki page) → dodged (its crowd control still lands: ask with cc: true)`); return true; }
+        line(`  ${x.label}: spell shield ${when}: it blocks only the damage (its wiki page); the crowd control lands`); continue; }
+      if (m==="oneHit"){ const n=shieldHitCount(a, s, p); if (n>1){ line(`  ${x.label}: spell shield ${when}: partly blocked (1 of ${fmt(n)} hits, its wiki page); the rest still land`); continue; } }
+      line(`  ${x.label}: spell shield ${when}: it blocks ${who} (wiki Spell shield) → dodged`); return true; }
+  }
+  return null; }
+/* spell-shield items in using: (P4): Banshee's Veil and Edge of Night (Annul) — up before the fight, blocking the first ability */
+const SHIELD_ITEMS = {bansheesveil:"Banshee's Veil", edgeofnight:"Edge of Night"};
 function dodgeAction(def, y, preBuff, ds, recast, att, dist){
   if (y && (y.t==="item" || typeof y==="string")){
-    const key = typeof y==="string" ? (/^\s*stop\s*watch\s*$/i.test(y) ? "seekersarmguard" : /zhonya/i.test(y) ? "zhonyashourglass" : null) : y.key;
-    if (!key || !STASIS_ITEMS[key]) throw new Error(`using: ${typeof y==="string"?`"${y}"`:(ITEMS[y.key]||{}).name||y.key} isn't a dodge tool; the items canDodge knows are Zhonya's Hourglass and the Stopwatch ("Stopwatch" or SeekersArmguard): stasis from the press`);
+    const key = typeof y==="string" ? (/^\s*stop\s*watch\s*$/i.test(y) ? "seekersarmguard" : /zhonya/i.test(y) ? "zhonyashourglass" : /banshee/i.test(y) ? "bansheesveil" : /edge\s*of\s*night/i.test(y) ? "edgeofnight" : null) : y.key;
+    if (key && SHIELD_ITEMS[key]){ const nm=SHIELD_ITEMS[key];
+      if (TR){ TR.notes.add(`${nm}: Annul, a spell shield that is up before the ability (ready: no ability blocked in the last ${fmt(idv(key,"Cooldown",40))} s) and blocks the first one (wiki)`);
+        if (!(def.items||[]).includes(key)) TR.notes.add(`${label(def)} is assumed to have ${nm} ready (it isn't in its items)`); }
+      return {label:nm, short:nm, void:[], ccImm:[], shield:{s:0, e:Infinity, pre:true}, text:`${nm}: a spell shield already up (Annul)`}; }
+    if (!key || !STASIS_ITEMS[key]) throw new Error(`using: ${typeof y==="string"?`"${y}"`:(ITEMS[y.key]||{}).name||y.key} isn't a dodge tool; the items canDodge knows are Zhonya's Hourglass and the Stopwatch ("Stopwatch" or SeekersArmguard): stasis from the press, and Banshee's Veil / Edge of Night: a spell shield`);
     const dv=((CALC.items[key]||{}).dv||{}).duration, dur=(dv && dv[1]) || 2.5, nm=STASIS_ITEMS[key];
     if (TR){ TR.notes.add(`${nm}: stasis for ${fmt(dur)} s from the press (game files Duration; wiki Stasis: untargetable and invulnerable)`);
       if (!(def.items||[]).includes(key)) TR.notes.add(`${label(def)} is assumed to have ${nm} ready (it isn't in its items)`); }
@@ -7040,6 +7301,11 @@ function dodgeAction(def, y, preBuff, ds, recast, att, dist){
     for (const w of x.void) bits.push(`${w.kind} ${fmt(w.s)}–${Number.isFinite(w.e)?fmt(w.e):"…"}s after its press${w.kind==="untargetable"&&!w.destroys?" (doesn't destroy projectiles already in flight)":""}`);
     for (const w of x.ccImm) bits.push(`${w.kind==="cc"?"crowd control":"displacement"} immune ${fmt(w.s)}–${Number.isFinite(w.e)?fmt(w.e):"…"}s`);
   } else if (tags.untargetable!==undefined || tags.invuln!==undefined){ x.void.push({kind:"untargetable", s:py.castTime||0, e:Infinity, destroys:true, fromTags:true}); bits.push(`untargetable after its ${fmt(py.castTime||0)}s cast (kb tag; no sheet window yet)`); }
+  // P4: a spell shield (phys.grants.spellShield: Sivir E, Nocturne W; Morgana E has none, DECISIONS 17) and the projectile walls (WALLS)
+  if (Gr && Gr.spellShield){ x.shield={s:winBound(Gr.spellShield[0]), e:winBound(Gr.spellShield[1], true)}; bits.push(`spell shield ${fmt(x.shield.s)}–${Number.isFinite(x.shield.e)?fmt(x.shield.e):"…"}s after its press`); }
+  { const rk=Math.max(1, rankOf(def, y.slot)||1), WS=wallSpecOf(def.champ, y.slot, rk);
+    if (WS){ x.wall={...WS, cast:Math.max(0, py.castTime||0), dr:(dvOf((CALC.champs[def.champ]||{})[y.slot]||{}, "shieldfacingdramount", rk)||35)/100};
+      bits.push(WS.kind==="line" ? `a wall that destroys projectiles for ${fmt(WS.dur)}s (placed in front of ${label(def)})` : WS.kind==="aura" ? `a ${fmt(WS.r)}-radius barrier that ${WS.reflects?"destroys and reflects":"destroys"} projectiles for ${fmt(WS.dur)}s` : `a shield that intercepts projectiles for ${fmt(WS.dur)}s (they hit Braum)`); } }
   // displacement / CC immunity from the UNSTOPPABLE table when the sheet data has none
   const U=UNSTOPPABLE[def.champ] && UNSTOPPABLE[def.champ][y.slot];
   if (U && !x.ccImm.length){ x.ccImm.push({kind:U.imm, s: typeof U.from==="number" ? U.from : U.from==="press" ? 0 : (py.castTime||0), e:Infinity}); bits.push(`${U.imm==="cc"?"crowd control":"displacement"} immune (${U.why})`); }
