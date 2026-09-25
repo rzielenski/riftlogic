@@ -1980,11 +1980,17 @@ function simulate(sidesIn, T, simNotes, fo){
         const ccStops=inTable(DASH_CC_STOPS, u.c.champ, a.slot); let D=null;
         const move=(tt)=>{ if (!u.alive) return false;
           if (unstopOn(u,tt)) unstopClean(u,tt);
-          else if (u.dashStopAt!=null && u.dashStopAt>=tt-1e-9){ say(tt, `  ${u.name}'s ${a.slot} dash is stopped (${u.dashStopWhy} as it starts; wiki Dash)`); return false; }
+          // P8c: a blink arrives the moment it starts, so like a dash arriving on this step (dashStop) a displacement landing on the same
+          // step doesn't cancel it (its hit lands; the displacement still moves the caster). Before, it was cancelled only when the
+          // displacement's event ran first, i.e. by side order (Ezreal E vs Rell R)
+          else if (!a.blink && u.dashStopAt!=null && u.dashStopAt>=tt-1e-9){ say(tt, `  ${u.name}'s ${a.slot} dash is stopped (${u.dashStopWhy} as it starts; wiki Dash)`); return false; }
           else if (ccStops && (locked(u,tt) || ccOn(u,tt,"polymorph") || u.immobAt>=tt-1e-9)){ say(tt, `  ${u.name}'s ${a.slot} dash is stopped (immobilized: this dash is interrupted by crowd control, wiki Dash)`); return false; }
           const to=dest(), by2=Math.abs(to-u.x); if (u.move && u.move.forced && u.move.t0<tt-1e-9) u.move=null;   // overrides an older displacement
           if (a.blink) displace(u, to, 1e-3, tt);   /* lands at the start of the next tick */ else displace(u, to, dur, tt);
-          D={slot:a.slot, t0:tt, t1:tt+(a.blink?0:dur), to, ccStops, stopped:false}; u.dashNow=D;
+          // t1 = the arrival as scheduled (press + cast + dash: the hit event below), not tt + dur: tt is the tick the start event ran on,
+          // up to a step after press + cast, so t1 fell after the arrival step and a same-step displacement "stopped" a dash that had
+          // already landed in one side order only (P8c: two Rell W's arriving together)
+          D={slot:a.slot, t0:tt, t1:a.blink ? tt : Math.min(tt+dur, t+arrive), to, ccStops, stopped:false}; u.dashNow=D;
           say(tt, `${u.name} ${a.blink?"blinks":"dashes"} ${fmt(by2)} units ${o.away?`away from ${o.away.name}`:`toward ${tgt.name}`} (${a.slot})${a.blink?"":` in ${fmt(dur)}s`}${unstopOn(u,tt)?` (${u.unstop.imm==="cc"?"immune to crowd control":"unstoppable: displacement immune"})`:""}`); return true; };
         simNotes.add(`fight(): dashes and blinks use the game data dash range and speed (dashInfo); they start when the cast time ends (crowd control during the cast time doesn't stop them: wiki Cast time), a dash's hits land when it arrives, a blink's at once; a displacement or knockdown during the dash stops it and its hits (wiki Dash), a stun or root doesn't`);
         if (u.script) u.nextAct=Math.max(u.nextAct, t+arrive);   // perform(): the next step comes after the dash lands
@@ -2305,7 +2311,7 @@ function simulate(sidesIn, T, simNotes, fo){
     const x = u.script ? tgt.x : u.x + dir*Math.min(Math.abs(tgt.x-u.x), range);   // perfect aim: centred on the target, at most the cast range away
     const placed=t+(a.p.castTime||0), from=placed+(a.p.delay||0);
     const F={by:u, a, x, r, from, until:from+G.active, every:G.every, stacks:G.stacks, debuff:G.debuff,
-      slow:cc.find(e=>e.type==="slow"), stun:cc.find(e=>e.type==="stun"), st:new Map(), done:new Set(), blocked:new Set()};
+      slow:cc.find(e=>e.type==="slow"), stun:cc.find(e=>e.type==="stun"), st:new Map(), done:new Set(), blocked:new Set(), madeAt:t};
     zones.push(F);
     for (let k=0; from+k*G.every <= F.until+1e-9; k++) events.push({at:from+k*G.every, fn:(tt)=>kitFieldTick(F, tt)});
     say(t, `  ${u.name}'s W: Gravity Field on ${tgt.name} (radius ${fmt(r)}), placed at ${fmt(placed)}s, active from ${fmt(from)}s: a stack every ${fmt(G.every)}s inside, the ${G.stacks}th stuns`);
@@ -2323,7 +2329,7 @@ function simulate(sidesIn, T, simNotes, fo){
     } }
   // the field u stands in (at position pos) whose stun would still land on it, and when: {F, stunAt}
   function zoneThreat(u, t, pos){ let best=null; pos = pos ?? (u.xS ?? u.x);
-    for (const F of zones){ if (F.by.side===u.side || !F.stun || F.done.has(u) || F.blocked.has(u) || F.until<t || !inZoneAt(F, pos, u)) continue;
+    for (const F of zones){ if (F.madeAt>=t-1e-9 /* P8c: a field pressed this step counts from the next (start-of-step state) */ || F.by.side===u.side || !F.stun || F.done.has(u) || F.blocked.has(u) || F.until<t || !inZoneAt(F, pos, u)) continue;
       const next = t < F.from-1e-9 ? F.from : F.from + (Math.floor((t-F.from)/F.every + 1e-6) + 1)*F.every;
       const S=F.st.get(u), n = S && next-S.last <= F.debuff+1e-6 ? S.n : 0, stunAt = next + (F.stacks-n-1)*F.every;
       if (stunAt > F.until+1e-9) continue;
@@ -2348,7 +2354,7 @@ function simulate(sidesIn, T, simNotes, fo){
     return null; }
   // entering a field is refused when the stack at the next tick would stun (the fighter waits at the edge until its stacks drop)
   function zoneBlock(u, nx, t){
-    for (const F of zones){ if (F.by.side===u.side || !F.stun || F.done.has(u) || F.blocked.has(u) || F.until<t || inZoneAt(F, u.x, u) || !inZoneAt(F, nx, u)) continue;
+    for (const F of zones){ if (F.madeAt>=t-1e-9 /* P8c: a field pressed this step counts from the next (start-of-step state) */ || F.by.side===u.side || !F.stun || F.done.has(u) || F.blocked.has(u) || F.until<t || inZoneAt(F, u.x, u) || !inZoneAt(F, nx, u)) continue;
       const next = t < F.from-1e-9 ? F.from : F.from + (Math.floor((t-F.from)/F.every + 1e-6) + 1)*F.every, S=F.st.get(u);
       const n = S && next-S.last <= F.debuff+1e-6 ? S.n : 0;
       if (n+1>=F.stacks) return F.x + Math.sign(u.x-F.x || -face(u))*(F.r+RAD(u)+1.01); }
