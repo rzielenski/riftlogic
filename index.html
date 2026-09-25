@@ -1233,6 +1233,13 @@ function simulate(sidesIn, T, simNotes, fo){
   const setcd=(u,k,t,s)=>{ u.rcd[k]=t+s; };
   const L=u=>u.st.level;
   sidesIn.forEach((arr,side)=>arr.forEach(c=>U.push(makeUnit(c,side))));
+  /* P8d: u.name is also the per-unit key of the fight's per-target state (Electrocute / Press the Attack / Eclipse / Sundered Sky /
+     Stormsurge windows, Horizon Focus and passive marks, Heartsteel, Kalista's Soul-Mark, …), so two units with one label (two
+     Ezreals, or champions all built in one helper and labelled "o") shared that state and the result depended on the labels. Every
+     unit's name is made unique within the fight (a repeated label gets " (2)", " (3)", …); a fight gives the same result whatever the
+     labels. uniqueName is also used for units added later (Daisy). */
+  const uniqueName = u => { const base=u.name; let k=1; while (U.some(x=>x!==u && x.name===u.name)) u.name=`${base} (${++k})`; };
+  for (const u of U) uniqueName(u);
   for (const u of U){ statNotes(u.c).forEach(n=>simNotes.add(n));
     for (const k of u.items){ if (ITEM_SIM_NOTES[k]) simNotes.add(ITEM_SIM_NOTES[k]); if (ITEM_GAPS[k]) simNotes.add(ITEM_GAPS[k]); } }
   if (U.some(u=>u.st.crit>0)) simNotes.add("fight(): critical strikes count at their expected value on every attack (damage × (1 + crit chance × (crit damage − 1)))");
@@ -2598,7 +2605,7 @@ function simulate(sidesIn, T, simNotes, fo){
           return {replace:{v:smash, type:"magic", what:"Daisy Smash!"}}; }
         D.n=Math.min(2, D.n+1); return null; }}};
       addBuff(d, "daisy", Infinity, {bonusad:ad, bonusAS:as/(d.st.baseas||0.658)-1, mspct:430/(d.st.basems||370)-1}, tt);
-      d.hp=d.max; d.x=d.x0=u.x+face(u)*350; U.push(d);
+      d.hp=d.max; d.x=d.x0=u.x+face(u)*350; U.push(d); uniqueName(d);
       say(tt, `  ${u.name}: Daisy! lands (${fmt(d.max)} health)`);
       if (!U.some(x=>x.script)) events.push({at:tt+dur, fn:(t3)=>{ if (d.alive){ d.alive=false; d.pet.expired=true; say(t3, `  ${d.name} leaves (${fmt(dur)} s)`); } }}); }}); }
   // Yasuo / Yone Steel Tempest / Mortal Steel: a hit gives a Gathering Storm stack (6 s, max 2); the cast at 2 stacks is the
