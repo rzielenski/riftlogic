@@ -44,7 +44,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand{display:flex;align-items:center;gap:8px;margin-right:auto;font:600 15.5px/1 var(--sans);min-width:0}
 .brand svg{width:18px;height:18px;flex:none}
 .brand span{color:var(--muted);font-weight:500}
-.tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-left:auto}
 .btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:6px 11px;border-radius:6px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:500 13px/1 var(--sans);cursor:pointer;text-decoration:none;white-space:nowrap}
 .btn:hover{border-color:var(--accent)}
 .btn:disabled{opacity:.45;cursor:default;border-color:var(--line-strong)}
@@ -211,9 +211,37 @@ h3 small.wpnow{margin-left:8px}
 }
 </style>
 
+<style>.rlnav{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;height:56px;padding:0;margin:0 auto;max-width:1680px;font-family:var(--sans)}
+.rlnav svg{width:18px;height:18px;flex:none;display:block}
+.rlnav-brand{display:flex;align-items:center;gap:8px;font:600 15.5px/1 var(--sans);letter-spacing:-.005em;color:var(--ink);white-space:nowrap;min-width:0}
+.rlnav-tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--line-strong);border-radius:12px;background:var(--surface)}
+.rlnav-tab{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 18px;border-radius:9px;color:var(--ink-2);text-decoration:none;font:600 14px/1 var(--sans);white-space:nowrap;transition:background-color .12s,color .12s}
+.rlnav-tab svg{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rlnav-tab:hover{background:var(--inset);color:var(--ink)}
+.rlnav-tab[aria-current="page"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.rlnav-tab .s{display:none}
+.rlnav-side{display:flex;justify-content:flex-end;min-width:0}
+.rlnav-docs{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;color:var(--muted);text-decoration:none;font:500 13px/1 var(--sans)}
+.rlnav-docs svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rlnav-docs:hover{color:var(--ink);background:var(--inset)}
+.rlnav-docs[aria-current="page"]{color:var(--accent)}
+.rlnav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:760px){
+  .rlnav{grid-template-columns:auto minmax(0,1fr) auto;gap:8px;height:52px}
+  .rlnav-brand span{display:none}
+  .rlnav-tabs{justify-self:center;width:100%;max-width:420px;padding:3px;border-radius:10px}
+  .rlnav-tab{flex:1 1 0;min-width:0;height:36px;padding:0 8px;gap:6px;font-size:13px;border-radius:8px}
+  .rlnav-docs{padding:0 6px}
+}
+@media (max-width:420px){
+  .rlnav-tab .l{display:none}
+  .rlnav-tab .s{display:inline}
+  .rlnav-docs span{display:none}
+}
+@media (prefers-reduced-motion:reduce){.rlnav-tab{transition:none}}</style>
+<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a></div><div class="rlnav-side"><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
 <div class="app">
   <header class="bar">
-    <div class="brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg>Rift Logic <span>Draft</span></div>
     <div class="tools">
       <div class="seg" role="group" aria-label="Draft mode"><button type="button" id="m-pro" aria-pressed="true">Pro</button><button type="button" id="m-solo" aria-pressed="false">Solo queue</button></div>
       <button type="button" class="btn" id="fearless" aria-pressed="false" title="Champions picked in earlier games of the series are unavailable">Fearless</button>
@@ -226,9 +254,6 @@ h3 small.wpnow{margin-left:8px}
       <span class="sep"></span>
       <button type="button" class="btn" id="copy">Copy code</button>
       <button type="button" class="btn primary" id="open">Open in Rift Logic</button>
-      <a class="btn ghost" href="index.html">Editor</a>
-      <a class="btn ghost" href="docs.html">Docs</a>
-      <a class="btn ghost" href="stats.html">Stats</a>
     </div>
   </header>
   <div id="status" role="status" aria-live="polite"></div>
