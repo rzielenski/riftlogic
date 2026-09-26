@@ -216,10 +216,14 @@ td small{color:var(--muted);font-size:11px;margin-left:5px}
 .tile .ri{position:absolute;top:4px;right:5px;width:14px;height:14px;color:var(--muted)}
 .tile .ri svg{width:14px;height:14px;fill:currentColor;display:block}
 .tile.small{opacity:.45;border-top-color:var(--line-strong)}
+.simrow{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;overscroll-behavior-x:contain}
+.sim{flex:0 0 76px;display:grid;justify-items:center;gap:2px;padding:6px 2px;border-radius:8px;border:1px solid var(--line);background:var(--surface);text-decoration:none;color:var(--ink);min-width:0}
+.sim:hover{border-color:var(--accent)}
+.sim .ph{width:40px;height:40px;border-radius:6px}
+.sim b{font:500 11.5px/1.2 var(--sans);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sim small{font:500 10.5px/1 var(--mono);color:var(--muted)}
 .t-S{--tc:#E4B94F}.t-A{--tc:var(--ok)}.t-B{--tc:var(--accent)}.t-C{--tc:var(--muted)}.t-D{--tc:var(--no)}
 :root[data-theme="light"] .t-S{--tc:#A07310}
-.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);align-items:center}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--tc);margin-right:4px;vertical-align:-1px}
 .rsec h2 svg{width:15px;height:15px;fill:currentColor;vertical-align:-3px;margin-right:4px}
 #ov-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:1000px){#ov-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -846,9 +850,6 @@ function tierBands(ranked, small, tile, {unit = ["champion", "champions"], small
   return [bands.length ? h("div", {class: "tiers"}, bands) : h("p", {class: "note"}, empty || "No champion matches."),
     small.length ? h("details", {class: "lowg"}, h("summary", {}, smallText || `Not enough games: ${small.length} more`), h("div", {class: "grid"}, small.map(tile))) : null];
 }
-function tierLegend(id, lead, tail){
-  return h("p", {class: "legend", id}, h("span", {}, lead), TIERS.map(([t, share]) => h("span", {class: "t-" + t}, h("i"), `${t} ${share}`)), tail ? h("span", {}, tail) : null);
-}
 
 /* ---------- 1. tier list ---------- */
 /* the tier list's minimum games (URL min=, else the default floor; the dataset minimum is 20 / 30 games, noisy at the top of a list) */
@@ -1020,10 +1021,9 @@ function viewChamp(r, c){
   };
   const muFloor = Math.max(D.min, S.pro ? 30 : 50), wFloor = Math.max(D.min, S.pro ? 30 : 100);
   /* a band-grid section: rows ranked by key (the low end of a 95% interval), percentiles within this list */
-  const bandSec = (sid, head, sub, legend, rows, key, tile, floor, what) => {
+  const bandSec = (sid, head, sub, rows, key, tile, floor, what) => {   // band letters only (no legend), as on the tier list
     const ranked = assignTiers(rows.filter(x => !x.small), key), small = rows.filter(x => x.small).sort((a, b) => b.n - a.n);
     return h("section", {class: "sec rsec", id: sid, "aria-labelledby": sid + "-h"}, h("h2", {id: sid + "-h"}, head, h("small", {}, sub)),
-      tierLegend(sid + "-legend", legend, `Under ${floor} games: “Not enough games”.`),
       tierBands(ranked, small, tile, {unit: what, smallText: `Not enough games: ${small.length} more with fewer than ${floor} games (too few to rank)`, empty: `No ${what[0]} with ${floor}+ games.`}));
   };
   const wrTip = (x, lead) => `${lead}: ${pct(x.wr.v)} in ${grp(x.n)} games, 95% CI ${pct(x.wr.lo)}–${pct(x.wr.hi)}`;
@@ -1047,6 +1047,7 @@ function viewChamp(r, c){
     if (dv != null) cards.append(card(`Draft model · ${ROLE_L[dr]}`, h("span", {class: clsCI(dv, dv, 0), id: "c-pick"}, pp(dv, 1)), `pick WPA as blue's first pick into an empty draft, vs the role's typical ${ROLE_L[dr]}`));
     else cards.append(S.pro ? soloCard(S, i, ro) : rolesCard(S, i));
     P(cards);
+    const sim = similarStrip(c, i); if (sim) P(sim);
   } else if (tab === "matchups"){
     const rows = matchRows(muFloor);
     const opp = combo({label: "Opponent", placeholder: `Compare ${name} with…`, items: () => rows.slice().sort((a, b) => a.name.localeCompare(b.name)).map(x => ({id: x.id, name: x.name, sub: `${grp(x.n)} games${x.wr.ok ? " · " + pct(x.wr.v) : ""}`})),
@@ -1056,7 +1057,6 @@ function viewChamp(r, c){
     const tile = x => tierTile({id: x.id, href: link("matchup", [id, x.id], mq), tier: x.tier, rank: x.rank, name: x.name, val: pct(x.wr.v), valCls: clsCI(x.wr.lo, x.wr.hi, 0.5),
       subs: [grp(x.n) + " games"], title: wrTip(x, `${name} vs ${x.name}`) + (x.wpa && x.wpa.ok ? `; ${name}'s WPA ${pp(x.wpa.v)}` : "") + tierTip(x, nR)});
     P(bandSec("mu-bands", `Matchups · same lane, ${where}`, `${rows.length} lane opponents (pairs under ${D.min} games aren't stored)`,
-      `Tier = ${name}'s win rate against each lane opponent, ranked by the low end of its 95% interval, as percentiles within ${name}'s own matchup list: S = ${name}'s best matchups, D = the worst. Best first, left to right; a tile opens the matchup:`,
       rows, x => x.wr.lo, tile, muFloor, ["opponent", "opponents"]));
   } else if (tab === "teammates"){
     const rows = []; ST.champs.forEach((bid, j) => { if (j === i) return; const w = withWin(S, i, j); if (w.n) rows.push({id: bid, j, name: nameOf(bid), n: w.n, wr: w, small: w.n < wFloor}); });
@@ -1064,7 +1064,6 @@ function viewChamp(r, c){
     const tile = x => tierTile({id: x.id, href: link("champ", [x.id], base(c)), tier: x.tier, rank: x.rank, name: x.name, val: pct(x.wr.v), valCls: clsCI(x.wr.lo, x.wr.hi, 0.5),
       subs: [grp(x.n) + " games"], title: wrTip(x, `${name} with ${x.name}`) + tierTip(x, nR)});
     P(bandSec("with-bands", "Teammates · same team, any roles", `${rows.length} teammates (pairs under ${D.min} games aren't stored)`,
-      `Tier = the win rate when ${name} and the teammate play together, ranked by the low end of its 95% interval, as percentiles within ${name}'s teammate list: S = ${name}'s best partners. Best first, left to right:`,
       rows, x => x.wr.lo, tile, wFloor, ["teammate", "teammates"]));
   } else if (tab === "wpa"){
     if (!S.pro){
@@ -1079,10 +1078,22 @@ function viewChamp(r, c){
       subs: [x.lane.ok && x.team.ok ? `L ${sgn(x.lane.v, 1)} · T ${sgn(x.team.v, 1)}` : "", grp(x.n) + " games"],
       title: `${name} vs ${x.name}: WPA ${pp(x.wpa.v)} per game (95% CI ${sgn(x.wpa.lo)} to ${sgn(x.wpa.hi)}), ${x.ex.filter(([, y]) => y.ok).map(([p, y]) => `${p} ${pp(y.v)}, `).join("")}lane ${x.lane.ok ? pp(x.lane.v) : "–"}, team ${x.team.ok ? pp(x.team.v) : "–"}, ${grp(x.n)} games` + tierTip(x, nR)});
     P(bandSec("wpa-bands", `WPA by opponent · same lane, ${where}`, "pp per game; L = lane phase (0–15 min), T = team (15 min to the end)",
-      `Tier = ${name}'s total WPA against each lane opponent, ranked by the low end of its 95% interval, as percentiles within ${name}'s own list: S = where ${name} adds the most. Best first, left to right; a tile opens the matchup:`,
       rows, x => x.wpa.lo, tile, muFloor, ["opponent", "opponents"]));
     P(h("p", {class: "note"}, "WPA splits the team's win probability: 0–15 min by each player's gold, XP and kill differences against the lane opponent (lane), 15 min to the end equally (team). See Methods."));
   } else viewBuilds(panel, c, S, id, i, ro, tab);
+}
+/* similar champions: cosine similarity of the draft model's champion vectors (stats.json draftwp[mode].emb, src/draftwp.py
+   Embed; the same as the language's similar()) */
+function similarOf(mode, i, n){
+  const E = ST.draftwp && ST.draftwp[mode] && ST.draftwp[mode].emb; if (!E) return null;
+  const nz = v => Math.sqrt(v.reduce((t, x) => t + x * x, 0)) || 1e-12, a = E.z[i], na = nz(a);
+  return E.z.map((b, j) => [j, b.reduce((t, x, k) => t + x * a[k], 0) / (na * nz(b))]).filter(([j]) => j !== i).sort((x, y) => y[1] - x[1]).slice(0, n);
+}
+function similarStrip(c, i){
+  const top = similarOf(c.mode, i, 8); if (!top) return null;
+  const note = ST.draftwp[c.mode].emb.note, who = c.mode === "pro" ? "pro" : "solo-queue";
+  return h("section", {class: "sec simsec", id: "similar", "aria-labelledby": "similar-h"}, h("h2", {id: "similar-h", title: `Cosine similarity of the ${who} draft model's champion vectors: ${note}.`}, "Similar champions", h("small", {}, `${who} draft-model vectors · hover for what that means`)),
+    h("div", {class: "simrow"}, top.map(([j, v]) => { const bid = ST.champs[j]; return h("a", {class: "sim", href: link("champ", [bid], base(c)), "data-id": bid, title: `${nameOf(bid)}: similarity ${v.toFixed(2)}`}, portrait(bid), h("b", {}, nameOf(bid)), h("small", {}, v.toFixed(2))); })));
 }
 /* solo per-game numbers (kills / deaths / assists, damage and CS per minute) */
 function soloCard(S, i, ro){

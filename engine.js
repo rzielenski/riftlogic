@@ -8247,7 +8247,7 @@ const BREAK={}, CONTINUE={};
    names one of these functions and hands it over with setStats(); tools/rl.js passes it to createRiftLogic. */
 let STATS = STATS0 || null, SX = null;
 function setStats(d){ STATS = d || null; SX = null; }
-const STAT_FNS = ["winrate","pickrate","banrate","presence","games","stat","matchups","topPicks","wpa","winprob","draftwp","pickwpa"];
+const STAT_FNS = ["winrate","pickrate","banrate","presence","games","stat","matchups","topPicks","wpa","winprob","draftwp","pickwpa","laneDiff","similar"];
 const STAT_ROLE = {top:0, jungle:1, jng:1, jg:1, mid:2, middle:2, bot:3, bottom:3, adc:3, support:4, sup:4, supp:4, utility:4};
 const STAT_ROLES = ["top","jungle","mid","bot","support"];
 /* stat() names: [description, unit, signed]. Pro only: the @10/@15 differences (Oracle's Elixir: against the same-position opponent) */
@@ -8383,6 +8383,76 @@ function statMean(a, named){
   const e=es[0], h=1.96*e.sd/Math.sqrt(e.n), sc = M[1]==="%" ? 100 : 1;
   line(`${S.name}: ${A.name}${sliceText(o)} ${M[0]}: mean ${fmt(e.mean*sc)}${M[1]==="%" ? "%" : ""} over ${grp(e.n)} games (SD ${fmt(e.sd*sc)}${M[1]==="%" ? "%" : ""}; 95% CI mean ± 1.96 SD / √n)`);
   return {...base, value:e.mean, n:e.n, sd:e.sd, low:e.mean-h, high:e.mean+h, enough:true, why:null};
+}
+/* laneDiff(A, vs: B, role:, pro: true, stat:): A's expected gold (or XP) difference against B in the same lane at 10 or 15 min,
+   from stats.json draftwp.pro.laneStats (src/draftwp.py LaneDiff, Oracle's Elixir 2022-2026, blue minus red lane opponent):
+   E = u(A) - u(B) + m(A, B): u = champion lane strength = side-signed sum of (diff - blue-side mean) / (games + k1);
+   m = the pair's residual sum / (pair games + k2) (stored for pairs with minPair+ games, else 0). Side-neutral. */
+const LD_STAT = {gd15:["gold difference at 15 min","gold"], xpd15:["XP difference at 15 min","XP"], gd10:["gold difference at 10 min","gold"], xpd10:["XP difference at 10 min","XP"]};
+const LDX = new Map();
+function laneStatsOf(pro){
+  statsData(); const key = pro ? "pro" : "solo";
+  if (LDX.has(key)) return LDX.get(key);
+  const L = STATS.draftwp && STATS.draftwp[key] && STATS.draftwp[key].laneStats;
+  if (!L) throw new Error("web/stats.json has no lane matchup table (draftwp.laneStats): rebuild it (src/stats_export.py)");
+  const n=STATS.champs.length, pairs=[], u=[];
+  for (let r=0; r<5; r++){
+    const P=new Map(), a=L.pairs[r]; for (let i=0; i<a.length; i+=L.width) P.set(a[i]*n+a[i+1], a.slice(i+2, i+L.width)); pairs.push(P);
+    u.push(L.stats.map((_, j)=>{ const m=new Map(); for (const [c, v, g] of L.u[r][j]) m.set(c, [v, g]); return m; }));
+  }
+  const X={L, n, pairs, u}; LDX.set(key, X); return X;
+}
+function statLaneDiff(a, named){
+  named=named||{};
+  if (a.length!==1) throw new Error(`laneDiff(champion, vs:, role:, pro: true, stat:) takes one champion; name the lane opponent with vs:`);
+  checkNamed(named, ["vs","role","pro","stat"], "laneDiff(…)"); statsData();
+  if (named.vs==null) throw new Error(`laneDiff(…) needs vs: (the lane opponent)`);
+  if (!(named.pro!=null && truthy(named.pro))) throw new Error(`laneDiff(…) is pro only for now (add pro: true): solo-queue gold and XP differences need Riot timelines, which aren't in the data yet`);
+  const key = named.stat==null ? "gd15" : String(named.stat), M=LD_STAT[key];
+  if (!M) throw new Error(`laneDiff(…, stat: "${key}"): stat is ${Object.keys(LD_STAT).map(k=>`"${k}"`).join(", ")}`);
+  const A=statChamp(a[0], "laneDiff", "the first argument"), B=statChamp(named.vs, "laneDiff", "vs:");
+  if (A.i===B.i) throw new Error(`laneDiff(): a champion against itself is a mirror (0 by definition)`);
+  const X=laneStatsOf(true), L=X.L, j=L.stats.indexOf(key), lo=Math.min(A.i, B.i), hi=Math.max(A.i, B.i), sg = A.i<B.i ? 1 : -1;
+  let r;
+  if (named.role!=null){ r=STAT_ROLE[norm(named.role)]; if (r==null) throw new Error(`role: is "top", "jungle", "mid", "bot" or "support"`); }
+  else {   /* the role the pair met in most; else the one both champions played most (the smaller of their two counts) */
+    let best=-1;
+    for (let q=0; q<5; q++){ const e=X.pairs[q].get(lo*X.n+hi), ua=X.u[q][j].get(A.i), ub=X.u[q][j].get(B.i);
+      const sc = (e ? e[0]*1e6 : 0) + Math.min(ua ? ua[1] : 0, ub ? ub[1] : 0); if (sc>best){ best=sc; r=q; } }
+  }
+  const e=X.pairs[r].get(lo*X.n+hi), ua=X.u[r][j].get(A.i), ub=X.u[r][j].get(B.i), [k1, k2]=L.k[r][j];
+  const where=` (${STAT_ROLES[r]})`, what=`${A.name} expected ${M[0]} vs ${B.name}${where}`;
+  const base={t:"stat", kind:"mean", fn:"laneDiff", key, what, unit:M[1], signed:true, min:1, source:L.source, sname:"pro play 2022-2026", champ:A.id, other:B.id, label:null, role:STAT_ROLES[r], low:null, high:null, sd:null};
+  if (TR) TR.notes.add(`laneDiff(): ${L.source}; empirical Bayes per role and stat: a champion's lane strength u shrinks with k1 games, a pair's own residual m with k2 games (method of moments); pairs under ${L.minPair} games keep m = 0. Side-neutral (the blue-side mean is removed). Pro lane leads carry team strength: strong teams' picks get ahead in lane`);
+  if (!ua || !ub){ const who=[!ua ? A.name : null, !ub ? B.name : null].filter(Boolean).join(" and "), why=`too little data: ${who} ha${who.includes(" and ") ? "ve" : "s"} no ${STAT_ROLES[r]} games with ${key} recorded in ${L.source.split(" (")[0]}`;
+    line(`laneDiff: ${why}`); return {...base, value:NaN, n:0, enough:false, why}; }
+  const m = e ? sg*e[3+2*j] : 0, raw = e && e[4+2*j]!=null ? sg*e[4+2*j] : null, v=ua[0]-ub[0]+m, ng = e ? e[2] : 0;
+  line(`${A.name} ${STAT_ROLES[r]} lane strength u = ${fmt(ua[0])} ${M[1]} (${grp(ua[1])} games, shrunk with k1 = ${fmt(k1)}); ${B.name} u = ${fmt(ub[0])} (${grp(ub[1])} games)`);
+  line(e ? `the pair: ${grp(e[0])} games (${grp(ng)} with ${key}), raw mean ${raw==null ? "n/a" : fmt(raw)} ${M[1]} from ${A.name}'s side after the blue-side mean; its residual over u(${A.name}) − u(${B.name}), shrunk with k2 = ${fmt(k2)}: m = ${fmt(m)}`
+         : `the pair has fewer than ${L.minPair} games together in this lane: m = 0 (champion terms only)`);
+  line(`expected ${key} = u(${A.name}) − u(${B.name}) + m = ${fmt(ua[0])} − ${fmt(ub[0])} + ${fmt(m)} = ${fmt(v)} ${M[1]}`);
+  return {...base, value:v, n:ng, games: e ? e[0] : 0, wins: e ? (A.i<B.i ? e[1] : e[0]-e[1]) : 0, raw, u:[ua[0], ub[0]], m, enough:true, why:null,
+          note:`expected, empirical Bayes; ${grp(ng)} games of the pair`};
+}
+/* similar(A, n:, pro:): the champions nearest to A by cosine similarity of the draft model's champion vectors
+   (stats.json draftwp[mode].emb, src/draftwp.py Embed: z = F P + e, fitted on lane-matchup and synergy factorisation terms of
+   who won, pulled toward similar kits; the vectors are not used in the win probability: they didn't validate). */
+function statSimilar(a, named){
+  named=named||{};
+  if (a.length!==1) throw new Error(`similar(champion, n:, pro:) takes one champion`);
+  checkNamed(named, ["n","pro"], "similar(…)"); statsData();
+  const pro = named.pro!=null && truthy(named.pro), key = pro ? "pro" : "solo", E = STATS.draftwp && STATS.draftwp[key] && STATS.draftwp[key].emb;
+  if (!E) throw new Error("web/stats.json has no champion vectors (draftwp.emb): rebuild it (src/stats_export.py)");
+  const n = named.n==null ? 5 : named.n;
+  if (!(typeof n==="number" && n>=1 && n<=50 && Number.isInteger(n))) throw new Error("n: is how many champions to list (1–50)");
+  const A=statChamp(a[0], "similar", "the argument"), z=E.z, nz=v=>Math.sqrt(v.reduce((t, x)=>t+x*x, 0)) || 1e-12, na=nz(z[A.i]);
+  const out = STATS.champs.map((id, j)=>[id, z[j].reduce((t, x, k)=>t+x*z[A.i][k], 0)/(na*nz(z[j]))]).filter(([id])=>id!==A.id).sort((x, y)=>y[1]-x[1]).slice(0, n);
+  const who = pro ? "pro" : "solo-queue";
+  if (TR) TR.notes.add(`similar(): cosine similarity of the ${who} draft model's ${E.k}-d champion vectors (web/stats.json draftwp.${key}.emb): ${E.note}`);
+  line(`${A.name}: the ${out.length} nearest champions in the ${who} draft vectors (cosine, 1 = same direction)`);
+  out.forEach(([id, v])=>line(`  ${KB.champs[id].name}: ${v.toFixed(3)}`));
+  return {t:"list", items: out.map(([id, v])=>({t:"stat", kind:"sim", fn:"similar", what:`${KB.champs[id].name}: similarity to ${A.name}`, value:v, n:0, enough:true, why:null,
+    low:null, high:null, champ:id, other:A.id, label:KB.champs[id].name, source:`${who} draft model vectors`, note:"cosine"}))};
 }
 /* min: for matchups / topPicks: the fewest games a row needs (at least the dataset's own minimum) */
 function statMin(named, o){ const m=(named||{}).min; if (m==null) return o.S.D.min; if (typeof m!=="number" || !(m>=0)) throw new Error("min: is the fewest games a row needs, e.g. min: 100"); return Math.max(o.S.D.min, m); }
@@ -8549,6 +8619,8 @@ function statWinprob(a, named){
    topPicks(by: "draftwpa", …). Two separate logistic models, pro and solo queue ("basically different games"):
    logit P(blue) = b0 [+ wRating (R_blue - R_red) / 400, pro] + sum_r (s(blue_r, r) - s(red_r, r)) + sum_r m_r(blue_r, red_r)
                    + synergy(blue) - synergy(red) + w . (F(blue) - F(red))   (F: comp-profile features, labels/draft_profiles.csv)
+   The role-fit term (log share of the champion's games in the role) and, pro only, the expected lane gold diff @15 are
+   folded into s and m by src/draftwp.py (exact: champion-by-role and pair functions), so they need no code here.
    Unknown slots are marginalised with the role's pick distribution: expected strength, precomputed expected lane / synergy terms,
    and the role's mean profile in the comp features; P(partial) = sigmoid(expected logit), so the empty draft = the side prior
    and a pick's WPA = P(after) - P(before). */
@@ -8721,6 +8793,7 @@ function dwpTop(named){
 function showStat(v){
   const pre = v.label ? v.label+": " : "";
   if (!v.enough) return pre+v.why;
+  if (v.kind==="sim") return pre+`${v.value.toFixed(3)} (cosine similarity)`;
   if (v.kind==="model") return pre+(v.unit==="pp" ? `${v.value>=0 ? "+" : ""}${fmt(v.value)} pp` : `${spct(v.value)}%`)+` (${v.note})`;
   if (v.kind==="rate") return pre+`${spct(v.value)}% (${v.countWord ? `${grp(v.k)} ${v.countWord} in ${grp(v.n)} games` : `n ${grp(v.n)}`}; 95% CI ${spct(v.low)}–${spct(v.high)}%)`;
   const f = x => v.unit==="%" ? spct(x)+"%" : (v.signed && x>0 ? "+" : "")+(Math.abs(x)>=10 ? String(Math.round(x)) : fmt(x)), u = v.unit && v.unit!=="%" ? " "+v.unit : "";
@@ -9044,7 +9117,8 @@ function Interpreter(ast, emitRaw){
         if (name==="why") return v.why || "";
         if (name==="champ") return mkChamp(v.champ, globals.get("defaultLevel"));
         if (name==="other"){ if (!v.other) throw new LangError(`${v.what} has no second champion`, ln); return mkChamp(v.other, globals.get("defaultLevel")); }
-        const has=["value","n","games",...(rate?["wins","count"]:["sd"]),"low","high","enough","source","what","why","champ",...(v.other?["other"]:[])];
+        if (name==="role" && v.role) return v.role;
+        const has=["value","n","games",...(rate?["wins","count"]:["sd"]),"low","high","enough","source","what","why","champ",...(v.other?["other"]:[]),...(v.role?["role"]:[])];
         throw new LangError(`a Stat has ${has.join(", ")}.${hint(name, has)}`, ln);
       }
       case "rune": { if (name==="name") return runeName(obj.key); if (name==="description") return CALC.runes[obj.key].desc; throw new LangError(`a Rune has name and description`, ln); }
@@ -9088,7 +9162,7 @@ function Interpreter(ast, emitRaw){
     pickrate:(a, named)=>statPick(a, named, "pickrate"), banrate:(a, named)=>statPick(a, named, "banrate"), presence:(a, named)=>statPick(a, named, "presence"),
     stat:(a, named)=>statMean(a, named), matchups:(a, named)=>statMatchups(a, named), topPicks:(a, named)=>statTop(a, named),
     wpa:(a, named)=>statWpa(a, named), winprob:(a, named)=>statWinprob(a, named),
-    draftwp:(a, named)=>statDraftwp(a, named), pickwpa:(a, named)=>statPickwpa(a, named),
+    draftwp:(a, named)=>statDraftwp(a, named), pickwpa:(a, named)=>statPickwpa(a, named), laneDiff:(a, named)=>statLaneDiff(a, named), similar:(a, named)=>statSimilar(a, named),
     range:(a)=>{ if (a.length<2 || a.length>3 || a.some(x=>typeof x!=="number")) throw new Error("range(from, to) or range(from, to, step): numbers from “from” to “to”, both included, e.g. range(0, 1200, 50)");
       return {t:"list", items:rangeList(a[0], a[1], a.length>2 ? a[2] : (a[1]>=a[0] ? 1 : -1))}; },
     canKill:(a, named)=>{ const f=killFight(a, named, a[2]); const u=f.units[1]; return u.dummy ? u.wouldDieAt!=null : !u.alive; },
