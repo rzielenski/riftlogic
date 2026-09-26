@@ -8643,7 +8643,7 @@ const BREAK={}, CONTINUE={};
    names one of these functions and hands it over with setStats(); tools/rl.js passes it to createRiftLogic. */
 let STATS = STATS0 || null, SX = null;
 function setStats(d){ STATS = d || null; SX = null; }
-const STAT_FNS = ["winrate","pickrate","banrate","presence","games","stat","matchups","topPicks","wpa","winprob"];
+const STAT_FNS = ["winrate","pickrate","banrate","presence","games","stat","matchups","topPicks","wpa","winprob","draftwp","pickwpa"];
 const STAT_ROLE = {top:0, jungle:1, jng:1, jg:1, mid:2, middle:2, bot:3, bottom:3, adc:3, support:4, sup:4, supp:4, utility:4};
 const STAT_ROLES = ["top","jungle","mid","bot","support"];
 /* stat() names: [description, unit, signed]. Pro only: the @10/@15 differences (Oracle's Elixir: against the same-position opponent) */
@@ -8666,7 +8666,7 @@ function statsSet(pro, year){
   const D = pro ? STATS.pro[year] : STATS.solo;
   const pairs = (a, w) => { const m=new Map(); for (let i=0; i<a.length; i+=w) m.set(a.slice(i, i+w-2).join("|"), [a[i+w-2], a[i+w-1]]); return m; };
   const avg={}; for (const [k, rows] of Object.entries(D.avg||{})){ const m=new Map(); for (const [c, r, n, mean, sd] of rows) m.set(c+"|"+r, {n, mean, sd}); avg[k]=m; }
-  const wpaPairs=new Map(), wp=D.wpaPairs||[]; for (let i=0; i<wp.length; i+=10) wpaPairs.set(wp[i]+"|"+wp[i+1]+"|"+wp[i+2], wp.slice(i+3, i+10));
+  const wpaPairs=new Map(), wp=D.wpaPairs||[]; for (let i=0; i<wp.length; i+=12) wpaPairs.set(wp[i]+"|"+wp[i+1]+"|"+wp[i+2], wp.slice(i+3, i+12));   /* n, then mean and SD of total, lane, team, draft */
   const S={D, pro, year, name: pro ? `pro play ${year}` : "ranked solo queue 16.x", vs:pairs(D.vs, 4), lane:pairs(D.lane, 5), with:pairs(D.with, 4), avg, wpaPairs};
   S.source = `${D.label}: ${grp(D.games)} games, ${D.dates[0]} to ${D.dates[1]}`;
   X.sets.set(key, S); return S;
@@ -8805,9 +8805,10 @@ function statMatchups(a, named){
 function statTop(a, named){
   named=named||{};
   if (a.length) throw new Error("topPicks(role:, by:, n:, pro:, year:, patch:, league:) takes options only");
+  if (named.by==="draftwpa") return dwpTop(named);
   const o=statOpts(named, "topPicks", ["role","patch","league","pro","year","by","n","length","min","phase"]), minG=statMin(named, o);
   const by = named.by==null ? "pickrate" : String(named.by);
-  if (!["pickrate","winrate","banrate","presence","wpa"].includes(by)) throw new Error(`by: is "pickrate" (default), "winrate", "banrate", "presence" or "wpa" (win probability added, pro)`);
+  if (!["pickrate","winrate","banrate","presence","wpa"].includes(by)) throw new Error(`by: is "pickrate" (default), "winrate", "banrate", "presence" or "wpa" (win probability added, pro); "draftwpa" ranks picks for a draft (blue:, red:, side:)`);
   if (named.phase!=null && by!=="wpa") throw new Error(`topPicks(…, phase: …) goes with by: "wpa"`);
   if (by==="wpa"){ if (!o.pro) throw new Error(WPA_SOLO(`topPicks(…, by: "wpa")`)); if (o.patch!=null || o.league!=null || o.length!=null) throw new Error(`topPicks(…, by: "wpa") takes role: only (WPA is stored per champion and role)`); }
   const phase = by==="wpa" ? wpaPhase(named) : null;
@@ -8833,9 +8834,9 @@ function statTop(a, named){
    lane = the 0 -> 15 min change split among the five players by Shapley values of their gold / XP / kill differences vs
    the same-position opponent; team = the 15 min -> end change split equally; total = lane + team. */
 const WPA_SOLO = fn => `${fn}() is pro play only (add pro: true): solo queue needs timelines for this; not available yet`;
-const WPA_PHASE = {total:["wpa", 0, ""], lane:["wpaLane", 1, ", lane phase (0–15 min)"], team:["wpaTeam", 2, ", team phase (15 min–end)"]};
-function wpaNote(){ if (TR) TR.notes.add("WPA (win probability added, percentage points per game): the team's win probability goes side prior → 15 min (model: gold, XP and kill differences) → result; the 0–15 change is split among the five players by Shapley values of their differences vs the lane opponent (lane), the 15 min → end change equally (team). Team strength still confounds it, as it does win rate"); }
-function wpaPhase(named){ const p = named.phase==null ? "total" : String(named.phase).toLowerCase(); if (!WPA_PHASE[p]) throw new Error(`phase: is "total" (default), "lane" (0–15 min) or "team" (15 min–end)`); return p; }
+const WPA_PHASE = {total:["wpa", 0, ""], draft:["wpaDraft", 3, ", draft phase (side prior → draft model)"], lane:["wpaLane", 1, ", lane phase (draft → 15 min)"], team:["wpaTeam", 2, ", team phase (15 min–end)"]};
+function wpaNote(){ if (TR) TR.notes.add("WPA (win probability added, percentage points per game): the team's win probability goes side prior → draft (the pro draft model at equal team ratings, fitted on earlier years) → 15 min (model: gold, XP and kill differences) → result; the draft change is split among the five players by Shapley values of their champions' draft terms (strength, lane matchup vs the opponent, synergy and comp-profile shares), the draft → 15 min change by Shapley values of their gold, XP and kill differences vs the lane opponent (lane), the 15 min → end change equally (team). Team strength still confounds it, as it does win rate"); }
+function wpaPhase(named){ const p = named.phase==null ? "total" : String(named.phase).toLowerCase(); if (!WPA_PHASE[p]) throw new Error(`phase: is "total" (default), "draft" (the picks: side prior → draft model), "lane" (draft → 15 min) or "team" (15 min–end)`); return p; }
 function statWpaOf(A, o, C, phase, fn){
   if (!o.pro) throw new Error(WPA_SOLO(fn));
   const S=o.S, D=S.D, [key, j, ptxt]=WPA_PHASE[phase];
@@ -8897,9 +8898,183 @@ function statWinprob(a, named){
     if (gold && at>0) TR.notes.add("only goldDiff given: the gold-only model (its gold weight includes the XP and kills that usually come with gold). Give xpDiff: / killDiff: for the full model"); }
   return p;
 }
+/* ---- draft win probability (src/draftwp.py -> stats.json "draftwp"): draftwp(blue:, red:, pro:), pickwpa(c, role:, side:, …),
+   topPicks(by: "draftwpa", …). Two separate logistic models, pro and solo queue ("basically different games"):
+   logit P(blue) = b0 [+ wRating (R_blue - R_red) / 400, pro] + sum_r (s(blue_r, r) - s(red_r, r)) + sum_r m_r(blue_r, red_r)
+                   + synergy(blue) - synergy(red) + w . (F(blue) - F(red))   (F: comp-profile features, labels/draft_profiles.csv)
+   Unknown slots are marginalised with the role's pick distribution: expected strength, precomputed expected lane / synergy terms,
+   and the role's mean profile in the comp features; P(partial) = sigmoid(expected logit), so the empty draft = the side prior
+   and a pick's WPA = P(after) - P(before). */
+const DWP = new Map();
+const DWP_ATTR = 18;
+function dwpModel(pro){
+  statsData(); const W=STATS.draftwp, key = pro ? "pro" : "solo";
+  if (!W || !W[key]) throw new Error("web/stats.json has no draft win probability model: rebuild it (src/stats_export.py)");
+  if (DWP.has(key)) return DWP.get(key);
+  const M=W[key], n=STATS.champs.length, s=new Float64Array(5*n), p=[], sMean=[], lane=[], laneE=[], syn=[], synE=[];
+  for (let r=0; r<5; r++){
+    for (const [c, v] of M.s[r]) s[r*n+c]=v;
+    const pr=new Float64Array(n); for (const [c, v] of M.p[r]) pr[c]=v; p.push(pr);
+    let m=0, t=0; for (const [c, v] of M.p[r]){ m+=v*s[r*n+c]; t+=v; } sMean.push(t ? m/t : 0);
+    const L=new Map(), a=M.lane[r]; for (let i=0; i<a.length; i+=3) L.set(a[i]*n+a[i+1], a[i+2]); lane.push(L);
+    const E=new Float64Array(n); for (const [c, v] of M.laneE[r]) E[c]=v; laneE.push(E);
+  }
+  M.synPairs.forEach((pr, j)=>{ const Y=new Map(), a=M.syn[j]; for (let i=0; i<a.length; i+=3) Y.set(a[i]*n+a[i+1], a[i+2]); syn.push(Y);
+    const e1=new Float64Array(n), e2=new Float64Array(n); for (const [c, v] of M.synE[j][0]) e1[c]=v; for (const [c, v] of M.synE[j][1]) e2[c]=v; synE.push([e1, e2, M.synE[j][2]]); });
+  const X={M, pro, n, s, p, sMean, lane, laneE, syn, synE, name: pro ? "pro draft model" : "solo-queue draft model"};
+  DWP.set(key, X); return X;
+}
+/* comp-profile features of one team (slots: champion index or -1), the same as src/draftwp.py team_feats() */
+function dwpFeats(X, T){
+  const A=T.map((c, r)=>c>=0 && X.M.attr[c] ? X.M.attr[c] : X.M.attrMean[r]);
+  const sum = j => A.reduce((t, a)=>t+a[j], 0), F=sum(0), E=sum(1), Y=sum(2), R=sum(3), dd=sum(5), apd=A.reduce((t, a)=>t+a[4]*a[5], 0), ap=apd/Math.max(dd, 1e-9);
+  const arch = j => sum(11+j)/5, mx=Math.max;
+  return [mx(0, 2-F), mx(0, F-3), mx(0, 3.5-E), mx(0, 4.5-Y), mx(0, 2-R), mx(0, 0.28-ap, ap-0.62),
+    mx(0, sum(6)-2)+mx(0, sum(7)-2)+mx(0, sum(8)-2)+mx(0, sum(9)-1), mx(0, sum(10)-4), arch(2)*arch(1)*4, arch(0), arch(1), arch(2), arch(3), arch(4), arch(5)];
+}
+function dwpSyn(X, T){
+  let z=0; const n=X.n;
+  X.M.synPairs.forEach(([r1, r2], j)=>{ const a=T[r1], b=T[r2], [e1, e2, e0]=X.synE[j];
+    z += a>=0 && b>=0 ? (X.syn[j].get(a*n+b) || 0) : a>=0 ? e1[a] : b>=0 ? e2[b] : e0; });
+  return z;
+}
+/* blue's logit; B, R: champion index by role (-1 = not picked yet); rd = (R_blue - R_red) / 400 */
+function dwpLogit(X, B, R, rd){
+  const n=X.n; let z=X.M.b0 + (X.M.wRating||0)*(rd||0);
+  for (let r=0; r<5; r++){
+    const a=B[r], b=R[r];
+    z += (a>=0 ? X.s[r*n+a] : X.sMean[r]) - (b>=0 ? X.s[r*n+b] : X.sMean[r]);
+    if (a>=0 && b>=0){ if (a!==b) z += a<b ? (X.lane[r].get(a*n+b) || 0) : -(X.lane[r].get(b*n+a) || 0); }
+    else if (a>=0) z += X.laneE[r][a]; else if (b>=0) z -= X.laneE[r][b];
+  }
+  z += dwpSyn(X, B) - dwpSyn(X, R);
+  const fb=dwpFeats(X, B), fr=dwpFeats(X, R); X.M.profW.forEach((w, j)=>{ z += w*(fb[j]-fr[j]); });
+  return z;
+}
+const dwpP = (X, B, R, rd) => 1/(1+Math.exp(-dwpLogit(X, B, R, rd)));
+/* champions -> role slots: the assignment with the highest product of role shares (pick distribution of the model; roles
+   nobody plays the champion in get a tiny share) among the open slots */
+function dwpAssign(X, cs, T){
+  const open=[0, 1, 2, 3, 4].filter(r=>T[r]<0), sh=(c, r)=>Math.log(X.p[r][c] + 1e-6);
+  if (cs.length>open.length) throw new Error(`draftwp(): more than 5 champions on one side`);
+  let best=null, bestS=-Infinity;
+  const rec=(i, used, acc, sc)=>{ if (i===cs.length){ if (sc>bestS){ bestS=sc; best=acc.slice(); } return; }
+    for (const r of open) if (!used.has(r)){ used.add(r); acc.push(r); rec(i+1, used, acc, sc+sh(cs[i], r)); acc.pop(); used.delete(r); } };
+  rec(0, new Set(), [], 0);
+  cs.forEach((c, i)=>{ T[best[i]]=c; });
+  return T;
+}
+function dwpChampIdx(v, fn, what){
+  const X=statsData(), id = v && v.t==="champ" && !v.dummy ? v.champ : typeof v==="string" ? IDX[norm(v)] : null;
+  if (!id) return null;
+  const i=X.pos[id]; if (i==null) throw new Error(`${fn}(): ${KB.champs[id].name} has no games in the stats data`);
+  return i;
+}
+/* a side: a Champion, a list / TeamComp of champions or names; byRole: true = in role order top, jungle, mid, bot, support
+   ("?" or "" for a slot not picked yet) */
+function dwpTeam(X, v, byRole, fn, key){
+  const T=[-1, -1, -1, -1, -1];
+  if (v==null) return T;
+  const arr = v.t==="comp" ? v.champs : v.t==="list" ? v.items : [v];
+  if (arr.length>5) throw new Error(`${fn}(): ${key}: has ${arr.length} champions (at most 5)`);
+  const cs=[];
+  arr.forEach((x, r)=>{
+    const i=dwpChampIdx(x, fn, key);
+    if (i==null){ if (byRole && (x==="" || x==="?" || x==null)) return; throw new Error(`${fn}(): ${key}: holds champions (Ornn, "Lee Sin")${byRole ? ' or "?" for an open slot' : ""}, not ${typeof x==="string" ? `"${x}"` : typeName(x)}`); }
+    if (byRole) T[r]=i; else cs.push(i);
+  });
+  return byRole ? T : dwpAssign(X, cs, T);
+}
+function dwpRating(W, v, fn, key){
+  if (typeof v==="number" && Number.isFinite(v)) return {r:v, txt:String(Math.round(v))};
+  if (typeof v==="string"){ const t=(W.elo.teams||[]).find(e=>norm(e[0])===norm(v));
+    if (!t) throw new Error(`${fn}(): ${key}: "${v}" isn't a 2026 pro team in the rating table (a number works too, e.g. 1650)`);
+    return {r:t[1], txt:`${t[0]} ${t[1]}`}; }
+  throw new Error(`${fn}(): ${key}: is an Elo rating (a number, e.g. 1650) or a 2026 pro team name`);
+}
+function dwpSetup(named, fn, extra){
+  named=named||{}; checkNamed(named, ["blue","red","pro","blueRating","redRating","byRole", ...extra], fn+"(…)");
+  const pro = named.pro!=null && truthy(named.pro), X=dwpModel(pro), byRole = named.byRole!=null && truthy(named.byRole);
+  const B=dwpTeam(X, named.blue, byRole, fn, "blue"), R=dwpTeam(X, named.red, byRole, fn, "red");
+  for (let r=0; r<5; r++) if (B[r]>=0 && B.filter(x=>x===B[r]).length>1 || R[r]>=0 && R.filter(x=>x===R[r]).length>1) throw new Error(`${fn}(): a champion appears twice on one side`);
+  let rd=0, rtxt="";
+  if (named.blueRating!=null || named.redRating!=null){
+    if (!pro) throw new Error(`${fn}(): blueRating:/redRating: are team ratings for pro play (add pro: true); solo queue has none`);
+    if (named.blueRating==null || named.redRating==null) throw new Error(`${fn}(): give both blueRating: and redRating: (Elo, or 2026 team names)`);
+    const a=dwpRating(X.M, named.blueRating, fn, "blueRating"), b=dwpRating(X.M, named.redRating, fn, "redRating");
+    rd=(a.r-b.r)/400; rtxt=`, ratings blue ${a.txt} vs red ${b.txt}`;
+  }
+  if (TR){ const V=X.M.valid, f=V.rows["full model"], s=V.rows["side only"], w=V.rows["side + champion win rates"], t=V.rows["side + ratings"];
+    TR.notes.add(`${X.name} (src/draftwp.py, web/stats.json): L2-penalised logistic regression on champion-by-role strength, lane matchups, ${X.M.groups.includes("syn") ? "bot/jungle synergy, " : ""}comp-profile features${pro ? " and pre-match Elo team ratings" : ""}; held-out ${V.test} (${grp(V.nTest)} games): log loss ${f.logloss} (side only ${s.logloss}${t ? `, ratings ${t.logloss}` : ""}, champion win rates ${w.logloss}), accuracy ${spct(f.acc)}%, AUC ${f.auc}, calibration error ${f.ece}`);
+    TR.notes.add("draft effects are small and observational: the model says which drafts won more often, not why; unknown slots are filled with each role's typical pick"); }
+  return {X, B, R, rd, rtxt, pro};
+}
+const dwpShow = (X, T) => T.map((c, r)=>`${STAT_ROLES[r]} ${c>=0 ? KB.champs[STATS.champs[c]].name : "?"}`).join(", ");
+function dwpStat(X, value, what, unit){
+  return {t:"stat", kind:"model", fn:"draftwp", what, unit, value, n:X.M.valid.nTrain, enough:true, why:null, low:null, high:null,
+    source:X.name, sname:X.name, champ:null, other:null, label:null, note:X.name};
+}
+function statDraftwp(a, named){
+  if (a.length) throw new Error(`draftwp(blue: {…}, red: {…}, pro:, byRole:, blueRating:, redRating:) takes options only`);
+  const {X, B, R, rd, rtxt} = dwpSetup(named, "draftwp", []), p=dwpP(X, B, R, rd);
+  line(`${X.name}: blue ${dwpShow(X, B)} vs red ${dwpShow(X, R)}${rtxt} → blue wins ${spct(p)}%`);
+  return dwpStat(X, p, `blue win probability (${X.name})`, "%");
+}
+function dwpRole(v, fn){ const r=STAT_ROLE[norm(v)]; if (r==null) throw new Error(`${fn}(): role: is "top", "jungle", "mid", "bot" or "support"`); return r; }
+function dwpSide(v, fn){ const s = v==null ? "blue" : String(v).toLowerCase(); if (s!=="blue" && s!=="red") throw new Error(`${fn}(): side: is "blue" or "red" (the side making the pick)`); return s; }
+/* the pick's WPA for its side: P(side wins | draft + c) - P(side wins | draft), in percentage points */
+function dwpPickWpa(X, B, R, rd, c, r, side){
+  const T = side==="blue" ? B : R, T2=T.slice(); T2[r]=c;
+  const p0=dwpP(X, B, R, rd), p1 = side==="blue" ? dwpP(X, T2, R, rd) : dwpP(X, B, T2, rd);
+  return side==="blue" ? 100*(p1-p0) : 100*(p0-p1);
+}
+function dwpBestRole(X, T, c){ const open=[0, 1, 2, 3, 4].filter(r=>T[r]<0); if (!open.length) return -1; return open.reduce((a, r)=>X.p[r][c]>X.p[a][c] ? r : a, open[0]); }
+function statPickwpa(a, named){
+  named=named||{};
+  if (a.length!==1) throw new Error(`pickwpa(champion, role:, side:, blue:, red:, pro:) takes one champion: the pick`);
+  const {X, B, R, rd, rtxt} = dwpSetup(named, "pickwpa", ["role","side"]), side=dwpSide(named.side, "pickwpa"), T = side==="blue" ? B : R;
+  const c=dwpChampIdx(a[0], "pickwpa", "the pick");
+  if (c==null) throw new Error(`pickwpa(): the pick is a champion (Rakan or "Rakan"), not ${typeName(a[0])}`);
+  if (B.includes(c) || R.includes(c)) throw new Error(`pickwpa(): ${KB.champs[STATS.champs[c]].name} is already in the draft`);
+  const r = named.role!=null ? dwpRole(named.role, "pickwpa") : dwpBestRole(X, T, c);
+  if (r<0) throw new Error(`pickwpa(): ${side} has no open role left`);
+  if (T[r]>=0) throw new Error(`pickwpa(): ${side} already has ${KB.champs[STATS.champs[T[r]]].name} as ${STAT_ROLES[r]}`);
+  const T2=T.slice(); T2[r]=c;
+  const p0=dwpP(X, B, R, rd), p1 = side==="blue" ? dwpP(X, T2, R, rd) : dwpP(X, B, T2, rd), mine = x => side==="blue" ? x : 1-x, v=100*(mine(p1)-mine(p0));
+  const name=KB.champs[STATS.champs[c]].name;
+  line(`${X.name}: ${side} ${dwpShow(X, side==="blue" ? B : R)} vs ${side==="blue" ? "red" : "blue"} ${dwpShow(X, side==="blue" ? R : B)}${rtxt}: ${side} wins ${spct(mine(p0))}% → with ${name} ${STAT_ROLES[r]} ${spct(mine(p1))}% (${v>=0 ? "+" : ""}${fmt(v)} pp)`);
+  const s=dwpStat(X, v, `${name} ${STAT_ROLES[r]} pick WPA for ${side} (${X.name})`, "pp"); s.champ=STATS.champs[c]; s.fn="pickwpa";
+  return s;
+}
+/* topPicks(by: "draftwpa", blue:, red:, side:, role:, pro:, n:): every champion not in the draft, in its most-played open role
+   (or role:), by pick WPA */
+function dwpTop(named){
+  const {X, B, R, rd} = dwpSetup(named, "topPicks", ["by","side","role","n"]), side=dwpSide(named.side, "topPicks"), T = side==="blue" ? B : R;
+  const n = named.n==null ? 10 : named.n;
+  if (!(typeof n==="number" && n>=1 && n<=200)) throw new Error("n: is how many champions to list (1–200)");
+  const role = named.role!=null ? dwpRole(named.role, "topPicks") : null;
+  if (role!=null && T[role]>=0) throw new Error(`topPicks(): ${side} already has ${STAT_ROLES[role]}`);
+  const open = role!=null ? [role] : [0, 1, 2, 3, 4].filter(r=>T[r]<0);
+  if (!open.length) throw new Error(`topPicks(): ${side} has no open role left`);
+  const out=[];
+  for (let c=0; c<X.n; c++){
+    if (B.includes(c) || R.includes(c)) continue;
+    let best=null;
+    for (const r of open){ const tot=[0, 1, 2, 3, 4].reduce((t, q)=>t+X.p[q][c], 0); if (!tot || X.p[r][c]/tot < 0.1 || X.p[r][c] < 0.002) continue;   /* a real role: 10%+ of its picks, 0.2%+ of the role's picks */
+      const v=dwpPickWpa(X, B, R, rd, c, r, side); if (!best || v>best.v) best={v, r}; }
+    if (best){ const nm=KB.champs[STATS.champs[c]].name, s=dwpStat(X, best.v, `${nm} ${STAT_ROLES[best.r]} pick WPA for ${side}`, "pp"); s.label=`${nm} (${STAT_ROLES[best.r]})`; s.champ=STATS.champs[c]; s.fn="topPicks"; out.push(s); }
+  }
+  out.sort((x, y)=>y.value-x.value);
+  const top=out.slice(0, Math.round(n));
+  line(`${X.name}: top ${top.length} picks for ${side}${role!=null ? " as "+STAT_ROLES[role] : ""} by pick WPA (blue ${dwpShow(X, B)} vs red ${dwpShow(X, R)}; champions in a role they play: 10%+ of their picks there)`);
+  top.forEach((s, j)=>line(`  ${j+1}. ${showStat(s)}`));
+  budgetValues(top.length);
+  return {t:"list", items:top};
+}
 function showStat(v){
   const pre = v.label ? v.label+": " : "";
   if (!v.enough) return pre+v.why;
+  if (v.kind==="model") return pre+(v.unit==="pp" ? `${v.value>=0 ? "+" : ""}${fmt(v.value)} pp` : `${spct(v.value)}%`)+` (${v.note})`;
   if (v.kind==="rate") return pre+`${spct(v.value)}% (${v.countWord ? `${grp(v.k)} ${v.countWord} in ${grp(v.n)} games` : `n ${grp(v.n)}`}; 95% CI ${spct(v.low)}–${spct(v.high)}%)`;
   const f = x => v.unit==="%" ? spct(x)+"%" : (v.signed && x>0 ? "+" : "")+(Math.abs(x)>=10 ? String(Math.round(x)) : fmt(x)), u = v.unit && v.unit!=="%" ? " "+v.unit : "";
   if (v.low==null) return pre+`${f(v.value)} (n ${grp(v.n)} games; ${v.note})`;
@@ -9207,6 +9382,10 @@ function Interpreter(ast, emitRaw){
       }
       case "stat": {
         const v=obj, rate=v.kind==="rate";
+        if (v.kind==="model"){ const mh=["value","what","source","model",...(v.champ?["champ"]:[])];
+          if (name==="value") return v.value; if (name==="what") return v.what; if (name==="source" || name==="model") return v.source; if (name==="enough") return true;
+          if (name==="champ" && v.champ) return mkChamp(v.champ, globals.get("defaultLevel"));
+          throw new LangError(`a model Stat (${v.fn}) has ${mh.join(", ")}.${hint(name, mh)}`, ln); }
         if (name==="value"){ const x=statNum(v); line(`${v.what} = ${showStat({...v, label:null})}`); return x; }
         if (name==="enough") return v.enough;
         if (name==="n" || name==="games") return v.n;
@@ -9262,6 +9441,7 @@ function Interpreter(ast, emitRaw){
     pickrate:(a, named)=>statPick(a, named, "pickrate"), banrate:(a, named)=>statPick(a, named, "banrate"), presence:(a, named)=>statPick(a, named, "presence"),
     stat:(a, named)=>statMean(a, named), matchups:(a, named)=>statMatchups(a, named), topPicks:(a, named)=>statTop(a, named),
     wpa:(a, named)=>statWpa(a, named), winprob:(a, named)=>statWinprob(a, named),
+    draftwp:(a, named)=>statDraftwp(a, named), pickwpa:(a, named)=>statPickwpa(a, named),
     range:(a)=>{ if (a.length<2 || a.length>3 || a.some(x=>typeof x!=="number")) throw new Error("range(from, to) or range(from, to, step): numbers from “from” to “to”, both included, e.g. range(0, 1200, 50)");
       return {t:"list", items:rangeList(a[0], a[1], a.length>2 ? a[2] : (a[1]>=a[0] ? 1 : -1))}; },
     canKill:(a, named)=>{ const f=killFight(a, named, a[2]); const u=f.units[1]; return u.dummy ? u.wouldDieAt!=null : !u.alive; },
@@ -9943,6 +10123,10 @@ print(topPicks(pro: true, by: "presence", n: 5), topPicks(role: "mid", pro: true
 // pro only: what a lead is worth (win probability model) and win probability added per game, in percentage points
 print(winprob(goldDiff: 3000, at: 20), wpa(Syndra, pro: true), wpa(Syndra, pro: true, phase: "lane", vs: Orianna));
 print(topPicks(pro: true, by: "wpa", role: "mid", n: 5, min: 100));
+// draft win probability (separate pro and solo-queue models): a whole draft, one pick's WPA, the best picks for a draft
+print(draftwp(blue: {Ornn, LeeSin, Ahri, Jinx, Leona}, red: {Sion, Vi, Orianna, Kaisa, Nautilus}, pro: true));
+print(pickwpa(Rakan, role: "support", side: "blue", blue: {Ornn, LeeSin, Ahri, Jinx}, red: {Sion, Vi, Orianna}));
+print(topPicks(by: "draftwpa", side: "blue", role: "support", blue: {Ornn, LeeSin, Ahri, Jinx}, red: {Sion, Vi, Orianna}, n: 5));
 
 Stat s = winrate(Syndra, vs: Orianna, pro: true);
 print(s.n, s.wins, s.low, s.high);
@@ -10092,7 +10276,7 @@ const AC = (() => {
   for (const [k,R] of Object.entries(CALC.runes)) base.push(C(ident(R.name), "rune", R.name));
   for (const t of TYPES) base.push(C(t, "type", ""));
   for (const k of ["if","else","for","while","return","break","continue","true","false","rule","prove","forall"]) base.push(C(k, "keyword", ""));
-  for (const [f,d] of [["assert","assert(cond, \"title\")"],["print","print(a, b, …)"],["fight","fight(side1, side2, seconds, start:, skill:, perfectAim:, levelGap:, goldGap:)"],["fights","fights(team1, team2, seconds, starts:, levels:, roles:, bothSides:, skill:, levelGaps:, goldGaps:)"],["crossover","crossover(team1, team2, seconds, axis: \"level\" | \"gold\", starts:, bothSides:) team 1's lead where its share crosses 50%"],["range","range(from, to, step) both ends included"],["winrate","winrate(champ, vs:, with:, role:, lane:, patch:, league:, length:, pro:, year:) real games: a Stat with n and 95% CI"],["pickrate","pickrate(champ, role:, patch:, league:, pro:, year:) share of games it was picked in"],["banrate","banrate(champ, pro:, year:) share of games it was banned in"],["presence","presence(champ, pro:, year:) picks + bans"],["games","games(champ, vs:, with:, role:, lane:, pro:, …) number of games"],["stat","stat(champ, \"gd15\", role:, pro:, year:) per-game average: gd10 gd15 xpd10 xpd15 csd10 csd15 (pro), kills deaths assists kda dmgshare dpm cspm"],["matchups","matchups(champ, lane:, role:, min:, pro:, year:, by: \"winrate\" | \"wpa\", phase:) win rate (or WPA) vs every opponent with enough games, best first"],["topPicks","topPicks(role:, by: \"pickrate\" | \"winrate\" | \"banrate\" | \"presence\" | \"wpa\", n:, min:, pro:, year:, patch:, league:)"],["wpa","wpa(champ, pro: true, phase: \"total\" | \"lane\" | \"team\", role:, vs:, year:) win probability added, percentage points per game (pro only): a Stat with n and 95% CI"],["winprob","winprob(goldDiff:, at: 10–25, xpDiff:, killDiff:, side: \"blue\" | \"red\") pro win probability model: P(win) for a team lead at a minute"],["canKill","canKill(a, t, seconds, healers:, fightBack:)"],["timeToKill","timeToKill(a, t, healers:, fightBack:)"],["canDodge","canDodge(b, a.Q, distance:, using:, reaction:)"],["champions","champions(Class?)"],["items","items()"],["runes","runes()"],["min","min(a, b)"],["max","max(a, b)"],["abs","abs(x)"],["floor","floor(x)"],["ceil","ceil(x)"],["round","round(x)"],["sqrt","sqrt(x)"],["pow","pow(x, y)"],["defaultLevel","global, default 11"],["gameMinute","global, default 20"],["Dummy","Dummy(hp:, armor:, mr:) practice-tool target dummy"]])
+  for (const [f,d] of [["assert","assert(cond, \"title\")"],["print","print(a, b, …)"],["fight","fight(side1, side2, seconds, start:, skill:, perfectAim:, levelGap:, goldGap:)"],["fights","fights(team1, team2, seconds, starts:, levels:, roles:, bothSides:, skill:, levelGaps:, goldGaps:)"],["crossover","crossover(team1, team2, seconds, axis: \"level\" | \"gold\", starts:, bothSides:) team 1's lead where its share crosses 50%"],["range","range(from, to, step) both ends included"],["winrate","winrate(champ, vs:, with:, role:, lane:, patch:, league:, length:, pro:, year:) real games: a Stat with n and 95% CI"],["pickrate","pickrate(champ, role:, patch:, league:, pro:, year:) share of games it was picked in"],["banrate","banrate(champ, pro:, year:) share of games it was banned in"],["presence","presence(champ, pro:, year:) picks + bans"],["games","games(champ, vs:, with:, role:, lane:, pro:, …) number of games"],["stat","stat(champ, \"gd15\", role:, pro:, year:) per-game average: gd10 gd15 xpd10 xpd15 csd10 csd15 (pro), kills deaths assists kda dmgshare dpm cspm"],["matchups","matchups(champ, lane:, role:, min:, pro:, year:, by: \"winrate\" | \"wpa\", phase:) win rate (or WPA) vs every opponent with enough games, best first"],["topPicks","topPicks(role:, by: \"pickrate\" | \"winrate\" | \"banrate\" | \"presence\" | \"wpa\" | \"draftwpa\", n:, min:, pro:, year:, patch:, league:; draftwpa: blue:, red:, side:)"],["wpa","wpa(champ, pro: true, phase: \"total\" | \"draft\" | \"lane\" | \"team\", role:, vs:, year:) win probability added, percentage points per game (pro only): a Stat with n and 95% CI"],["winprob","winprob(goldDiff:, at: 10–25, xpDiff:, killDiff:, side: \"blue\" | \"red\") pro win probability model: P(win) for a team lead at a minute"],["draftwp","draftwp(blue: {…}, red: {…}, pro:, byRole:, blueRating:, redRating:) draft win probability for blue (separate pro and solo models; open slots = a typical pick)"],["pickwpa","pickwpa(champ, role:, side: \"blue\" | \"red\", blue: {…}, red: {…}, pro:) the pick's win probability added, percentage points"],["canKill","canKill(a, t, seconds, healers:, fightBack:)"],["timeToKill","timeToKill(a, t, healers:, fightBack:)"],["canDodge","canDodge(b, a.Q, distance:, using:, reaction:)"],["champions","champions(Class?)"],["items","items()"],["runes","runes()"],["min","min(a, b)"],["max","max(a, b)"],["abs","abs(x)"],["floor","floor(x)"],["ceil","ceil(x)"],["round","round(x)"],["sqrt","sqrt(x)"],["pow","pow(x, y)"],["defaultLevel","global, default 11"],["gameMinute","global, default 20"],["Dummy","Dummy(hp:, armor:, mr:) practice-tool target dummy"]])
     base.push(C(f, "builtin", d));
   for (const c of CLASSES) base.push(C(c, "class", "champion class"));
   base.push(C("AA", "slot", "auto attack, for combos"));
