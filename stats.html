@@ -252,9 +252,14 @@ details.lowg summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin:4
 .core .icons .plus{color:var(--faint);font-size:12px}
 /* build carousel: one horizontal row of build cards (scroll-snap, fade edges, arrow buttons) */
 .hs{position:relative;min-width:0}
-.hs-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(232px,256px);gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:2px;padding:2px 2px 12px;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;-webkit-overflow-scrolling:touch}
+.hs-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(232px,256px);gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:2px;padding:2px 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.hs-row::-webkit-scrollbar{display:none}
+/* drag to scroll (dragScroll): a grab cursor where the row overflows; while dragging no snapping, no text selection */
+.drag.ovf{cursor:grab}
+.drag.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none;scroll-snap-type:none;scroll-behavior:auto}
+.drag.dragging a,.drag.dragging button{cursor:grabbing}
 .hs-row:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
-.hs::before,.hs::after{content:"";position:absolute;top:0;bottom:12px;width:40px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:1}
+.hs::before,.hs::after{content:"";position:absolute;top:0;bottom:4px;width:40px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:1}
 .hs::before{left:0;background:linear-gradient(to right,var(--bg),transparent)}
 .hs::after{right:0;background:linear-gradient(to left,var(--bg),transparent)}
 .hs.more-l::before,.hs.more-r::after{opacity:1}
@@ -275,6 +280,65 @@ details.lowg summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin:4
 .bcard.small{opacity:.55}
 .sec h2 .hs-nav{letter-spacing:0;text-transform:none}
 .page{display:inline-flex;align-items:center;gap:3px}
+/* build sandbox (Builds tab): six item slots, champion level and combo, a practice-tool dummy; the engine computes the combo */
+.sbx{display:flex;flex-direction:column;gap:14px}
+.sbx-intro{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.sbx-intro p{flex:1 1 320px}
+.sb-top{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px 22px}
+.sb-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sb-slot{position:relative;min-width:0}
+.sb-pick{display:flex;align-items:center;gap:8px;width:100%;min-height:52px;padding:6px 8px;border:1px dashed var(--line-strong);border-radius:8px;background:var(--surface-2);color:var(--ink-2);font:500 12.5px/1.25 var(--sans);text-align:left;cursor:pointer}
+.sb-pick:hover,.sb-pick[aria-expanded="true"]{border-color:var(--accent)}
+.sb-pick.full{border-style:solid;color:var(--ink)}
+.sb-pick .ic{flex:none}
+.sb-pick .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sb-pick .plus{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:6px;background:var(--inset);color:var(--faint);font-size:20px}
+.sb-x{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);font:600 13px/1 var(--sans);cursor:pointer;display:grid;place-items:center;padding:0}
+.sb-x:hover{color:var(--no);border-color:var(--no)}
+.sb-ctl{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:10px}
+.sb-ctl label,.sb-dm label{font-size:12.5px;color:var(--muted)}
+.sb-ctl select,.sb-ctl input[type=text],.sb-dm input[type=number],.sb-picker input{min-height:32px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font:13px var(--sans)}
+.sb-ctl .grow{flex:1 1 200px;display:flex;gap:8px;align-items:center;min-width:0}
+.sb-ctl .grow input,.sb-ctl .grow select{flex:1 1 0;min-width:0}
+.sb-steps-in{font-family:var(--mono)!important}
+.sb-picker{border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);padding:10px;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sb-picker .hd{display:flex;gap:8px;align-items:center}
+.sb-picker .hd input{flex:1;min-width:0}
+.sb-list{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.sb-list h4{margin:4px 0 0;font:600 10.5px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px}
+.sb-item{display:flex;align-items:center;gap:7px;padding:4px 6px;border:1px solid transparent;border-radius:6px;background:none;color:var(--ink);font:12.5px/1.2 var(--sans);text-align:left;cursor:pointer;min-width:0}
+.sb-item:hover,.sb-item:focus-visible{border-color:var(--accent);background:var(--surface)}
+.sb-item .ic{width:28px;height:28px;flex:none}
+.sb-item span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-item small{color:var(--faint)}
+.sb-item.in{opacity:.55}
+.sb-dm{display:flex;flex-direction:column;gap:10px}
+.sb-dm .row{display:grid;grid-template-columns:46px minmax(0,1fr) 78px;gap:10px;align-items:center}
+.sb-dm input[type=range]{width:100%;accent-color:var(--accent)}
+.sb-dm input[type=number]{width:78px}
+.sb-pre{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sb-pre .btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.sb-out{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr) minmax(0,1fr);gap:14px 22px;border-top:1px solid var(--line);padding-top:14px}
+.sb-big b{display:block;font:600 32px/1.1 var(--sans)}
+.sb-big .sub{color:var(--muted);font-size:12.5px}
+.sb-kill{display:inline-block;margin-top:8px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid currentColor}
+.sb-kill.yes{color:var(--ok)}
+.sb-kill.no{color:var(--warn)}
+.sb-out h3{margin:0 0 6px}
+.sb-st{width:100%;border-collapse:collapse;font-size:12.5px}
+.sb-st td,.sb-st th{padding:3px 6px 3px 0;text-align:left;border-bottom:1px solid var(--line)}
+.sb-st th{font-weight:500;color:var(--muted)}
+.sb-st td.n,.sb-st th.n{text-align:right;font-variant-numeric:tabular-nums}
+.sb-st tr.skip td{color:var(--faint)}
+.sb-src{display:flex;flex-direction:column;gap:5px;font-size:12.5px}
+.sb-src .r{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:2px 8px}
+.sb-src .r i{grid-column:1/-1;height:4px;border-radius:2px;background:var(--accent);opacity:.8}
+.sb-src .r span:nth-child(2){text-align:right;font-variant-numeric:tabular-nums}
+.sb-err{border:1px solid var(--no);color:var(--no);background:color-mix(in srgb,var(--no) 8%,transparent);border-radius:8px;padding:8px 12px;font-size:13px}
+.sb-foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+@media (max-width:900px){.sb-top{grid-template-columns:minmax(0,1fr)}.sb-out{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.sb-big{grid-column:1/-1}}
+@media (max-width:600px){.sb-out{grid-template-columns:minmax(0,1fr)}.sb-pick{min-height:48px;padding:5px 6px;font-size:12px}.sb-pick .ic,.sb-pick .plus{width:32px;height:32px}.sb-dm .row{grid-template-columns:40px minmax(0,1fr) 68px}.sb-dm input[type=number]{width:68px}}
 .page .sep{width:1px;height:18px;background:var(--line-strong);margin:0 4px}
 .shards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 .mucb{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -550,7 +614,7 @@ function loadIcons(){
    Rows with row.small (under the minimum) and rows whose sort value is null always go last. */
 function table({caption, cols, rows, sort, onSort, limit, rank}){
   let st = {...sort}, showAll = !limit;
-  const wrap = h("div", {class: "tw"});
+  const wrap = dragScroll(h("div", {class: "tw"}));
   const draw = () => {
     const col = cols.find(c => c.key === st.key) || cols.find(c => c.val);
     const dir = st.dir === "asc" ? 1 : -1;
@@ -930,8 +994,8 @@ function viewChamp(r, c){
         h("span", {class: "chip mode"}, c.mode === "pro" ? `Pro ${c.year}` : "Solo queue 16.x"), h("span", {class: "chip"}, `${grp(nG)} games`))),
     h("span", {class: "grow"}), openButton(title, champProgram(c, id, ro))));
   // tabs: links (shareable, Back / Forward), arrow keys move between them
-  const tl = h("div", {class: "tabs", role: "tablist", "aria-label": `${name} sections`}, TABS.map(([k, t, only]) => h("a", {role: "tab", id: "tab-" + k, href: champLink(c, id, k, rq),
-    "aria-selected": String(k === tab), "aria-controls": "panel", tabindex: k === tab ? "0" : "-1"}, t, only && only !== c.mode ? h("span", {class: "pill", title: `${only === "solo" ? "solo queue" : "pro"} data only`}, only) : null)));
+  const tl = dragScroll(h("div", {class: "tabs", role: "tablist", "aria-label": `${name} sections`}, TABS.map(([k, t, only]) => h("a", {role: "tab", id: "tab-" + k, href: champLink(c, id, k, rq),
+    "aria-selected": String(k === tab), "aria-controls": "panel", tabindex: k === tab ? "0" : "-1"}, t, only && only !== c.mode ? h("span", {class: "pill", title: `${only === "solo" ? "solo queue" : "pro"} data only`}, only) : null))));
   tl.addEventListener("keydown", e => {
     const ks = [...tl.children], k = ks.indexOf(document.activeElement); if (k < 0) return;
     const j = e.key === "ArrowRight" ? (k + 1) % ks.length : e.key === "ArrowLeft" ? (k - 1 + ks.length) % ks.length : e.key === "Home" ? 0 : e.key === "End" ? ks.length - 1 : -1;
@@ -1084,11 +1148,67 @@ function modeNotice(id, head, body, to, btn){
     h("div", {}, h("button", {type: "button", class: "btn", onclick: () => setMode(to)}, btn)));
 }
 
-/* a horizontal scroll row (scroll-snap) with fade edges and arrow buttons; the row itself is focusable (arrow keys scroll) */
+/* drag to scroll: a mouse drag scrolls a horizontal row (touch keeps the native swipe, pen and keyboard are untouched). It starts after
+   5 px of movement, so a plain click still works; after a drag the click that follows is swallowed (no link or button fires), native
+   link / image dragging is off, and the row coasts on a little momentum (none with reduced motion). */
+const reduced = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+function dragScroll(el){
+  el.classList.add("drag");
+  let st = null, swallow = false, raf = 0;
+  const ovf = () => el.scrollWidth > el.clientWidth + 1;
+  const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; el.classList.remove("dragging"); };
+  el.addEventListener("pointerover", () => el.classList.toggle("ovf", ovf()));
+  el.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "mouse" || e.button !== 0 || !ovf()) return;
+    if (e.target.closest && e.target.closest("input,select,textarea,[contenteditable]")) return;
+    stop(); swallow = false;
+    st = {id: e.pointerId, x: e.clientX, left: el.scrollLeft, moved: false, lx: e.clientX, t: performance.now(), v: 0};
+  });
+  el.addEventListener("pointermove", e => {
+    if (!st || e.pointerId !== st.id) return;
+    const dx = e.clientX - st.x;
+    if (!st.moved){
+      if (Math.abs(dx) < 5) return;
+      st.moved = true; el.classList.add("dragging");
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges();
+    }
+    e.preventDefault();
+    const now = performance.now(), dt = Math.max(1, now - st.t);
+    st.v = 0.7 * ((st.lx - e.clientX) / dt) + 0.3 * st.v; st.lx = e.clientX; st.t = now;
+    el.scrollLeft = st.left - dx;
+  });
+  const end = e => {
+    if (!st || e.pointerId !== st.id) return;
+    const s = st; st = null;
+    if (!s.moved) return;
+    try { el.releasePointerCapture(s.id); } catch (_) {}
+    if (e.type === "pointerup"){ swallow = true; setTimeout(() => { swallow = false; }, 400); }
+    let v = performance.now() - s.t > 80 || reduced() ? 0 : Math.max(-4, Math.min(4, s.v)), last = performance.now();
+    const step = now => { const dt = Math.min(40, now - last); last = now; el.scrollLeft += v * dt; v *= Math.pow(0.994, dt);
+      if (Math.abs(v) > 0.03) raf = requestAnimationFrame(step); else stop(); };
+    if (v && window.requestAnimationFrame) raf = requestAnimationFrame(step); else stop();
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+  el.addEventListener("click", e => { if (swallow){ swallow = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  el.addEventListener("dragstart", e => { if (e.target.closest && e.target.closest("a,img")) e.preventDefault(); });
+  return el;
+}
+/* a horizontal scroll row (scroll-snap) with fade edges and arrow buttons: drag it with the mouse, swipe it on touch; no visible
+   scrollbar. The row itself is focusable: Left / Right move by a card, Home / End jump to the ends. */
 function carousel(label, cards, rid){
-  const row = h("div", {class: "hs-row", id: rid, role: "region", "aria-label": label + " (scrolls sideways)", tabindex: "0"}, cards), wrap = h("div", {class: "hs"}, row);
-  const by = d => { const dx = d * Math.max(240, row.clientWidth * 0.85), smooth = !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    if (row.scrollBy) row.scrollBy({left: dx, behavior: smooth ? "smooth" : "auto"}); else row.scrollLeft += dx; };
+  const row = h("div", {class: "hs-row", id: rid, role: "region", "aria-label": label + " (scrolls sideways: drag, swipe or use the arrow keys)", tabindex: "0"}, cards), wrap = h("div", {class: "hs"}, row);
+  const move = dx => { if (row.scrollBy) row.scrollBy({left: dx, behavior: reduced() ? "auto" : "smooth"}); else row.scrollLeft += dx; };
+  const by = d => move(d * Math.max(240, row.clientWidth * 0.85));
+  dragScroll(row);
+  row.addEventListener("keydown", e => {
+    if (e.target !== row || e.altKey || e.ctrlKey || e.metaKey) return;
+    const w0 = row.firstElementChild ? row.firstElementChild.getBoundingClientRect().width : 0, card = w0 ? w0 + 10 : 266;
+    const dx = e.key === "ArrowRight" ? card : e.key === "ArrowLeft" ? -card : e.key === "Home" ? -row.scrollLeft : e.key === "End" ? row.scrollWidth - row.scrollLeft : null;
+    if (dx == null) return;
+    e.preventDefault(); move(dx);
+  });
   const prev = h("button", {type: "button", class: "btn", "aria-label": "Scroll builds left", "aria-controls": rid, onclick: () => by(-1)}, "‹");
   const next = h("button", {type: "button", class: "btn", "aria-label": "Scroll builds right", "aria-controls": rid, onclick: () => by(1)}, "›");
   const upd = () => { const m = row.scrollWidth - row.clientWidth, x = row.scrollLeft;
@@ -1145,18 +1265,225 @@ function buildTeaser(el, c, id, r){
       h("a", {href: champLink(c, id, "builds", r)}, "Builds →"));
   }, () => { if (tok === RTOK) el.querySelector(".ci").textContent = "build data unavailable"; });
 }
+/* ---------- build sandbox (Builds tab, solo and pro): six item slots -> the champion's combo on a practice-tool dummy ----------
+   The numbers come from the Rift Logic engine itself (web/engine.js + kb.json + calc.json, the files tools/rl.js runs), fetched once
+   when the sandbox is first opened. Each change writes the same program "Open in Rift Logic" hands to the editor and runs it. */
+let ENG = null, engP = null;
+const SB_DUMMY = {squishy: {hp: 1800, armor: 70, mr: 45, l: "Squishy"}, bruiser: {hp: 3000, armor: 120, mr: 75, l: "Bruiser"}, tank: {hp: 4500, armor: 220, mr: 140, l: "Tank"}};
+const SB_LIM = {hp: [500, 6000, 50], armor: [0, 300, 5], mr: [0, 300, 5]};
+const SB = {id: null, items: [null, null, null, null, null, null], level: 11, combo: null, steps: "", hp: 1800, armor: 70, mr: 45, pick: -1, timer: 0, wait: null, done: null, ui: null};
+const SB_FALLBACK = ["R", "Q", "E", "W", "AA"];                    // no guide combo: the engine's default rotation (R, Q, E, W), then an attack
+function loadEngine(){
+  if (engP) return engP;
+  if (PAGE.inline) return Promise.reject(new Error("the sandbox runs on riftlogic.dev"));
+  const js = new Promise((res, rej) => {
+    if (typeof window.createRiftLogic === "function") return res();
+    const s = document.createElement("script"); s.src = "engine.js"; s.async = true;
+    s.onload = () => res(); s.onerror = () => rej(new Error("engine.js could not be loaded")); document.head.append(s);
+  });
+  const get = f => fetch(f).then(r => { if (!r.ok) throw new Error(`${f}: HTTP ${r.status}`); return r.json(); });
+  engP = Promise.all([js, get("kb.json"), get("calc.json")]).then(([, kb, calc]) => {
+    if (typeof window.createRiftLogic !== "function") throw new Error("engine.js did not load the engine");
+    const RL = window.createRiftLogic(kb, calc), GRP = ["Boots", "Completed items", "Starters, components and consumables"];
+    const items = Object.values(calc.items).map(it => ({id: it.id, name: it.name, key: it.name.replace(/[^A-Za-z0-9]/g, ""), gold: it.gold,
+      g: (it.limits || []).some(l => l[0] === "Items/ItemGroups/Boots") ? 0 : it.complete ? 1 : 2}))
+      .sort((a, b) => a.g - b.g || a.name.localeCompare(b.name));
+    return (ENG = {RL, kb, items, byId: new Map(items.map(x => [x.id, x])), GRP});
+  }, e => { engP = null; throw e; });
+  return engP;
+}
+/* the library combo shown by default: the guides' max-damage / full combo, else an all-in or burst, else one with R, else the longest */
+function sbCombos(id){ return (ENG && ENG.kb.combos && ENG.kb.combos[id]) || []; }
+function sbDefaultCombo(id){
+  const cs = sbCombos(id); if (!cs.length) return null;
+  const tier = n => /max damage/i.test(n) ? 0 : /full combo/i.test(n) ? 1 : /all-in|burst|one-shot|assassination|full/i.test(n) ? 2 : 3;
+  return [...cs].sort((a, b) => tier(a.name) - tier(b.name) || b.steps.includes("R") - a.steps.includes("R") || b.steps.length - a.steps.length)[0];
+}
+const sbTokens = t => String(t).split(/[\s,;{}>+·→-]+/).filter(Boolean);
+function sbProgram(id){
+  const items = SB.items.filter(x => x != null).map(x => ENG.byId.get(x).key), lib = SB.combo && sbCombos(id).find(x => x.name === SB.combo);
+  const combo = lib ? `x.combo(${JSON.stringify(lib.name)})` : `{${sbTokens(SB.steps).join(", ")}}`;
+  return [`// ${nameOf(id)}: combo damage on a practice-tool dummy (build sandbox, Rift Logic stats page)`,
+    `Champion x = ${id}(${SB.level})${items.length ? `.with({${items.join(", ")}})` : ""};`,
+    `Dummy d = Dummy(hp: ${SB.hp}, armor: ${SB.armor}, mr: ${SB.mr});`,
+    `auto r = x.perform(${combo}, vs: d);`, "print(r);", ""].join("\n");
+}
+function sbSchedule(ms = 150){
+  clearTimeout(SB.timer); SB.timer = setTimeout(sbRun, ms);
+  if (!SB.wait) SB.wait = new Promise(r => { SB.done = r; });
+}
+function sbRun(){
+  const U = SB.ui, done = SB.done; SB.wait = SB.done = null;
+  try { if (U && U.sec.isConnected) sbShow(U); } finally { if (done) done(); }
+}
+function sbShow(U){
+  const id = SB.id, prog = sbProgram(id);
+  U.prog = prog; U.err.hidden = true; U.err.textContent = "";
+  const bad = sbTokens(SB.steps).filter(t => !/^[A-Za-z][A-Za-z0-9']*$/.test(t));
+  let msg = !SB.combo && !sbTokens(SB.steps).length ? "Type a combo: steps like Q W E R AA (P = passive, Flash, or an item active such as ProfaneHydra)."
+    : !SB.combo && bad.length ? `“${bad[0]}” isn't a step: use Q, W, E, R, AA, P, Flash or an item with an active.` : null, v = null;
+  if (!msg){
+    let res; try { res = ENG.RL.run(prog, [], {maxMs: 4000}); } catch (e) { res = {items: [{kind: "error", msg: String(e && e.message || e)}]}; }
+    const er = res.items.find(x => x.kind === "error");
+    if (er) msg = /^with\(\)/.test(er.msg) ? "This build isn't possible in the game: " + er.msg.replace(/^with\(\):\s*/, "") : "The engine couldn't run this: " + er.msg;
+    else { const row = res.items.flatMap(x => x.rows || []).find(r => r.v && r.v.t === "comboresult"); v = row ? row.v : null; if (!v) msg = "The engine returned no combo result."; }
+  }
+  U.res.hidden = !v; U.open.textContent = ""; U.open.append(openButton(`${nameOf(id)} build sandbox`, prog));
+  if (msg){ U.err.hidden = false; U.err.textContent = msg; return; }
+  const f1 = x => (Math.round(x * 10) / 10).toLocaleString("en-US", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  U.dmg.textContent = grp(v.damage); U.dmg.setAttribute("data-v", String(v.damage));
+  U.sub.textContent = `damage over ${v.time.toFixed(2)} s` + (v.lingering > 0.05 ? ` (${f1(v.lingering)} of it from burns after the last step)` : "");
+  const reset = (v.log || []).some(l => /resets to full health/.test(l));
+  U.kill.className = "sb-kill " + (v.killed ? "yes" : "no");
+  U.kill.textContent = v.killed ? `Kills the dummy${v.killTime != null ? ` at ${v.killTime.toFixed(2)} s` : ""}` : `Dummy survives: ${grp(v.hpLeft)} / ${grp(v.hpMax)} HP left (${pct(v.hpLeft / v.hpMax, 0)})`;
+  U.note.textContent = reset ? "The combo had a gap of 3 s or more: the dummy restored to full health (practice tool rule), so the health left counts from the reset." : "";
+  U.steps.textContent = "";
+  U.steps.append(h("tr", {}, h("th", {}, "#"), h("th", {}, "Step"), h("th", {class: "n"}, "Time"), h("th", {class: "n"}, "Damage")),
+    ...v.steps.map((s, k) => h("tr", {class: s.skipped ? "skip" : null, title: s.skipped || null}, h("td", {}, k + 1), h("td", {}, s.step, s.skipped ? h("small", {}, " · skipped") : null),
+      h("td", {class: "n"}, s.t.toFixed(2) + " s"), h("td", {class: "n"}, f1(s.dmg)))));
+  const by = new Map(); for (const x of v.hits || []) by.set(x.what === "dot" ? "burns" : x.what === "attack" ? "basic attacks" : x.what, (by.get(x.what === "dot" ? "burns" : x.what === "attack" ? "basic attacks" : x.what) || 0) + x.v);
+  const src = [...by].sort((a, b) => b[1] - a[1]), top = src.length ? src[0][1] : 1;
+  U.src.textContent = "";
+  U.src.append(...src.map(([k, x]) => h("div", {class: "r"}, h("span", {}, k), h("span", {}, f1(x)), h("i", {style: `width:${Math.max(1, 100 * x / top)}%`}))));
+  if (!src.length) U.src.append(h("span", {class: "note"}, "no damage"));
+}
+function sbIcon(it, cls){ return bicon("i" + it.id, it.name, cls); }
+function sbSlots(U){
+  U.slots.textContent = "";
+  SB.items.forEach((x, k) => {
+    const it = x != null ? ENG.byId.get(x) : null;
+    const b = h("button", {type: "button", class: "sb-pick" + (it ? " full" : ""), id: `sb-slot-${k}`, "aria-expanded": String(SB.pick === k), "aria-controls": "sb-picker",
+      "aria-label": it ? `Slot ${k + 1}: ${it.name}. Change the item` : `Slot ${k + 1}: empty. Add an item`, onclick: () => sbOpenPick(U, SB.pick === k ? -1 : k)},
+      it ? sbIcon(it, "lg") : h("span", {class: "plus", "aria-hidden": "true"}, "+"), h("span", {class: "nm"}, it ? it.name : "Add item"));
+    U.slots.append(h("div", {class: "sb-slot", role: "listitem"}, b, it ? h("button", {type: "button", class: "sb-x", "aria-label": `Remove ${it.name}`, title: "Remove",
+      onclick: () => { SB.items[k] = null; sbSlots(U); sbSchedule(0); $(`sb-slot-${k}`).focus(); }}, "×") : null));
+  });
+}
+function sbOpenPick(U, k){
+  SB.pick = k; U.picker.hidden = k < 0; sbSlots(U);
+  if (k < 0) return;
+  U.pickT.textContent = `Slot ${k + 1}: choose an item`; U.pickClear.hidden = SB.items[k] == null; U.q.value = ""; sbList(U);
+  U.q.focus();
+}
+function sbList(U){
+  const q = norm(U.q.value), inB = new Set(SB.items.filter(x => x != null)); U.list.textContent = "";
+  let n = 0;
+  ENG.GRP.forEach((g, gi) => {
+    const xs = ENG.items.filter(x => x.g === gi && (!q || norm(x.name).includes(q) || x.key.toLowerCase().includes(q)));
+    if (!xs.length) return; n += xs.length;
+    U.list.append(h("h4", {}, g), h("div", {class: "sb-grid"}, xs.map(x => h("button", {type: "button", class: "sb-item" + (inB.has(x.id) ? " in" : ""), "data-id": x.id,
+      title: `${x.name} · ${grp(x.gold)} gold${inB.has(x.id) ? " · already in the build" : ""}`, onclick: () => sbPut(U, x.id)}, sbIcon(x), h("span", {}, x.name, " ", h("small", {}, grp(x.gold)))))));
+  });
+  if (!n) U.list.append(h("p", {class: "note"}, "No item matches."));
+}
+function sbPut(U, x){
+  const k = SB.pick; if (k < 0) return;
+  SB.items[k] = x; SB.pick = -1; U.picker.hidden = true; sbSlots(U); sbSchedule(0);
+  const b = $(`sb-slot-${k}`); if (b) b.focus();
+}
+function sbSetDummy(U, o){
+  for (const k of ["hp", "armor", "mr"]) if (o[k] != null){ const [lo, hi] = SB_LIM[k]; SB[k] = Math.max(lo, Math.min(hi, Math.round(+o[k] || 0))); U.rng[k].value = U.num[k].value = SB[k]; }
+  for (const [p, d] of Object.entries(SB_DUMMY)) U.pre[p].setAttribute("aria-pressed", String(d.hp === SB.hp && d.armor === SB.armor && d.mr === SB.mr));
+  sbSchedule();
+}
+function sbCommon(U, c, S, i, ro){
+  const r = ro != null ? ro : mainRole(S, i);
+  loadBuilds().then(() => {
+    const E = soloEntry(SB.id, r) || Object.values((BUILDS && BUILDS.champs[SB.id]) || {}).sort((a, b) => b.n - a.n)[0];
+    if (!E || !E.core3.length){ status("No solo-queue build data for this champion."); return; }
+    const top = [...E.core3].sort((a, b) => b[1] - a[1])[0][0], boots = [...E.boots].filter(x => x[0]).sort((a, b) => b[1] - a[1])[0];
+    const ids = [...top, ...(boots ? [boots[0]] : [])].filter(x => ENG.byId.has(x));
+    SB.items = [0, 1, 2, 3, 4, 5].map(k => ids[k] != null ? ids[k] : null); SB.pick = -1; U.picker.hidden = true; sbSlots(U); sbSchedule(0);
+    status(`Loaded the most common solo-queue build: ${ids.map(x => ENG.byId.get(x).name).join(", ")}.`);
+  }, e => status("Build data could not be loaded: " + e.message));
+}
+function sbUI(sec, body, c, S, id, i, ro){
+  if (SB.id !== id){
+    const d = sbDefaultCombo(id); SB.id = id; SB.items = [null, null, null, null, null, null]; SB.pick = -1;
+    SB.combo = d ? d.name : null; SB.steps = (d ? d.steps : SB_FALLBACK).join(" ");
+  }
+  const name = nameOf(id), cs = sbCombos(id), U = {sec};
+  U.slots = h("div", {class: "sb-slots", role: "list", "aria-label": `${name}'s items`});
+  U.q = h("input", {type: "search", id: "sb-q", placeholder: "Search items", "aria-label": "Search items", autocomplete: "off", oninput: () => sbList(U)});
+  U.list = h("div", {class: "sb-list", id: "sb-list"});
+  U.pickT = h("b", {id: "sb-pick-t"});
+  U.pickClear = h("button", {type: "button", class: "btn", onclick: () => { SB.items[SB.pick] = null; sbOpenPick(U, -1); sbSchedule(0); }}, "Empty slot");
+  U.picker = h("div", {class: "sb-picker", id: "sb-picker", role: "dialog", "aria-labelledby": "sb-pick-t", hidden: true},
+    h("div", {class: "hd"}, U.pickT), h("div", {class: "hd"}, U.q, U.pickClear, h("button", {type: "button", class: "btn", onclick: () => { const k = SB.pick; sbOpenPick(U, -1); const b = $(`sb-slot-${k}`); if (b) b.focus(); }}, "Close")), U.list);
+  U.picker.addEventListener("keydown", e => { if (e.key === "Escape"){ e.preventDefault(); const k = SB.pick; sbOpenPick(U, -1); const b = $(`sb-slot-${k}`); if (b) b.focus(); }
+    else if (e.key === "Enter" && e.target === U.q){ const f = U.list.querySelector(".sb-item"); if (f){ e.preventDefault(); f.click(); } } });
+  const lv = h("select", {id: "sb-level", "aria-label": "Champion level", onchange: e => { SB.level = +e.target.value; sbSchedule(0); }},
+    Array.from({length: 18}, (_, k) => h("option", {value: k + 1, selected: k + 1 === SB.level}, `Level ${k + 1}`)));
+  const stepsIn = h("input", {type: "text", id: "sb-steps", class: "sb-steps-in", value: SB.steps, spellcheck: "false", autocomplete: "off", "aria-label": "Combo steps, in order",
+    oninput: e => { SB.steps = e.target.value; const m = cs.find(x => x.steps.join(" ") === sbTokens(SB.steps).join(" ")); SB.combo = m ? m.name : null; cSel.value = SB.combo || ""; sbSchedule(400); }});
+  const cSel = h("select", {id: "sb-combo", "aria-label": "Combo", onchange: e => { const m = cs.find(x => x.name === e.target.value);
+      SB.combo = m ? m.name : null; if (m) SB.steps = m.steps.join(" "); else if (!e.target.value) SB.steps = SB_FALLBACK.join(" "); stepsIn.value = SB.steps; sbSchedule(0); }},
+    cs.map(x => h("option", {value: x.name, selected: x.name === SB.combo}, `${x.name} · ${x.steps.join(" ")}`)), h("option", {value: "", selected: !SB.combo}, cs.length ? "Custom" : "Default rotation (R Q E W, then AA)"));
+  U.rng = {}; U.num = {}; U.pre = {};
+  const dRow = (k, l) => { const [lo, hi, st] = SB_LIM[k];
+    U.rng[k] = h("input", {type: "range", id: `sb-${k}`, min: lo, max: hi, step: st, value: SB[k], "aria-label": `Dummy ${l}`, oninput: e => sbSetDummy(U, {[k]: e.target.value})});
+    U.num[k] = h("input", {type: "number", id: `sb-${k}-n`, min: lo, max: hi, step: 1, value: SB[k], "aria-label": `Dummy ${l} (number)`, onchange: e => sbSetDummy(U, {[k]: e.target.value})});
+    return h("div", {class: "row"}, h("label", {for: `sb-${k}`}, l), U.rng[k], U.num[k]); };
+  const dm = h("div", {class: "sb-dm"}, h("h3", {}, "Target dummy"), dRow("hp", "HP"), dRow("armor", "Armor"), dRow("mr", "MR"),
+    h("div", {class: "sb-pre", role: "group", "aria-label": "Dummy presets"}, h("span", {class: "note"}, "Presets"), Object.entries(SB_DUMMY).map(([p, d]) =>
+      (U.pre[p] = h("button", {type: "button", class: "btn", id: `sb-pre-${p}`, "aria-pressed": "false", title: `${d.hp} HP, ${d.armor} armor, ${d.mr} MR`, onclick: () => sbSetDummy(U, d)}, d.l)))));
+  const lib = cs.find(x => x.name === SB.combo);
+  U.err = h("div", {class: "sb-err", id: "sb-err", role: "alert", hidden: true});
+  U.dmg = h("b", {id: "sb-dmg"}, "–"); U.sub = h("div", {class: "sub", id: "sb-time"}); U.kill = h("span", {class: "sb-kill", id: "sb-kill"});
+  U.note = h("p", {class: "note", id: "sb-reset"}); U.steps = h("table", {class: "sb-st", id: "sb-steps-t"}); U.src = h("div", {class: "sb-src", id: "sb-src"});
+  U.open = h("span", {id: "sb-open"});
+  U.res = h("div", {class: "sb-out", id: "sb-res", "aria-live": "polite"},
+    h("div", {class: "sb-big"}, h("h3", {}, "Combo damage"), U.dmg, U.sub, U.kill, U.note),
+    h("div", {}, h("h3", {}, "Per step"), U.steps), h("div", {}, h("h3", {}, "By source"), U.src));
+  body.textContent = "";
+  body.append(h("div", {class: "sb-top"},
+    h("div", {}, U.slots,
+      h("div", {class: "sb-ctl"}, lv, h("button", {type: "button", class: "btn", id: "sb-common", onclick: () => sbCommon(U, c, S, i, ro)}, "Most common build"),
+        h("button", {type: "button", class: "btn", id: "sb-clear", onclick: () => { SB.items = SB.items.map(() => null); sbOpenPick(U, -1); sbSchedule(0); }}, "Clear")),
+      U.picker,
+      h("div", {class: "sb-ctl"}, h("label", {for: "sb-combo"}, "Combo"), h("span", {class: "grow"}, cSel)),
+      h("div", {class: "sb-ctl"}, h("label", {for: "sb-steps"}, "Steps"), h("span", {class: "grow"}, stepsIn)),
+      h("p", {class: "note", id: "sb-combo-src", style: "margin-top:6px"}, lib ? `Guide combo: ${lib.use || lib.name}${lib.src && lib.src.length ? ` (${lib.src.length} source${lib.src.length > 1 ? "s" : ""})` : ""}.`
+        : cs.length ? "Your own sequence: steps run in order, each as soon as it can." : `No guide combo for ${name} in the library: the engine's default rotation R, Q, E, W, then an attack. Edit the steps freely.`)),
+    dm), U.err, U.res,
+    h("div", {class: "sb-foot"}, h("p", {class: "note"}, `Default ability ranks for the level; every step hits; the dummy's health above 1000 is bonus health, its armor and MR are bonus resists (practice tool). Items with stacks start unstacked.`), U.open));
+  SB.ui = U; sbSlots(U); sbSetDummy(U, {}); sbSchedule(0);
+}
+function sandbox(c, S, id, i, ro){
+  const body = h("div", {class: "sbx"}), sec = h("section", {class: "sec", id: "sandbox", "aria-labelledby": "h-sbx"},
+    h("h2", {id: "h-sbx"}, "Build sandbox", h("small", {}, "pick items, see the combo's damage on a practice-tool dummy · computed by the Rift Logic engine")), h("div", {class: "card"}, body));
+  const open = () => {
+    try { localStorage.setItem("riftlogic.sandbox", "1"); } catch (_) {}
+    body.textContent = ""; body.append(h("div", {class: "loading", style: "padding:24px 0"}, h("i"), "Loading the engine and item data…"));
+    loadBuilds().catch(() => {});                                    // item icons (buildicons.json) and the "most common build" data
+    loadEngine().then(() => sbUI(sec, body, c, S, id, i, ro),
+      e => { body.textContent = ""; body.append(h("div", {class: "sb-err", id: "sb-err"}, `The engine could not be loaded: ${e.message}.`), h("div", {}, h("button", {type: "button", class: "btn", onclick: open}, "Try again"))); });
+  };
+  let auto = !!ENG; try { auto = auto || localStorage.getItem("riftlogic.sandbox") === "1"; } catch (_) {}
+  if (PAGE.inline){
+    const url = "https://riftlogic.dev/stats.html" + location.hash;
+    body.append(h("div", {class: "sbx-intro"}, h("p", {class: "note"}, "The build sandbox runs the Rift Logic engine on the item data (about 3.6 MB), which this offline copy doesn't carry. Open it on the site:"),
+      h("a", {class: "btn primary", href: url, target: "_blank", rel: "noopener"}, "Open on riftlogic.dev")));
+  } else if (auto) open();
+  else body.append(h("div", {class: "sbx-intro"}, h("p", {class: "note"}, `Six item slots, the champion's level and combo, and a dummy with the HP, armor and MR you set: the engine computes ${nameOf(id)}'s combo damage live. The engine and item data (about 3.6 MB) load once, on demand.`),
+    h("button", {type: "button", class: "btn primary", id: "sb-start", onclick: open}, "Open the sandbox")));
+  return sec;
+}
 function viewBuilds(panel, c, S, id, i, ro, tab){
   const name = nameOf(id);
+  const sbx = tab === "builds" ? sandbox(c, S, id, i, ro) : null;
   if (c.mode === "pro"){
+    if (sbx) panel.append(sbx);
     panel.append(modeNotice("no-pro-items", "No item or rune data in pro.", "Oracle's Elixir, the pro dataset, has no items, runes or summoner spells. The builds here come from ranked solo queue only, and pro and solo queue are never mixed.",
       "solo", `Show ${name}'s solo-queue ${tab === "runes" ? "runes" : "builds"}`));
     return;
   }
   const r = ro != null ? ro : mainRole(S, i), tok = RTOK;
-  panel.append(h("div", {class: "loading"}, h("i"), "Loading builds (about 400 KB, fetched once)…"));
+  if (sbx) panel.append(sbx);
+  const ld = h("div", {class: "loading"}, h("i"), "Loading builds (about 400 KB, fetched once)…"); panel.append(ld);
   loadBuilds().then(() => {
     if (tok !== RTOK) return;
-    panel.textContent = "";
+    ld.remove();
     const E = soloEntry(id, r);
     if (ro == null) panel.append(h("p", {class: "note"}, `Builds are per role: showing ${ROLE_L[r]}, ${name}'s main role. Pick another role in the bar above.`));
     if (!E){
@@ -1171,7 +1498,7 @@ function viewBuilds(panel, c, S, id, i, ro, tab){
       (tab === "builds" ? "Items are the final inventory at the end of each game, so there's no purchase order." : "The rune page and summoner spells each player locked in.")));
     (tab === "builds" ? drawItems : drawRunes)(panel, E, name);
     panel.append(h("p", {class: "note"}, `Rows with fewer than ${BUILDS.min} games aren't stored; rows under ${GREY} are greyed. Win rate: 95% Wilson interval in small type. ${grp(BUILDS.games)} ranked solo games, patch 16.x (the same games as the solo tier list).`));
-  }, e => { if (tok !== RTOK) return; panel.textContent = ""; panel.append(h("div", {class: "card err"}, `The build data (builds.json) could not be loaded: ${e.message}.`)); });
+  }, e => { if (tok !== RTOK) return; ld.remove(); panel.append(h("div", {class: "card err"}, `The build data (builds.json) could not be loaded: ${e.message}.`)); });
 }
 function drawItems(panel, E, name){
   const iLab = id => h("span", {class: "ilab"}, bicon("i" + id, itemName(id)), h("b", {}, itemName(id)));
@@ -1362,7 +1689,8 @@ function start(d){
 const ready = PAGE.inline ? Promise.resolve(PAGE.inline.stats)
   : fetch("stats.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 window.__stats = {ready: ready.then(d => { start(d); return true; }, e => { $("main").textContent = ""; $("main").append(h("div", {class: "card err"}, `The match data (stats.json) could not be loaded: ${e.message}. Reload to try again.`)); throw e; }),
-  dataset: (m, y) => dataset(m, y), vsWin, vsWpa, withWin, champWin, avgOf, pos: id => POS[id], render, builds: () => loadBuilds()};
+  dataset: (m, y) => dataset(m, y), vsWin, vsWpa, withWin, champWin, avgOf, pos: id => POS[id], render, builds: () => loadBuilds(),
+  engine: () => loadEngine(), sandbox: () => SB.wait || Promise.resolve(), sandboxProgram: () => SB.ui && SB.ui.prog};
 })();
 </script>
 
