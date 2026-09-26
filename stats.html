@@ -163,7 +163,95 @@ svg.chart .pt{fill:var(--accent);stroke:var(--surface);stroke-width:2}
 .prose ul{margin:0;padding-left:20px}
 .foot{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
 #status{font:12px/1.3 var(--sans);color:var(--ok);min-height:1em}
+
+/* selector bar: champion search, role tabs, pro / solo, dataset */
+.selbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%;padding-top:2px}
+.cb{position:relative;flex:0 1 260px;min-width:0}
+.cb input{width:100%;height:34px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface-2);padding:0 30px 0 32px;font-size:13.5px}
+.cb input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
+.cb .mag{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--muted);pointer-events:none}
+.cb kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:500 11px/1 var(--mono);color:var(--faint);border:1px solid var(--line-strong);border-radius:4px;padding:2px 5px;pointer-events:none}
+.cb input:focus ~ kbd{display:none}
+.cb-list{position:absolute;z-index:50;left:0;right:0;top:calc(100% + 4px);min-width:240px;max-height:min(360px,60vh);overflow-y:auto;margin:0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;box-shadow:var(--shadow)}
+.cb-list li{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:5px;cursor:pointer;font-size:13px}
+.cb-list li .ph{width:24px;height:24px;border-radius:4px}
+.cb-list li small{margin-left:auto;color:var(--muted);font-size:11.5px;white-space:nowrap}
+.cb-list li[aria-selected="true"]{background:var(--accent-soft);color:var(--ink)}
+.cb-list li.none{color:var(--muted);cursor:default}
+.rtabs{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden;background:var(--surface)}
+.rtabs button{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:0 9px;height:32px;font:500 12.5px/1 var(--sans);cursor:pointer;color:var(--ink-2)}
+.rtabs button + button{border-left:1px solid var(--line)}
+.rtabs button svg{width:17px;height:17px;fill:currentColor;flex:none}
+.rtabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.rtabs button:disabled{opacity:.4;cursor:default}
+.dsf{display:flex;flex-wrap:wrap;gap:6px}
+.dsf select{max-width:190px}
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12.5px;color:var(--muted);min-height:22px}
+.crumbs ol{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0;padding:0;list-style:none}
+.crumbs li + li::before{content:"›";margin-right:4px;color:var(--faint)}
+.crumbs a{color:var(--ink-2);text-decoration:none}.crumbs a:hover{color:var(--accent);text-decoration:underline}
+.crumbs [aria-current]{color:var(--ink);font-weight:500}
+.recent{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-left:auto}
+.recent a{display:inline-flex;align-items:center;gap:5px;padding:2px 7px 2px 2px;border:1px solid var(--line);border-radius:14px;color:var(--ink-2);text-decoration:none;font-size:12px;background:var(--surface)}
+.recent a:hover{border-color:var(--accent)}
+.recent .ph{width:20px;height:20px;border-radius:50%}
+
+/* champion tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{padding:9px 12px;color:var(--ink-2);text-decoration:none;font:500 13.5px/1 var(--sans);border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+.tabs a:hover{color:var(--ink)}
+.tabs a[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tabs a .pill{font:500 10px/1 var(--sans);color:var(--faint);margin-left:5px;text-transform:uppercase;letter-spacing:.04em}
+.notice{background:var(--surface);border:1px dashed var(--line-strong);border-radius:8px;padding:14px;display:grid;gap:8px;max-width:760px}
+.notice b{font-weight:600}
+.more-link{font-size:12.5px;text-decoration:none}.more-link:hover{text-decoration:underline}
+
+/* tier grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.tile{position:relative;display:grid;justify-items:center;gap:2px;padding:8px 4px 7px;border-radius:8px;background:var(--surface);border:1px solid var(--line);text-decoration:none;color:var(--ink);min-width:0;border-top:3px solid var(--tc,var(--line-strong))}
+.tile:hover{border-color:var(--accent);border-top-color:var(--tc,var(--accent))}
+.tile .ph{width:44px;height:44px;border-radius:6px}
+.tile b{font:500 12px/1.2 var(--sans);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .wr{font:600 13px/1.1 var(--mono)}
+.tile small{font-size:10.5px;color:var(--muted)}
+.tile .tb{position:absolute;top:5px;left:6px;font:700 10px/1 var(--mono);color:var(--tc)}
+.tile.small{opacity:.45;border-top-color:var(--line-strong)}
+.t-S{--tc:#E4B94F}.t-A{--tc:var(--ok)}.t-B{--tc:var(--accent)}.t-C{--tc:var(--muted)}.t-D{--tc:var(--no)}
+:root[data-theme="light"] .t-S{--tc:#A07310}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--tc);margin-right:4px;vertical-align:-1px}
+.rsec h2 svg{width:15px;height:15px;fill:currentColor;vertical-align:-3px;margin-right:4px}
+details.lowg summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin:4px 0}
+
+/* item / rune icons */
+.ic{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:4px;overflow:hidden;background:var(--inset);flex:none;box-shadow:inset 0 0 0 1px var(--line);font:600 9px/1 var(--sans);color:var(--muted);vertical-align:middle}
+.ic img{display:block;width:100%;height:100%}
+.ic.rn{border-radius:50%;background:transparent;box-shadow:none}
+.ic.lg{width:36px;height:36px}
+.ilab{display:inline-flex;align-items:center;gap:8px}
+.ilab b{font-weight:500}
+.core{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.core .card{display:grid;gap:6px}
+.core .icons{display:flex;gap:4px;align-items:center}
+.core .icons .plus{color:var(--faint);font-size:12px}
+.core .nm{font-size:12px;color:var(--ink-2);line-height:1.35}
+.core .st{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.core .card.small{opacity:.5}
+.page{display:inline-flex;align-items:center;gap:3px}
+.page .sep{width:1px;height:18px;background:var(--line-strong);margin:0 4px}
+.shards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.mucb{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.mucb .cb{flex:1 1 220px;max-width:300px}
+.vs{font:600 13px/1 var(--sans);color:var(--muted)}
+@media (min-width:761px){.bar{position:sticky}}
 @media (max-width:760px){
+  .bar{position:static}
+  .selbar .cb{flex:1 1 100%;max-width:none}
+  .rtabs button span{display:none}
+  .rtabs button{padding:0 8px}
+  .recent{margin-left:0}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))}
   .two,.wp{grid-template-columns:minmax(0,1fr)}
   .nav{order:3;width:100%}
   .head h1{font-size:19px}
@@ -176,11 +264,16 @@ svg.chart .pt{fill:var(--accent);stroke:var(--surface);stroke-width:2}
     <a class="brand" href="#/tier"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg>Rift Logic <span>Stats</span></a>
     <nav class="nav" id="nav" aria-label="Pages"></nav>
     <div class="tools">
-      <div class="seg" role="group" aria-label="Data source"><button type="button" id="m-pro" aria-pressed="true">Pro</button><button type="button" id="m-solo" aria-pressed="false">Solo queue</button></div>
-      <select id="year" aria-label="Pro dataset"></select>
       <button type="button" class="btn ghost" id="theme" aria-label="Switch colour theme">Light</button>
     </div>
+    <div class="selbar" role="search" aria-label="Choose champion, role and data">
+      <div id="cb-slot" class="cb"></div>
+      <div class="rtabs" id="roles" role="group" aria-label="Role"></div>
+      <div class="seg" role="group" aria-label="Data source"><button type="button" id="m-pro" aria-pressed="true">Pro</button><button type="button" id="m-solo" aria-pressed="false">Solo queue</button></div>
+      <div class="dsf"><select id="year" aria-label="Pro dataset"></select><span id="dsf" class="dsf"></span></div>
+    </div>
   </header>
+  <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
   <div id="status" role="status" aria-live="polite"></div>
   <main id="main" tabindex="-1"><div class="loading"><i></i>Loading match data (about 500 KB, fetched once)…</div></main>
   <p class="foot" id="foot"></p>
@@ -283,6 +376,8 @@ function vsWpa(S, a, b, r, j){
   const mean = s1 / n, sd = n > 1 ? Math.sqrt(Math.max(0, (s2 - n * mean * mean) / (n - 1))) : 0;
   return meanOf({n, mean, sd});
 }
+/* a matchup's lane when the URL doesn't say: the role where the two met most often */
+function muRole(S, a, b){ if (!a || !b) return null; let best = 0, ro = null; for (let k = 0; k < 5; k++){ const n = vsWin(S, POS[a], POS[b], k, true).n; if (n > best){ best = n; ro = k; } } return ro; }
 const mainRole = (S, i) => { const R = S.D.role[i]; let b = 0; for (let r = 1; r < 5; r++) if (R[2 * r] > R[2 * b]) b = r; return R[2 * b] > 0 ? b : null; };
 
 /* ---------- draft model (stats.json "draftwp", when present): the engine's draftwp() / pickwpa() ported ----------
@@ -430,19 +525,148 @@ function meanCell(x, fmt, ref = 0){
 }
 const rateTxt = x => x.n ? pct(x.v) : "–";
 
-/* ---------- nav + chrome ---------- */
+/* ---------- nav + chrome: selector bar (champion search, role tabs, pro / solo, dataset), breadcrumbs, recent ---------- */
+const SVGNS = "http://www.w3.org/2000/svg";
+const ROLE_ICON = [                                     // Riot's position icons (Community Dragon rcp-fe-lol-static-assets/svg/position-*.svg), as on the draft page; [path, dim]
+  [["M21,14H14v7h7V14Zm5-3V26L11.014,26l-4,4H30V7.016Z", true], ["M4 4 L4.003 28.045 L9 23 L9 9 L23 9 L28.045 4.003 L4 4Z", false]],
+  [["M25,3c-2.128,3.3-5.147,6.851-6.966,11.469A42.373,42.373,0,0,1,20,20a27.7,27.7,0,0,1,1-3C21,12.023,22.856,8.277,25,3ZM13,20c-1.488-4.487-4.76-6.966-9-9,3.868,3.136,4.422,7.52,5,12l3.743,3.312C14.215,27.917,16.527,30.451,17,31c4.555-9.445-3.366-20.8-8-28C11.67,9.573,13.717,13.342,13,20Zm8,5a15.271,15.271,0,0,1,0,2l4-4c0.578-4.48,1.132-8.864,5-12C24.712,13.537,22.134,18.854,21,25Z", false]],
+  [["M30,12.968l-4.008,4L26,26H17l-4,4H30ZM16.979,8L21,4H4V20.977L8,17,8,8h8.981Z", true], ["M25 4 L4 25 L4 30 L9 30 L30 9 L30 4 L25 4Z", false]],
+  [["M13,20h7V13H13v7ZM4,4V26.984l3.955-4L8,8,22.986,8l4-4H4Z", true], ["M29.997 5.955 L25 11 L25 25 L11 25 L5.955 29.997 L30 30 L29.997 5.955Z", false]],
+  [["M26,13c3.535,0,8-4,8-4H23l-3,3,2,7,5-2-3-4h2ZM22,5L20.827,3H13.062L12,5l5,6Zm-5,9-1-1L13,28l4,3,4-3L18,13ZM11,9H0s4.465,4,8,4h2L7,17l5,2,2-7Z", false]]];
+function roleIcon(r){
+  const s = document.createElementNS(SVGNS, "svg"); s.setAttribute("viewBox", "0 0 34 34"); s.setAttribute("aria-hidden", "true");
+  if (r == null){ const p = document.createElementNS(SVGNS, "path"); p.setAttribute("d", "M5 5h10v10H5zM19 5h10v10H19zM5 19h10v10H5zM19 19h10v10H19z"); p.setAttribute("opacity", ".8"); s.append(p); return s; }
+  for (const [d, dim] of ROLE_ICON[r]){ const p = document.createElementNS(SVGNS, "path"); p.setAttribute("d", d); p.setAttribute("fill-rule", "evenodd"); if (dim) p.setAttribute("opacity", ".45"); s.append(p); }
+  return s;
+}
+/* the role in the URL: a role index, "all" (null), or undefined (not given: the view picks its default) */
+const roleQ = q => q.role === "all" ? null : q.role != null && ROLE_IDX[q.role] != null ? ROLE_IDX[q.role] : undefined;
+const TABS = [["overview", "Overview"], ["builds", "Builds", "solo"], ["runes", "Runes & spells", "solo"], ["matchups", "Matchups"], ["teammates", "Teammates"], ["wpa", "WPA & laning", "pro"]];
+const tabOf = s => TABS.some(t => t[0] === s) ? s : "overview";
+/* champion page link: role null = all roles; undefined = the champion's main role (not written into the URL) */
+function champLink(c, id, tab, role){
+  const t = tabOf(tab);
+  return link("champ", t === "overview" ? [id] : [id, t], {...base(c), role: role === undefined ? null : role == null ? "all" : ROLES[role]});
+}
+
+/* champion combobox: type-ahead over every champion in the dataset, arrows / Enter / Escape, portraits */
+let cbSeq = 0;
+function combo({label, placeholder, value, items, onPick, hint}){
+  const id = "cb" + (++cbSeq), wrap = h("div", {class: "cb"});
+  const inp = h("input", {type: "text", id, role: "combobox", "aria-autocomplete": "list", "aria-expanded": "false", "aria-controls": id + "-lb", "aria-label": label,
+    placeholder: placeholder || "Search champions", autocomplete: "off", spellcheck: "false", value: value || ""});
+  const lb = h("ul", {class: "cb-list", id: id + "-lb", role: "listbox", "aria-label": label, hidden: true});
+  let list = [], act = -1, typed = false;
+  const rank = (x, s) => { const n = norm(x.name), k = norm(x.id); return n.startsWith(s) || k.startsWith(s) ? 0 : n.split(/\s+/).some(w => w.startsWith(s)) ? 1 : n.includes(s) || k.includes(s) ? 2 : 9; };
+  const fill = () => {
+    const s = typed ? norm(inp.value) : "", all = items();
+    list = s ? all.map(x => [rank(x, s), x]).filter(([k]) => k < 9).sort((a, b) => a[0] - b[0] || a[1].name.localeCompare(b[1].name)).map(([, x]) => x) : all;
+    act = list.length ? 0 : -1;
+    lb.textContent = "";
+    if (!list.length) lb.append(h("li", {class: "none", role: "option", "aria-disabled": "true"}, "No champion matches"));
+    list.slice(0, 80).forEach((x, k) => lb.append(h("li", {role: "option", id: `${id}-o${k}`, "aria-selected": String(k === act), "data-id": x.id,
+      onmousedown: e => { e.preventDefault(); pick(x); }}, portrait(x.id), h("span", {}, x.name), x.sub ? h("small", {}, x.sub) : null)));
+    mark();
+  };
+  const mark = () => { [...lb.children].forEach((li, k) => li.setAttribute("aria-selected", String(k === act)));
+    if (act >= 0 && lb.children[act]){ inp.setAttribute("aria-activedescendant", `${id}-o${act}`); const li = lb.children[act]; if (li.scrollIntoView) li.scrollIntoView({block: "nearest"}); } else inp.removeAttribute("aria-activedescendant"); };
+  const open = () => { fill(); lb.hidden = false; inp.setAttribute("aria-expanded", "true"); };
+  const close = () => { lb.hidden = true; inp.setAttribute("aria-expanded", "false"); inp.removeAttribute("aria-activedescendant"); };
+  const pick = x => { close(); inp.value = x.name; typed = false; onPick(x.id); };
+  inp.addEventListener("focus", () => { typed = false; try { inp.select(); } catch (_) {} open(); });
+  inp.addEventListener("input", () => { typed = true; open(); });
+  inp.addEventListener("blur", () => setTimeout(() => { close(); inp.value = value || ""; typed = false; }, 120));
+  inp.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp"){ e.preventDefault(); if (lb.hidden) open(); const m = Math.min(list.length, 80); if (m) { act = (act + (e.key === "ArrowDown" ? 1 : -1) + m) % m; mark(); } }
+    else if (e.key === "Enter"){ if (!lb.hidden && list[act]){ e.preventDefault(); pick(list[act]); } }
+    else if (e.key === "Escape"){ if (!lb.hidden){ e.preventDefault(); close(); inp.value = value || ""; typed = false; } else inp.blur(); }
+  });
+  wrap.append(magIcon(), inp, lb);
+  if (hint) wrap.append(h("kbd", {"aria-hidden": "true"}, hint));
+  return wrap;
+}
+function magIcon(){ const s = document.createElementNS(SVGNS, "svg"); s.setAttribute("viewBox", "0 0 16 16"); s.setAttribute("class", "mag"); s.setAttribute("aria-hidden", "true");
+  const c = document.createElementNS(SVGNS, "path"); c.setAttribute("d", "M7 2a5 5 0 1 0 3.2 8.85l3.47 3.47 1.06-1.06-3.47-3.47A5 5 0 0 0 7 2Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"); c.setAttribute("fill", "currentColor"); s.append(c); return s; }
+/* every champion with games in the dataset, with its main role and games for the list */
+function champItems(S){
+  return ST.champs.map((id, i) => ({id, i, name: nameOf(id), n: S.D.gw[i][0], mr: mainRole(S, i)})).filter(x => x.n > 0)
+    .sort((a, b) => a.name.localeCompare(b.name)).map(x => ({...x, sub: `${x.mr != null ? ROLE_L[x.mr] + " · " : ""}${grp(x.n)} games`}));
+}
+/* a role the champion actually plays (enough games), else undefined (its main role) */
+function keepRole(S, id, r){ if (r == null) return r; const i = POS[id]; return S.D.role[i][2 * r] >= S.D.min ? r : undefined; }
+
+/* recently viewed champions (this browser only) */
+function recentGet(){ try { const a = JSON.parse(localStorage.getItem("riftlogic.statsRecent") || "[]"); return Array.isArray(a) ? a.filter(x => x && POS[x.id] != null).slice(0, 6) : []; } catch (_) { return []; } }
+function recentAdd(id, r){ try { const a = recentGet().filter(x => x.id !== id); a.unshift({id, r: r == null ? null : r}); localStorage.setItem("riftlogic.statsRecent", JSON.stringify(a.slice(0, 6))); } catch (_) {} }
+
 function drawChrome(r, c){
   const nav = $("nav"); nav.textContent = "";
   const L = PAGE.links || {};
-  const items = [["tier", "Tier list"], ["winprob", "Win probability"], ["about", "Methods"]];
+  const items = [["tier", "Champions"], ["winprob", "Win probability"], ["about", "Methods"]];
   for (const [v, t] of items) nav.append(h("a", {href: link(v, [], base(c)), "aria-current": r.view === v || (v === "tier" && (r.view === "champ" || r.view === "matchup")) ? "page" : null}, t));
   for (const [k, t] of [["app", "Editor"], ["draft", "Draft"], ["docs", "Docs"]]) if (L[k]) nav.append(h("a", {class: "ext", href: L[k], rel: /^https:/.test(L[k]) ? "noopener noreferrer" : null}, t));
   $("m-pro").setAttribute("aria-pressed", String(c.mode === "pro")); $("m-solo").setAttribute("aria-pressed", String(c.mode === "solo"));
   const y = $("year"); y.hidden = c.mode !== "pro";
   if (!y.options.length) for (const k of Object.keys(ST.pro)) y.append(h("option", {value: k}, `Pro ${k} · ${grp(ST.pro[k].games)} games`));
   y.value = c.year;
-  const D = c.mode === "pro" ? ST.pro[c.year] : ST.solo;
+  const S = dataset(c.mode, c.year), D = S.D;
+  // champion search: what it changes depends on the page (champion page: same tab and role; matchup: the first champion)
+  const cur = r.view === "champ" || r.view === "matchup" ? champId(r.args[0]) : null, rq = roleQ(r.q);
+  const onPick = id => {
+    if (r.view === "champ") location.hash = champLink(c, id, r.args[1], keepRole(S, id, rq));
+    else if (r.view === "matchup") location.hash = link("matchup", [id, ...(r.args[1] ? [r.args[1]] : [])], {...base(c), role: r.q.role || null});
+    else location.hash = champLink(c, id, "overview", r.view === "tier" ? keepRole(S, id, rq) : undefined);
+  };
+  $("cb-slot").replaceWith(Object.assign(combo({label: "Champion", placeholder: "Search a champion", value: cur ? nameOf(cur) : "", items: () => champItems(S), onPick, hint: "/"}), {id: "cb-slot"}));
+  // role tabs: filter the list, switch the champion page's role, or the matchup's lane
+  const rt = $("roles"); rt.textContent = "";
+  const sliced = r.view === "tier" && (r.q.patch || r.q.league);
+  const curRole = r.view === "champ" && cur ? (rq === undefined ? mainRole(S, POS[cur]) : rq)
+    : r.view === "matchup" && cur && rq === undefined ? muRole(S, cur, champId(r.args[1])) : rq === undefined ? null : rq;
+  [null, 0, 1, 2, 3, 4].forEach(k => {
+    const n = r.view === "champ" && cur ? (k == null ? D.gw[POS[cur]][0] : D.role[POS[cur]][2 * k]) : null;
+    const b = h("button", {type: "button", "aria-pressed": String(curRole === k), "aria-label": k == null ? "All roles" : ROLE_L[k],
+      title: (k == null ? "All roles" : ROLE_L[k]) + (n != null ? ` · ${grp(n)} games` : "") + (sliced ? " (role split isn't stored for a patch or league slice)" : ""),
+      disabled: (sliced && k != null) || (n === 0) ? true : null, onclick: () => setRole(r, c, k)}, roleIcon(k), h("span", {}, k == null ? "All" : ROLE_L[k]));
+    rt.append(b);
+  });
+  // dataset slice (patch, league): the champion list only
+  const dsf = $("dsf"); dsf.textContent = "";
+  if (r.view === "tier"){
+    const patches = Object.keys(D.patchGames).sort((a, b) => { const x = a.split(".").map(Number), yy = b.split(".").map(Number); return yy[0] - x[0] || yy[1] - x[1]; });
+    const nav2 = over => link("tier", [], {...base(c), ...r.q, role: null, ...over});
+    dsf.append(h("select", {"aria-label": "Patch", onchange: e => { location.hash = nav2({patch: e.target.value || null}); }},
+      h("option", {value: ""}, "All patches"), patches.map(p => h("option", {value: p, selected: p === r.q.patch ? true : null}, `Patch ${p} · ${grp(D.patchGames[p])}`))));
+    if (S.pro) dsf.append(h("select", {"aria-label": "League", onchange: e => { location.hash = nav2({league: e.target.value || null}); }},
+      h("option", {value: ""}, "All leagues"), Object.entries(D.leagueGames).sort((a, b) => b[1] - a[1]).map(([k, n]) => h("option", {value: k, selected: k === r.q.league ? true : null}, `${k} · ${grp(n)}`))));
+  }
+  drawCrumbs(r, c, S, cur, curRole);
   $("foot").textContent = `${c.mode === "pro" ? "Pro play" : "Ranked solo queue"}: ${D.label}, ${grp(D.games)} games, ${D.dates[0]} to ${D.dates[1]}. Rates and means from fewer than ${D.min} games are shown as too little data. Pro and solo queue are never mixed.`;
+}
+function drawCrumbs(r, c, S, cur, role){
+  const el = $("crumbs"); el.textContent = "";
+  const ol = h("ol", {}), add = (t, href) => ol.append(h("li", {}, href ? h("a", {href}, t) : h("span", {"aria-current": "page"}, t)));
+  const home = link("tier", [], base(c)), roleHome = k => link("tier", [], {...base(c), role: ROLES[k]});
+  if (r.view === "tier"){ add("Stats", role != null || r.q.patch || r.q.league ? home : null); if (role != null) add(ROLE_L[role]); if (r.q.patch) add("Patch " + r.q.patch); if (r.q.league) add(r.q.league); }
+  else if (r.view === "champ" && cur){
+    const tab = tabOf(r.args[1]);
+    add("Stats", home); if (role != null) add(ROLE_L[role], roleHome(role));
+    add(nameOf(cur), tab !== "overview" ? champLink(c, cur, "overview", roleQ(r.q)) : null);
+    if (tab !== "overview") add(TABS.find(t => t[0] === tab)[1]);
+  } else if (r.view === "matchup" && cur){
+    add("Stats", home); if (role != null) add(ROLE_L[role], roleHome(role));
+    add(nameOf(cur), champLink(c, cur, "matchups", role)); const b = champId(r.args[1]); add(b ? "vs " + nameOf(b) : "Matchup");
+  } else { add("Stats", home); add(r.view === "winprob" ? "Win probability" : r.view === "about" ? "Methods" : "Champions"); }
+  el.append(ol);
+  const rec = recentGet().filter(x => x.id !== (r.view === "champ" ? cur : null));
+  if (rec.length) el.append(h("div", {class: "recent", "aria-label": "Recently viewed"}, h("span", {}, "Recent"),
+    rec.map(x => h("a", {href: champLink(c, x.id, "overview", keepRole(S, x.id, x.r)), title: nameOf(x.id) + (x.r != null ? " · " + ROLE_L[x.r] : "")}, portrait(x.id), nameOf(x.id)))));
+}
+function setRole(r, c, k){
+  const q = {...r.q};
+  if (r.view === "champ"){ q.role = k == null ? "all" : ROLES[k]; location.hash = link("champ", r.args, q); }
+  else if (r.view === "matchup"){ q.role = k == null ? null : ROLES[k]; location.hash = link("matchup", r.args, q); }
+  else { const q2 = r.view === "tier" ? q : base(c); q2.role = k == null ? null : ROLES[k]; delete q2.patch; delete q2.league; location.hash = link("tier", [], q2); }
 }
 function setMode(m){
   const r = parseHash(); MODE = m; try { localStorage.setItem("riftlogic.statsMode", m); } catch (_) {}
@@ -453,6 +677,12 @@ function setMode(m){
 $("m-pro").addEventListener("click", () => setMode("pro"));
 $("m-solo").addEventListener("click", () => setMode("solo"));
 $("year").addEventListener("change", e => { const r = parseHash(); const q = {...r.q, mode: "pro", year: e.target.value === String(ST.proDefault) ? null : e.target.value}; delete q.patch; delete q.league; location.hash = link(r.view, r.args, q); });
+document.addEventListener("keydown", e => {                // "/" focuses the champion search
+  if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target, tag = t && t.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+  const i = document.querySelector("#cb-slot input"); if (i){ e.preventDefault(); i.focus(); }
+});
 
 /* ---------- 1. tier list ---------- */
 function viewTier(r, c){
@@ -462,7 +692,7 @@ function viewTier(r, c){
   if (patch || league) role = null;
   const dmin = patch || league ? D.min : S.pro ? 50 : 200;              // default floor: the dataset minimum is 20 / 30 games, noisy at the top of a list
   const min = q.min != null && +q.min >= D.min ? +q.min : dmin, whole = !patch && !league;
-  const nav = over => link("tier", [], {...base(c), role: role != null ? ROLES[role] : null, patch, league, min: min !== dmin ? min : null, s: q.s, d: q.d, ...over});
+  const nav = over => link("tier", [], {...base(c), role: role != null ? ROLES[role] : null, patch, league, min: min !== dmin ? min : null, view: q.view === "table" ? "table" : null, s: q.s, d: q.d, ...over});
   const X = draftModel(c.mode);
   const rows = [];
   ST.champs.forEach((id, i) => {
@@ -499,35 +729,61 @@ function viewTier(r, c){
   const sortDir = q.d === "asc" ? "asc" : q.d === "desc" ? "desc" : sortKey === "name" ? "asc" : "desc";
 
   const main = $("main"); main.textContent = "";
-  const roleSeg = h("div", {class: "seg", role: "group", "aria-label": "Role"},
-    [null, 0, 1, 2, 3, 4].map(k => h("button", {type: "button", "aria-pressed": String(role === k), disabled: (patch || league) && k != null ? true : null,
-      onclick: () => { location.hash = nav({role: k == null ? null : ROLES[k], patch: null, league: null}); }}, k == null ? "All roles" : ROLE_L[k])));
-  const patches = Object.keys(D.patchGames).sort((a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); return y[0] - x[0] || y[1] - x[1]; });
-  const patchSel = h("select", {"aria-label": "Patch", onchange: e => { location.hash = nav({patch: e.target.value || null, role: null}); }},
-    h("option", {value: ""}, "All patches"), patches.map(p => h("option", {value: p, selected: p === patch ? true : null}, `${p} · ${grp(D.patchGames[p])} games`)));
-  const leagueSel = S.pro ? h("select", {"aria-label": "League", onchange: e => { location.hash = nav({league: e.target.value || null, role: null}); }},
-    h("option", {value: ""}, "All leagues"), Object.entries(D.leagueGames).sort((a, b) => b[1] - a[1]).map(([k, n]) => h("option", {value: k, selected: k === league ? true : null}, `${k} · ${grp(n)}`))) : null;
+  const view = q.view === "table" ? "table" : "grid";
+  const viewSeg = h("div", {class: "seg", role: "group", "aria-label": "Layout"}, [["grid", "Grid"], ["table", "Table"]].map(([k, t]) =>
+    h("button", {type: "button", "aria-pressed": String(view === k), onclick: () => { location.hash = nav({view: k === "grid" ? null : k}); }}, t)));
   const mins = [...new Set([D.min, 50, 100, 200, 500, S.pro ? 50 : 1000, min])].sort((a, b) => a - b);
   const minSel = h("label", {class: "f"}, "Min games", h("select", {onchange: e => { location.hash = nav({min: +e.target.value === dmin ? null : e.target.value}); }}, mins.map(m => h("option", {value: m, selected: m === min ? true : null}, m))));
-  const search = h("input", {type: "search", placeholder: "Search champions", "aria-label": "Search champions", value: qv, autocomplete: "off"});
-  const holder = h("div", {});
+  const search = h("input", {type: "search", placeholder: view === "grid" ? "Filter tiles" : "Filter the table", "aria-label": "Filter champions", value: qv, autocomplete: "off"});
+  const holder = h("div", {class: "sec"});
+  const match = x => { const s = norm(search.value); return !s || norm(x.name).includes(s) || norm(x.id).includes(s); };
   const drawTable = () => {
-    const s = norm(search.value), vis = s ? rows.filter(x => norm(x.name).includes(s) || norm(x.id).includes(s)) : rows;
+    const vis = rows.filter(match);
     holder.textContent = "";
     holder.append(table({cols, rows: vis, rank: true, sort: {key: sortKey, dir: sortDir},
       caption: `${S.name}${role != null ? ", " + ROLE_L[role] : ""}${patch ? ", patch " + patch : ""}${league ? ", " + league : ""}: ${vis.filter(x => !x.small).length} champions with ${min}+ games; greyed rows have fewer. Small type: 95% interval.`,
       onSort: st => { history.replaceState(null, "", nav({s: st.key, d: st.dir, q: search.value || null})); }}));
   };
+  /* grid: one section per role (or the chosen role / slice); tiers from the low end of the 95% interval, ranked within the section */
+  const sections = role != null ? [role] : patch || league ? [undefined] : [0, 1, 2, 3, 4];
+  const secRows = sections.map(k => {
+    const rs = [];
+    ST.champs.forEach((id, i) => {
+      const wr = k === undefined ? champWin(S, i, {patch, league}) : champWin(S, i, {role: k});
+      if (wr.n < D.min) return;
+      rs.push({id, i, name: nameOf(id), n: wr.n, wr, small: wr.n < min});
+    });
+    const ranked = rs.filter(x => !x.small).sort((a, b) => b.wr.lo - a.wr.lo || b.n - a.n);
+    ranked.forEach((x, j) => { const p = j / ranked.length; x.tier = p < 0.1 ? "S" : p < 0.3 ? "A" : p < 0.7 ? "B" : p < 0.9 ? "C" : "D"; });
+    return {k, ranked, small: rs.filter(x => x.small).sort((a, b) => b.n - a.n)};
+  });
+  const tile = (x, k) => h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: champLink(c, x.id, "overview", k === undefined ? undefined : k),
+    title: `${x.name}${k != null ? " · " + ROLE_L[k] : ""}: ${pct(x.wr.v)} in ${grp(x.n)} games, 95% CI ${pct(x.wr.lo)}–${pct(x.wr.hi)}${x.tier ? ", tier " + x.tier : `, fewer than ${min} games`}`},
+    x.tier ? h("span", {class: "tb", "aria-hidden": "true"}, x.tier) : null, portrait(x.id), h("b", {}, x.name), h("span", {class: "wr " + clsCI(x.wr.lo, x.wr.hi, 0.5)}, pct(x.wr.v)), h("small", {}, grp(x.n) + " games"));
+  const drawGrid = () => {
+    holder.textContent = "";
+    for (const s of secRows){
+      const rk = s.ranked.filter(match), sm = s.small.filter(match);
+      const title = s.k === undefined ? "All roles" : ROLE_L[s.k];
+      const hd = h("h2", {}, s.k != null ? roleIcon(s.k) : null, title, h("small", {}, `${rk.length} champions with ${min}+ games`));
+      holder.append(h("section", {class: "sec rsec", "data-role": s.k == null ? "all" : ROLES[s.k]}, hd,
+        rk.length ? h("div", {class: "grid"}, rk.map(x => tile(x, s.k))) : h("p", {class: "note"}, "No champion matches."),
+        sm.length ? h("details", {class: "lowg"}, h("summary", {}, `${sm.length} more with ${D.min}–${min - 1} games (too few to rank)`), h("div", {class: "grid"}, sm.map(x => tile(x, s.k)))) : null));
+    }
+  };
+  const draw = () => view === "grid" ? drawGrid() : drawTable();
   let deb = 0;
-  search.addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(() => { drawTable(); history.replaceState(null, "", nav({q: search.value || null})); }, 120); });
+  search.addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(() => { draw(); history.replaceState(null, "", nav({q: search.value || null})); }, 120); });
   const N = patch ? D.patchGames[patch] : league ? D.leagueGames[league] : D.games;
   main.append(h("div", {class: "sec"},
-    h("div", {class: "head"}, h("h1", {}, c.mode === "pro" ? "Pro tier list" : "Solo queue tier list"), h("span", {class: "sub"}, `${S.name} · ${grp(N)} games${patch ? " on " + patch : ""}${league ? " in " + league : ""} · ${D.dates[0]} to ${D.dates[1]}`)),
-    h("div", {class: "filters"}, roleSeg, patchSel, leagueSel, minSel, search),
-    !whole ? h("p", {class: "note"}, "Ban, presence" + (S.pro ? ", WPA and laning columns" : " columns") + " are stored for the whole dataset only, so they're hidden for a patch or league slice.") : null,
-    !S.pro ? h("p", {class: "note"}, "Win probability added needs minute-by-minute data, which only the pro dataset has. Switch to Pro for WPA and laning columns.") : null,
+    h("div", {class: "head"}, h("h1", {}, c.mode === "pro" ? "Pro tier list" : "Solo queue tier list"), h("span", {class: "sub"}, `${S.name}${role != null ? " · " + ROLE_L[role] : ""} · ${grp(N)} games${patch ? " on " + patch : ""}${league ? " in " + league : ""} · ${D.dates[0]} to ${D.dates[1]}`)),
+    h("div", {class: "filters"}, viewSeg, minSel, search),
+    view === "grid" ? h("p", {class: "legend", id: "tier-legend"}, h("span", {}, "Tier = rank by the low end of the 95% win-rate interval (a cautious win rate, so a few lucky games don't top the list), within each role:"),
+      ["S top 10%", "A next 20%", "B middle 40%", "C next 20%", "D bottom 10%"].map(t => h("span", {class: "t-" + t[0]}, h("i"), t)), h("span", {}, `Faded tiles: fewer than ${min} games.`)) : null,
+    view === "table" && !whole ? h("p", {class: "note"}, "Ban, presence" + (S.pro ? ", WPA and laning columns" : " columns") + " are stored for the whole dataset only, so they're hidden for a patch or league slice.") : null,
+    view === "table" && !S.pro ? h("p", {class: "note"}, "Win probability added needs minute-by-minute data, which only the pro dataset has. Switch to Pro for WPA and laning columns.") : null,
     holder));
-  drawTable();
+  draw();
 }
 
 /* ---------- plain-language summary ---------- */
@@ -620,82 +876,262 @@ function viewChamp(r, c){
   const id = champId(r.args[0]), main = $("main"); main.textContent = "";
   if (!id){ main.append(h("p", {class: "lede"}, `No champion called “${r.args[0] || ""}”. `, h("a", {href: link("tier", [], base(c))}, "Back to the tier list"))); return; }
   const S = dataset(c.mode, c.year), D = S.D, i = POS[id], name = nameOf(id);
-  const roleQ = r.q.role === "all" ? null : r.q.role != null && ROLE_IDX[r.q.role] != null ? ROLE_IDX[r.q.role] : r.q.role === undefined ? mainRole(S, i) : null;
-  const ro = roleQ;
-  const to = over => link("champ", [id], {...base(c), role: ro != null ? ROLES[ro] : "all", ...over});
-  const W = champWin(S, i, {role: ro}), all = champWin(S, i, {});
-  const roleSeg = h("div", {class: "seg", role: "group", "aria-label": "Role"}, h("button", {type: "button", "aria-pressed": String(ro == null), onclick: () => { location.hash = to({role: "all"}); }}, `All · ${grp(all.n)}`),
-    [0, 1, 2, 3, 4].filter(k => D.role[i][2 * k] > 0).sort((a, b) => D.role[i][2 * b] - D.role[i][2 * a]).map(k => h("button", {type: "button", "aria-pressed": String(ro === k), onclick: () => { location.hash = to({role: ROLES[k]}); }}, `${ROLE_L[k]} · ${grp(D.role[i][2 * k])}`)));
+  const rq = roleQ(r.q), ro = rq === undefined ? mainRole(S, i) : rq, tab = tabOf(r.args[1]);
+  recentAdd(id, ro);
+  const to = over => link("champ", tab === "overview" ? [id] : [id, tab], {...base(c), role: ro != null ? ROLES[ro] : "all", ...over});
   const title = `Stats: ${name}${ro != null ? " " + ROLES[ro] : ""} (${c.mode === "pro" ? "pro " + c.year : "solo queue"})`;
-  main.append(h("div", {class: "sec"},
-    h("div", {class: "head"}, portrait(id, true), h("div", {}, h("h1", {}, name), h("div", {class: "sub"}, `${S.name}${ro != null ? " · " + ROLE_L[ro] : " · all roles"}`)), h("span", {class: "grow"}),
-      openButton(title, champProgram(c, id, ro))),
-    h("div", {class: "filters"}, roleSeg, h("a", {class: "btn ghost", href: link("tier", [], {...base(c), role: ro != null ? ROLES[ro] : null})}, "Tier list")),
-    h("p", {class: "lede", id: "summary"}, summary(S, i, ro, name)),
-    S.pro ? h("p", {class: "note"}, "Pro numbers carry team strength: strong teams get the meta picks, and every league in the file is pooled.") : h("p", {class: "note"}, "Solo-queue numbers mix in who picks the champion (mains, one-tricks) and the rest of the draft.")));
-  // headline cards
-  const cards = h("div", {class: "cards"});
-  cards.append(card(`Win rate${ro != null ? " · " + ROLE_L[ro] : ""}`, W.ok ? h("span", {class: clsCI(W.lo, W.hi, 0.5), id: "c-wr"}, pct(W.v)) : h("span", {class: "tl"}, "too little data"),
-    W.ok ? `95% CI ${pct(W.lo)}–${pct(W.hi)} · ${grp(W.n)} games` : `${grp(W.n)} games (fewer than ${D.min})`));
-  const pk = rate(D.gw[i][0], D.games, 1), bn = rate(D.bans[i], D.games, 1), pr = rate(D.gw[i][0] + D.bans[i], D.games, 1);
-  cards.append(card("Presence", h("span", {id: "c-pres"}, pct(pr.v)), `picked or banned in ${grp(pr.k)} of ${grp(D.games)} games`, kv([["Pick rate", pct(pk.v)], ["Ban rate", pct(bn.v)], ["Games", grp(D.gw[i][0])]])));
-  if (S.pro){
-    const T = avgOf(S, "wpa", i, ro), L = avgOf(S, "wpaLane", i, ro), Tm = avgOf(S, "wpaTeam", i, ro);
-    const ex = S.extra.map(k => [phaseLabel(k).replace(" WPA", ""), avgOf(S, k, i, ro)]);
-    cards.append(card("Win probability added", T.ok ? h("span", {class: clsCI(T.lo, T.hi, 0), id: "c-wpa"}, pp(T.v)) : h("span", {class: "tl"}, "too little data"),
-      T.ok ? `per game · 95% CI ${sgn(T.lo)} to ${sgn(T.hi)} · ${grp(T.n)} games` : null, splitBars([["Lane", L], ["Team", Tm], ...ex])));
-    const g = k => avgOf(S, k, i, ro);
-    cards.append(card("Laning vs opponent", null, null, kv([["Gold @10", g("gd10").ok ? sgInt(g("gd10").v) : "–"], ["Gold @15", g("gd15").ok ? sgInt(g("gd15").v) : "–"],
-      ["XP @15", g("xpd15").ok ? sgInt(g("xpd15").v) : "–"], ["CS @15", g("csd15").ok ? sgn(g("csd15").v, 1) : "–"]]), h("div", {class: "ci"}, "means over the games; vs the same-position opponent")));
-  } else {
-    const g = k => avgOf(S, k, i, ro), K = g("kills"), De = g("deaths"), As = g("assists");
-    cards.append(card("Per game", K.ok && De.ok && As.ok ? `${K.v.toFixed(1)} / ${De.v.toFixed(1)} / ${As.v.toFixed(1)}` : h("span", {class: "tl"}, "too little data"), "kills / deaths / assists",
-      kv([["KDA", K.ok && De.ok ? ((K.v + As.v) / Math.max(De.v, 1e-9)).toFixed(2) : "–"], ["Damage / min", g("dpm").ok ? grp(g("dpm").v) : "–"], ["CS / min", g("cspm").ok ? g("cspm").v.toFixed(1) : "–"], ["Damage share", g("dmgshare").ok ? pct(g("dmgshare").v) : "–"]])));
-  }
-  const sh = champWin(S, i, {length: "short"}), lg = champWin(S, i, {length: "long"});
-  cards.append(card("Game length", null, null, splitBarsRate([[`<${ST.short} min`, sh], [`${ST.long}+ min`, lg]]),
-    h("div", {class: "ci"}, sh.ok && lg.ok ? `${lg.v > sh.v ? "+" : MINUS}${Math.abs(100 * (lg.v - sh.v)).toFixed(1)} pp in long games (all roles)` : "all roles")));
-  const X = draftModel(c.mode);
-  if (X && ro != null){ const v = draftValue(c.mode, i, ro); cards.append(card("Draft model", v == null ? h("span", {class: "tl"}, "–") : pp(v, 1), `pick WPA of ${name} as ${ROLE_L[ro]}: blue\'s first pick into an empty draft, vs the role\'s typical pick`)); }
-  main.append(cards);
-
-  // by role
-  const byRole = [0, 1, 2, 3, 4].filter(k => D.role[i][2 * k] > 0).map(k => ({k, n: D.role[i][2 * k], wr: champWin(S, i, {role: k}), small: D.role[i][2 * k] < D.min,
-    wpa: avgOf(S, "wpa", i, k), lane: avgOf(S, "wpaLane", i, k), team: avgOf(S, "wpaTeam", i, k), gd15: avgOf(S, "gd15", i, k)}));
-  const tot = byRole.reduce((a, x) => a + x.n, 0) || 1;
-  const okv = x => x && x.ok ? x.v : null;
-  const rcols = [{key: "role", label: "Role", head: true, asc: true, val: x => x.k, cell: x => h("a", {href: to({role: ROLES[x.k]})}, h("b", {}, ROLE_L[x.k]))},
-    {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "share", label: "Share", val: x => x.n, cell: x => pct(x.n / tot, 0)},
-    {key: "wr", label: "Win rate", val: x => okv(x.wr), cell: x => wrCell(x.wr)}];
-  if (S.pro) rcols.push({key: "wpa", label: "WPA", val: x => okv(x.wpa), cell: x => meanCell(x.wpa, v => sgn(v))}, {key: "lane", label: "Lane", val: x => okv(x.lane), cell: x => meanCell(x.lane, v => sgn(v))},
-    {key: "team", label: "Team", val: x => okv(x.team), cell: x => meanCell(x.team, v => sgn(v))}, {key: "gd15", label: "GD@15", val: x => okv(x.gd15), cell: x => meanCell(x.gd15, sgInt)});
-  // matchups (same lane)
-  const mrows = [];
-  ST.champs.forEach((bid, j) => {
-    if (j === i) return;
-    const w = vsWin(S, i, j, ro, true); if (!w.n) return;
-    const row = {id: bid, j, name: nameOf(bid), n: w.n, wr: w};
-    if (S.pro){ row.wpa = vsWpa(S, i, j, ro, 0); row.lane = vsWpa(S, i, j, ro, 1); row.team = vsWpa(S, i, j, ro, 2);
-      S.phases.slice(3).forEach((p, k) => { row["ph" + p] = vsWpa(S, i, j, ro, 3 + k); }); }
-    mrows.push(row);
+  main.append(h("div", {class: "head"}, portrait(id, true), h("div", {}, h("h1", {}, name), h("div", {class: "sub"}, `${S.name}${ro != null ? " · " + ROLE_L[ro] : " · all roles"} · ${grp(D.gw[i][0])} games`)), h("span", {class: "grow"}),
+    openButton(title, champProgram(c, id, ro))));
+  // tabs: links (shareable, Back / Forward), arrow keys move between them
+  const tl = h("div", {class: "tabs", role: "tablist", "aria-label": `${name} sections`}, TABS.map(([k, t, only]) => h("a", {role: "tab", id: "tab-" + k, href: champLink(c, id, k, rq),
+    "aria-selected": String(k === tab), "aria-controls": "panel", tabindex: k === tab ? "0" : "-1"}, t, only && only !== c.mode ? h("span", {class: "pill", title: `${only === "solo" ? "solo queue" : "pro"} data only`}, only) : null)));
+  tl.addEventListener("keydown", e => {
+    const ks = [...tl.children], k = ks.indexOf(document.activeElement); if (k < 0) return;
+    const j = e.key === "ArrowRight" ? (k + 1) % ks.length : e.key === "ArrowLeft" ? (k - 1 + ks.length) % ks.length : e.key === "Home" ? 0 : e.key === "End" ? ks.length - 1 : -1;
+    if (j >= 0){ e.preventDefault(); ks[j].focus(); location.hash = ks[j].getAttribute("href"); }
   });
+  const panel = h("div", {role: "tabpanel", id: "panel", "aria-labelledby": "tab-" + tab, class: "sec"});
+  main.append(tl, panel);
+  const okv = x => x && x.ok ? x.v : null;
+  const P = (...k) => panel.append(...k);
+
+  const matchRows = () => {
+    const out = [];
+    ST.champs.forEach((bid, j) => {
+      if (j === i) return;
+      const w = vsWin(S, i, j, ro, true); if (!w.n) return;
+      const row = {id: bid, j, name: nameOf(bid), n: w.n, wr: w};
+      if (S.pro){ row.wpa = vsWpa(S, i, j, ro, 0); row.lane = vsWpa(S, i, j, ro, 1); row.team = vsWpa(S, i, j, ro, 2);
+        S.phases.slice(3).forEach((p, k) => { row["ph" + p] = vsWpa(S, i, j, ro, 3 + k); }); }
+      out.push(row);
+    });
+    return out;
+  };
   const mq = {...base(c), role: ro != null ? ROLES[ro] : null};
-  const mcols = [{key: "name", label: "Opponent", head: true, asc: true, val: x => x.name, cell: x => h("a", {href: link("matchup", [id, x.id], mq)}, portrait(x.id), h("b", {}, x.name))},
-    {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)},
-    {key: "wr", label: `${name} win rate`, val: x => okv(x.wr), cell: x => wrCell(x.wr, true), cls: "gcol"}];
-  if (S.pro){ mcols.push({key: "wpa", label: "WPA vs", title: `${name}'s win probability added in this matchup (pp per game)`, val: x => okv(x.wpa), cell: x => meanCell(x.wpa, v => sgn(v)), cls: "gcol"},
-    {key: "lane", label: "Lane", val: x => okv(x.lane), cell: x => meanCell(x.lane, v => sgn(v))}, {key: "team", label: "Team", val: x => okv(x.team), cell: x => meanCell(x.team, v => sgn(v))});
-    S.phases.slice(3).forEach(p => mcols.push({key: "ph" + p, label: p[0].toUpperCase() + p.slice(1), val: x => okv(x["ph" + p]), cell: x => meanCell(x["ph" + p], v => sgn(v))})); }
-  // teammates
-  const trows = [];
-  ST.champs.forEach((bid, j) => { if (j === i) return; const w = withWin(S, i, j); if (w.n) trows.push({id: bid, name: nameOf(bid), n: w.n, wr: w}); });
+  const oppCell = x => h("a", {href: link("matchup", [id, x.id], mq)}, portrait(x.id), h("b", {}, x.name));
+  const mateRows = () => { const out = []; ST.champs.forEach((bid, j) => { if (j === i) return; const w = withWin(S, i, j); if (w.n) out.push({id: bid, name: nameOf(bid), n: w.n, wr: w}); }); return out; };
   const tcols = [{key: "name", label: "Teammate", head: true, asc: true, val: x => x.name, cell: x => h("a", {href: link("champ", [x.id], base(c))}, portrait(x.id), h("b", {}, x.name))},
     {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "wr", label: "Win rate together", title: "sorted by the low end of the 95% interval, so a few lucky games don't top the list", val: x => x.wr.ok ? x.wr.lo : null, cell: x => wrCell(x.wr, true)}];
-  main.append(h("section", {class: "sec", "aria-labelledby": "h-role"}, h("h2", {id: "h-role"}, "By role"), table({cols: rcols, rows: byRole, sort: {key: "games", dir: "desc"}})));
-  main.append(h("section", {class: "sec", "aria-labelledby": "h-mu"}, h("h2", {id: "h-mu"}, `Matchups · same lane${ro != null ? ", " + ROLE_L[ro] : ", every role pooled"}`, h("small", {}, `${mrows.length} opponents with ${D.min}+ games (pairs under ${D.min} aren't stored)`)),
-    mrows.length ? table({cols: mcols, rows: mrows, sort: {key: "games", dir: "desc"}, limit: 25}) : h("p", {class: "note"}, "No lane opponent with enough games.")));
-  main.append(h("section", {class: "sec", "aria-labelledby": "h-with"}, h("h2", {id: "h-with"}, "Best teammates", h("small", {}, "same team, any roles; ranked by the low end of the 95% interval")),
-    trows.length ? table({cols: tcols, rows: trows, sort: {key: "wr", dir: "desc"}, limit: 10}) : h("p", {class: "note"}, "No teammate pair with enough games.")));
+
+  if (tab === "overview"){
+    P(h("p", {class: "lede", id: "summary"}, summary(S, i, ro, name)),
+      S.pro ? h("p", {class: "note"}, "Pro numbers carry team strength: strong teams get the meta picks, and every league in the file is pooled.") : h("p", {class: "note"}, "Solo-queue numbers mix in who picks the champion (mains, one-tricks) and the rest of the draft."));
+    const W = champWin(S, i, {role: ro});
+    const cards = h("div", {class: "cards"});
+    cards.append(card(`Win rate${ro != null ? " · " + ROLE_L[ro] : ""}`, W.ok ? h("span", {class: clsCI(W.lo, W.hi, 0.5), id: "c-wr"}, pct(W.v)) : h("span", {class: "tl"}, "too little data"),
+      W.ok ? `95% CI ${pct(W.lo)}–${pct(W.hi)} · ${grp(W.n)} games` : `${grp(W.n)} games (fewer than ${D.min})`));
+    const pk = rate(D.gw[i][0], D.games, 1), bn = rate(D.bans[i], D.games, 1), pr = rate(D.gw[i][0] + D.bans[i], D.games, 1);
+    cards.append(card("Presence", h("span", {id: "c-pres"}, pct(pr.v)), `picked or banned in ${grp(pr.k)} of ${grp(D.games)} games`, kv([["Pick rate", pct(pk.v)], ["Ban rate", pct(bn.v)], ["Games", grp(D.gw[i][0])]])));
+    if (S.pro){ wpaCards(S, i, ro, cards, true); }
+    else {
+      const g = k => avgOf(S, k, i, ro), K = g("kills"), De = g("deaths"), As = g("assists");
+      cards.append(card("Per game", K.ok && De.ok && As.ok ? `${K.v.toFixed(1)} / ${De.v.toFixed(1)} / ${As.v.toFixed(1)}` : h("span", {class: "tl"}, "too little data"), "kills / deaths / assists",
+        kv([["KDA", K.ok && De.ok ? ((K.v + As.v) / Math.max(De.v, 1e-9)).toFixed(2) : "–"], ["Damage / min", g("dpm").ok ? grp(g("dpm").v) : "–"], ["CS / min", g("cspm").ok ? g("cspm").v.toFixed(1) : "–"], ["Damage share", g("dmgshare").ok ? pct(g("dmgshare").v) : "–"]])));
+    }
+    const sh = champWin(S, i, {length: "short"}), lg = champWin(S, i, {length: "long"});
+    cards.append(card("Game length", null, null, splitBarsRate([[`<${ST.short} min`, sh], [`${ST.long}+ min`, lg]]),
+      h("div", {class: "ci"}, sh.ok && lg.ok ? `${lg.v > sh.v ? "+" : MINUS}${Math.abs(100 * (lg.v - sh.v)).toFixed(1)} pp in long games (all roles)` : "all roles")));
+    const X = draftModel(c.mode);
+    if (X && ro != null){ const v = draftValue(c.mode, i, ro); cards.append(card("Draft model", v == null ? h("span", {class: "tl"}, "–") : pp(v, 1), `pick WPA of ${name} as ${ROLE_L[ro]}: blue's first pick into an empty draft, vs the role's typical pick`)); }
+    if (!S.pro){ const bc = card("Most common build", null, null, h("div", {class: "ci"}, "loading…")); bc.id = "c-build"; cards.append(bc); buildTeaser(bc, c, id, ro != null ? ro : mainRole(S, i)); }
+    P(cards);
+    // by role
+    const byRole = [0, 1, 2, 3, 4].filter(k => D.role[i][2 * k] > 0).map(k => ({k, n: D.role[i][2 * k], wr: champWin(S, i, {role: k}), small: D.role[i][2 * k] < D.min,
+      wpa: avgOf(S, "wpa", i, k), lane: avgOf(S, "wpaLane", i, k), team: avgOf(S, "wpaTeam", i, k), gd15: avgOf(S, "gd15", i, k)}));
+    const tot = byRole.reduce((a, x) => a + x.n, 0) || 1;
+    const rcols = [{key: "role", label: "Role", head: true, asc: true, val: x => x.k, cell: x => h("a", {href: to({role: ROLES[x.k]})}, h("b", {}, ROLE_L[x.k]))},
+      {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "share", label: "Share", val: x => x.n, cell: x => pct(x.n / tot, 0)},
+      {key: "wr", label: "Win rate", val: x => okv(x.wr), cell: x => wrCell(x.wr)}];
+    if (S.pro) rcols.push({key: "wpa", label: "WPA", val: x => okv(x.wpa), cell: x => meanCell(x.wpa, v => sgn(v))}, {key: "lane", label: "Lane", val: x => okv(x.lane), cell: x => meanCell(x.lane, v => sgn(v))},
+      {key: "team", label: "Team", val: x => okv(x.team), cell: x => meanCell(x.team, v => sgn(v))}, {key: "gd15", label: "GD@15", val: x => okv(x.gd15), cell: x => meanCell(x.gd15, sgInt)});
+    P(h("section", {class: "sec", "aria-labelledby": "h-role"}, h("h2", {id: "h-role"}, "By role"), table({cols: rcols, rows: byRole, sort: {key: "games", dir: "desc"}})));
+    // matchups and teammates: a preview, the full lists on their tabs
+    const mr = matchRows().filter(x => x.wr.ok), best = mr.slice().sort((a, b) => b.wr.v - a.wr.v).slice(0, 5), worst = mr.slice().sort((a, b) => a.wr.v - b.wr.v).slice(0, 5);
+    const mini = rows => table({cols: [{key: "name", label: "Opponent", head: true, val: x => x.name, cell: oppCell}, {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)},
+      {key: "wr", label: `${name} win rate`, val: x => x.wr.v, cell: x => wrCell(x.wr, true)}], rows, sort: {key: "wr", dir: rows === best ? "desc" : "asc"}});
+    P(h("section", {class: "sec", "aria-labelledby": "h-mu-top"}, h("h2", {id: "h-mu-top"}, `Matchups · best and worst${ro != null ? ", " + ROLE_L[ro] : ""}`,
+      h("small", {}, h("a", {class: "more-link", href: champLink(c, id, "matchups", rq)}, `All ${mr.length} lane opponents →`))),
+      mr.length ? h("div", {class: "two"}, mini(best), mini(worst)) : h("p", {class: "note"}, "No lane opponent with enough games.")));
+    const tr = mateRows();
+    P(h("section", {class: "sec", "aria-labelledby": "h-with-top"}, h("h2", {id: "h-with-top"}, "Best teammates", h("small", {}, "ranked by the low end of the 95% interval · ", h("a", {class: "more-link", href: champLink(c, id, "teammates", rq)}, `all ${tr.length} →`))),
+      tr.length ? table({cols: tcols, rows: tr, sort: {key: "wr", dir: "desc"}, limit: 5}) : h("p", {class: "note"}, "No teammate pair with enough games.")));
+  } else if (tab === "matchups"){
+    const mrows = matchRows();
+    const mcols = [{key: "name", label: "Opponent", head: true, asc: true, val: x => x.name, cell: oppCell},
+      {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)},
+      {key: "wr", label: `${name} win rate`, val: x => okv(x.wr), cell: x => wrCell(x.wr, true), cls: "gcol"}];
+    if (S.pro){ mcols.push({key: "wpa", label: "WPA vs", title: `${name}'s win probability added in this matchup (pp per game)`, val: x => okv(x.wpa), cell: x => meanCell(x.wpa, v => sgn(v)), cls: "gcol"},
+      {key: "lane", label: "Lane", val: x => okv(x.lane), cell: x => meanCell(x.lane, v => sgn(v))}, {key: "team", label: "Team", val: x => okv(x.team), cell: x => meanCell(x.team, v => sgn(v))});
+      S.phases.slice(3).forEach(p => mcols.push({key: "ph" + p, label: p[0].toUpperCase() + p.slice(1), val: x => okv(x["ph" + p]), cell: x => meanCell(x["ph" + p], v => sgn(v))})); }
+    const opp = combo({label: "Opponent", placeholder: `Compare ${name} with…`, items: () => mrows.slice().sort((a, b) => a.name.localeCompare(b.name)).map(x => ({id: x.id, name: x.name, sub: `${grp(x.n)} games${x.wr.ok ? " · " + pct(x.wr.v) : ""}`})),
+      onPick: b => { location.hash = link("matchup", [id, b], mq); }});
+    P(h("div", {class: "mucb"}, h("span", {class: "vs"}, `${name} vs`), opp, h("span", {class: "note"}, "pick an opponent for the head-to-head page")));
+    P(h("section", {class: "sec", "aria-labelledby": "h-mu"}, h("h2", {id: "h-mu"}, `Matchups · same lane${ro != null ? ", " + ROLE_L[ro] : ", every role pooled"}`, h("small", {}, `${mrows.length} opponents with ${D.min}+ games (pairs under ${D.min} aren't stored)`)),
+      mrows.length ? table({cols: mcols, rows: mrows, sort: {key: "games", dir: "desc"}, limit: 40}) : h("p", {class: "note"}, "No lane opponent with enough games.")));
+  } else if (tab === "teammates"){
+    const trows = mateRows();
+    P(h("section", {class: "sec", "aria-labelledby": "h-with"}, h("h2", {id: "h-with"}, "Best teammates", h("small", {}, "same team, any roles; ranked by the low end of the 95% interval")),
+      trows.length ? table({cols: tcols, rows: trows, sort: {key: "wr", dir: "desc"}, limit: 40}) : h("p", {class: "note"}, "No teammate pair with enough games.")));
+  } else if (tab === "wpa"){
+    if (!S.pro){ P(modeNotice("wpa-solo", "WPA and laning numbers are pro only for now.", "Win probability added needs minute-by-minute data. Pro games have it (Oracle's Elixir: gold, XP and kills at 10 and 15 minutes); the solo-queue timelines are still downloading, so solo WPA will appear here once they're in.", "pro", "Show pro WPA")); return; }
+    const cards = h("div", {class: "cards"}); wpaCards(S, i, ro, cards, false); P(cards);
+    const mrows = matchRows().filter(x => x.lane && x.lane.ok);
+    P(h("section", {class: "sec", "aria-labelledby": "h-lanewpa"}, h("h2", {id: "h-lanewpa"}, `Lane-phase WPA by opponent${ro != null ? " · " + ROLE_L[ro] : ""}`, h("small", {}, "0–15 min, pp per game; who wins the lane")),
+      mrows.length ? table({cols: [{key: "name", label: "Opponent", head: true, asc: true, val: x => x.name, cell: oppCell}, {key: "games", label: "Games", val: x => x.lane.n, cell: x => grp(x.lane.n)},
+        {key: "lane", label: "Lane WPA", val: x => x.lane.v, cell: x => meanCell(x.lane, v => sgn(v)), cls: "gcol"}, {key: "team", label: "Team WPA", val: x => okv(x.team), cell: x => meanCell(x.team, v => sgn(v))},
+        {key: "wpa", label: "Total", val: x => okv(x.wpa), cell: x => meanCell(x.wpa, v => sgn(v))}], rows: mrows, sort: {key: "lane", dir: "desc"}, limit: 25}) : h("p", {class: "note"}, "No lane opponent with enough games.")));
+    P(h("p", {class: "note"}, "WPA splits the team's win probability: 0–15 min by each player's gold, XP and kill differences against the lane opponent (lane), 15 min to the end equally (team). See Methods."));
+  } else viewBuilds(panel, c, S, id, i, ro, tab);
+}
+/* WPA + laning cards (pro); ids only on the overview (the engine cross-checks read them) */
+function wpaCards(S, i, ro, cards, ids){
+  const T = avgOf(S, "wpa", i, ro), L = avgOf(S, "wpaLane", i, ro), Tm = avgOf(S, "wpaTeam", i, ro);
+  const ex = S.extra.map(k => [phaseLabel(k).replace(" WPA", ""), avgOf(S, k, i, ro)]);
+  cards.append(card("Win probability added", T.ok ? h("span", {class: clsCI(T.lo, T.hi, 0), id: ids ? "c-wpa" : null}, pp(T.v)) : h("span", {class: "tl"}, "too little data"),
+    T.ok ? `per game · 95% CI ${sgn(T.lo)} to ${sgn(T.hi)} · ${grp(T.n)} games` : null, splitBars([["Lane", L], ["Team", Tm], ...ex])));
+  const g = k => avgOf(S, k, i, ro);
+  cards.append(card("Laning vs opponent", null, null, kv([["Gold @10", g("gd10").ok ? sgInt(g("gd10").v) : "–"], ["Gold @15", g("gd15").ok ? sgInt(g("gd15").v) : "–"],
+    ["XP @15", g("xpd15").ok ? sgInt(g("xpd15").v) : "–"], ["CS @15", g("csd15").ok ? sgn(g("csd15").v, 1) : "–"]]), h("div", {class: "ci"}, "means over the games; vs the same-position opponent")));
+}
+/* "this needs the other dataset" notice with a switch that keeps the champion, role and tab */
+function modeNotice(id, head, body, to, btn){
+  return h("div", {class: "notice", id}, h("b", {}, head), h("p", {class: "note"}, body),
+    h("div", {}, h("button", {type: "button", class: "btn", onclick: () => setMode(to)}, btn)));
+}
+
+/* ---------- builds and runes (solo queue: web/builds.json, src/builds_export.py) ---------- */
+let BUILDS = null, BICONS = {}, bP = null, RTOK = 0;
+const GREY = 100;                                                 // rows under this many games are greyed (stored from builds.json "min")
+function loadBuilds(){
+  if (bP) return bP;
+  if (PAGE.inline){ BUILDS = PAGE.inline.builds || null; BICONS = PAGE.inline.bicons || {}; return (bP = Promise.resolve(BUILDS)); }
+  bP = fetch("builds.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(b => {
+    BUILDS = b;
+    fetch("buildicons.json").then(r => r.ok ? r.json() : {}).then(d => { BICONS = d || {}; document.querySelectorAll("[data-bicon]").forEach(e => fillBicon(e)); }, () => {});
+    return b;
+  }, e => { bP = null; throw e; });
+  return bP;
+}
+const itemName = id => id === 0 ? "No boots" : ((BUILDS.names.items[id] || {}).n || `Item ${id}`);
+const perkName = id => (BUILDS.names.perks[id] || {}).n || BUILDS.names.trees[id] || `Rune ${id}`;
+const spellName = id => BUILDS.names.spells[id] || `Spell ${id}`;
+function bicon(key, label, cls){ const e = h("span", {class: "ic" + (cls ? " " + cls : ""), "data-bicon": key, "data-label": label, title: label, "aria-hidden": "true"}); fillBicon(e); return e; }
+function fillBicon(e){
+  const k = e.getAttribute("data-bicon"); e.textContent = "";
+  if (BICONS[k]) e.append(h("img", {src: BICONS[k], alt: "", width: 40, height: 40, loading: "lazy", decoding: "async"}));
+  else e.append((e.getAttribute("data-label") || "?").replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean).map(w => w[0]).join("").slice(0, 2));
+}
+/* games with vs without (disjoint): difference of two proportions, Newcombe's hybrid Wilson interval */
+function diffCI(k1, n1, k2, n2){
+  if (!(n1 > 0 && n2 > 0)) return {ok: false};
+  const p1 = k1 / n1, p2 = k2 / n2, [l1, u1] = wilson(k1, n1), [l2, u2] = wilson(k2, n2), d = p1 - p2;
+  return {ok: true, v: d, lo: d - Math.sqrt((p1 - l1) ** 2 + (u2 - p2) ** 2), hi: d + Math.sqrt((u1 - p1) ** 2 + (p2 - l2) ** 2)};
+}
+function deltaCell(x, title){
+  if (!x || !x.ok) return h("span", {class: "tl"}, "–");
+  return h("span", {class: clsCI(x.lo, x.hi, 0), title: `${title || ""}95% CI ${sgn(100 * x.lo, 1)} to ${sgn(100 * x.hi, 1)} pp`}, sgn(100 * x.v, 1),
+    h("small", {}, `${sgn(100 * x.lo, 0)}…${sgn(100 * x.hi, 0)}`));
+}
+/* a list row [.., n, w] -> {n, w, wr, share, small, vsRest} against the champion-role total E */
+function bRow(E, n, w, extra){
+  const wr = rate(w, n, BUILDS.min);
+  return {n, w, wr, share: n / E.n, small: n < GREY, rest: diffCI(w, n, E.w - w, E.n - n), ...extra};
+}
+const shareCell = x => h("span", {title: `${grp(x.n)} of the champion's games in this role`}, pct(x.share, x.share < 0.1 ? 1 : 0));
+function soloEntry(id, r){ return BUILDS && BUILDS.champs[id] ? BUILDS.champs[id][String(r)] || null : null; }
+function buildTeaser(el, c, id, r){
+  const tok = RTOK;
+  loadBuilds().then(() => {
+    if (tok !== RTOK) return;
+    const E = soloEntry(id, r), body = el.querySelector(".ci"); body.textContent = "";
+    if (!E || !E.core3.length){ body.textContent = "no build data for this role"; return; }
+    const [set, n, w] = E.core3[0], k = E.keys[0];
+    el.insertBefore(h("div", {class: "core"}, h("div", {class: "icons"}, set.map(x => bicon("i" + x, itemName(x), "lg")))), body);
+    body.append(`${set.map(itemName).join(" + ")}: ${pct(w / n)} in ${grp(n)} games`, k ? h("br") : null, k ? `Keystone: ${perkName(k[0])} (${pct(k[1] / E.n, 0)})` : null, " · ",
+      h("a", {href: champLink(c, id, "builds", r)}, "Builds →"));
+  }, () => { if (tok === RTOK) el.querySelector(".ci").textContent = "build data unavailable"; });
+}
+function viewBuilds(panel, c, S, id, i, ro, tab){
+  const name = nameOf(id);
+  if (c.mode === "pro"){
+    panel.append(modeNotice("no-pro-items", "No item or rune data in pro.", "Oracle's Elixir, the pro dataset, has no items, runes or summoner spells. The builds here come from ranked solo queue only, and pro and solo queue are never mixed.",
+      "solo", `Show ${name}'s solo-queue ${tab === "runes" ? "runes" : "builds"}`));
+    return;
+  }
+  const r = ro != null ? ro : mainRole(S, i), tok = RTOK;
+  panel.append(h("div", {class: "loading"}, h("i"), "Loading builds (about 400 KB, fetched once)…"));
+  loadBuilds().then(() => {
+    if (tok !== RTOK) return;
+    panel.textContent = "";
+    const E = soloEntry(id, r);
+    if (ro == null) panel.append(h("p", {class: "note"}, `Builds are per role: showing ${ROLE_L[r]}, ${name}'s main role. Pick another role in the bar above.`));
+    if (!E){
+      const have = Object.keys(BUILDS.champs[id] || {}).map(Number);
+      panel.append(h("div", {class: "notice", id: "no-builds"}, h("b", {}, `Too few games for build stats: ${name} as ${ROLE_L[r]}.`),
+        h("p", {class: "note"}, `Build and rune stats need at least ${BUILDS.minRole} solo-queue games in the role.`),
+        have.length ? h("div", {class: "filters"}, have.map(k => h("a", {class: "btn", href: champLink(c, id, tab, k)}, `${ROLE_L[k]} · ${grp(BUILDS.champs[id][k].n)} games`))) : null));
+      return;
+    }
+    const base0 = rate(E.w, E.n, BUILDS.min);
+    panel.append(h("p", {class: "lede", id: "b-lede"}, `${name} as ${ROLE_L[r]}: `, h("b", {id: "b-n"}, grp(E.n)), ` solo-queue games, `, h("b", {}, pct(base0.v)), ` win rate (95% CI ${pct(base0.lo)}–${pct(base0.hi)}). ` +
+      (tab === "builds" ? "Items are the final inventory at the end of each game, so there's no purchase order." : "The rune page and summoner spells each player locked in.")));
+    (tab === "builds" ? drawItems : drawRunes)(panel, E, name);
+    panel.append(h("p", {class: "note"}, `Rows with fewer than ${BUILDS.min} games aren't stored; rows under ${GREY} are greyed. Win rate: 95% Wilson interval in small type. ${grp(BUILDS.games)} ranked solo games, patch 16.x (the same games as the solo tier list).`));
+  }, e => { if (tok !== RTOK) return; panel.textContent = ""; panel.append(h("div", {class: "card err"}, `The build data (builds.json) could not be loaded: ${e.message}.`)); });
+}
+function drawItems(panel, E, name){
+  const iLab = id => h("span", {class: "ilab"}, bicon("i" + id, itemName(id)), h("b", {}, itemName(id)));
+  // core builds: 3-item sets as cards, 2-item sets as a table
+  const c3 = E.core3.map(([set, n, w]) => bRow(E, n, w, {set}));
+  panel.append(h("section", {class: "sec", "aria-labelledby": "h-core"}, h("h2", {id: "h-core"}, "Core builds", h("small", {}, "sets of completed items that were all in the final inventory (order unknown)")),
+    c3.length ? h("div", {class: "core", id: "core3"}, c3.slice(0, 6).map(x => h("div", {class: "card" + (x.small ? " small" : "")},
+      h("div", {class: "icons"}, x.set.map((id, k) => [k ? h("span", {class: "plus"}, "+") : null, bicon("i" + id, itemName(id), "lg")])),
+      h("div", {class: "nm"}, x.set.map(itemName).join(" · ")),
+      h("div", {class: "st"}, wrCell(x.wr), h("span", {class: "note"}, `${grp(x.n)} games · ${pct(x.share, 1)}`))))) : h("p", {class: "note"}, "No 3-item set with enough games."),
+    E.core2.length ? table({cols: [{key: "set", label: "2-item core", head: true, val: x => x.set.map(itemName).join(" "), asc: true, cell: x => h("span", {class: "ilab"}, x.set.map(id => bicon("i" + id, itemName(id))), h("b", {}, x.set.map(itemName).join(" + ")))},
+      {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "share", label: "Share", val: x => x.share, cell: shareCell}, {key: "wr", label: "Win rate", val: x => x.wr.ok ? x.wr.v : null, cell: x => wrCell(x.wr, true), cls: "gcol"}],
+      rows: E.core2.map(([set, n, w]) => bRow(E, n, w, {set})), sort: {key: "games", dir: "desc"}}) : null));
+  // single items
+  const nl = E.nLeg.reduce((a, x) => a + x, 0);
+  const items = E.items.map(([id, n, w, e]) => { const x = bRow(E, n, w, {id, name: itemName(id)}); const [lo, hi] = wilson(w, n); x.adj = {ok: true, v: (w - e) / n, lo: lo - e / n, hi: hi - e / n}; return x; });
+  const icols = [{key: "name", label: "Item", head: true, asc: true, val: x => x.name, cell: x => iLab(x.id)},
+    {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "share", label: "Built in", title: "share of the champion's games in this role that ended with the item", val: x => x.share, cell: shareCell},
+    {key: "wr", label: "Win rate", val: x => x.wr.ok ? x.wr.v : null, cell: x => wrCell(x.wr, true), cls: "gcol"},
+    {key: "rest", label: "Δ vs without", title: "win rate with the item minus without it (same champion and role), percentage points; 95% interval (Newcombe). Biased up: players who finish more items played longer games and won more.", val: x => x.rest.ok ? x.rest.v : null, cell: x => deltaCell(x.rest)},
+    {key: "adj", label: "Δ same item count", title: "win rate with the item minus the champion's win rate in games that ended with the same number of completed items: compares like with like (game length, gold)", val: x => x.adj.v, cell: x => deltaCell(x.adj), cls: "gcol"}];
+  panel.append(h("section", {class: "sec", "aria-labelledby": "h-items"}, h("h2", {id: "h-items"}, "Items", h("small", {}, `completed items (2000+ gold) in the final inventory · ${name} finished 0–6 of them: ${E.nLeg.map((x, k) => `${k}: ${pct(x / nl, 0)}`).join(", ")}`)),
+    table({cols: icols, rows: items, sort: {key: "games", dir: "desc"}, limit: 20}),
+    h("p", {class: "note"}, "“Δ same item count” is the fairer comparison: an item bought in longer games (a 4th or 5th item) looks better against all games only because those players were already ahead or scaling.")));
+  // boots
+  const boots = E.boots.map(([id, n, w]) => bRow(E, n, w, {id, name: itemName(id)}));
+  panel.append(h("section", {class: "sec", "aria-labelledby": "h-boots"}, h("h2", {id: "h-boots"}, "Boots", h("small", {}, "final inventory; “No boots” includes games that sold them")),
+    table({cols: [{key: "name", label: "Boots", head: true, asc: true, val: x => x.name, cell: x => x.id ? iLab(x.id) : h("b", {}, "No boots")},
+      {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "share", label: "Share", val: x => x.share, cell: shareCell},
+      {key: "wr", label: "Win rate", val: x => x.wr.ok ? x.wr.v : null, cell: x => wrCell(x.wr, true), cls: "gcol"}, {key: "rest", label: "Δ vs rest", title: "win rate with these boots minus every other game of the champion in this role (other boots or none), percentage points; 95% interval", val: x => x.rest.ok ? x.rest.v : null, cell: x => deltaCell(x.rest)}],
+      rows: boots, sort: {key: "games", dir: "desc"}})));
+  panel.append(h("div", {class: "card soon", id: "item-wpa-soon"}, h("h3", {}, "Item WPA · coming with timelines"),
+    h("p", {class: "note"}, "Win probability added per item (how much the team's chances rose after the purchase), the build order, first-item and starting-item stats, and item timing all need minute-by-minute match timelines. Those are still downloading for the solo-queue games; this slot fills in when they're in. The final inventory can't tell which item came first (and there are no mythic items since 2024).")));
+}
+function drawRunes(panel, E, name){
+  const pLab = (id, cls) => h("span", {class: "ilab"}, bicon("p" + id, perkName(id), "rn" + (cls ? " " + cls : "")), h("b", {}, perkName(id)));
+  const wrc = {key: "wr", label: "Win rate", val: x => x.wr.ok ? x.wr.v : null, cell: x => wrCell(x.wr, true), cls: "gcol"};
+  const gc = {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, sc = {key: "share", label: "Share", val: x => x.share, cell: shareCell};
+  const rc = {key: "rest", label: "Δ vs rest", title: "win rate with this choice minus all other games of the champion in this role, percentage points; 95% interval (Newcombe)", val: x => x.rest.ok ? x.rest.v : null, cell: x => deltaCell(x.rest)};
+  const sec = (idd, t, sub, ...k) => panel.append(h("section", {class: "sec", "aria-labelledby": idd}, h("h2", {id: idd}, t, sub ? h("small", {}, sub) : null), ...k));
+  sec("h-keys", "Keystones", null, table({cols: [{key: "name", label: "Keystone", head: true, asc: true, val: x => perkName(x.id), cell: x => pLab(x.id)}, gc, sc, wrc, rc],
+    rows: E.keys.map(([id, n, w]) => bRow(E, n, w, {id})), sort: {key: "games", dir: "desc"}}));
+  const pages = E.pages.map(([pg, n, w]) => bRow(E, n, w, {pg}));
+  sec("h-pages", "Rune pages", "most common full pages: keystone, 3 primary, 2 secondary (shards below)", table({cols: [{key: "page", label: "Page", head: true, val: x => x.pg.join(","), cell: x => h("span", {class: "page", title: x.pg.map(perkName).join(", ")},
+    x.pg.map((p, k) => [k === 4 ? h("span", {class: "sep"}) : null, bicon("p" + p, perkName(p), "rn" + (k === 0 ? " lg" : ""))]), h("b", {class: "sr"}, x.pg.map(perkName).join(", ")))}, gc, sc, wrc],
+    rows: pages, sort: {key: "games", dir: "desc"}}));
+  const tn = id => BUILDS.names.trees[id] || id;
+  sec("h-trees", "Rune trees", "primary + secondary", table({cols: [{key: "t", label: "Trees", head: true, val: x => tn(x.a) + tn(x.b), asc: true, cell: x => h("span", {class: "ilab"}, bicon("p" + x.a, tn(x.a), "rn"), bicon("p" + x.b, tn(x.b), "rn"), h("b", {}, `${tn(x.a)} + ${tn(x.b)}`))}, gc, sc, wrc],
+    rows: E.trees.map(([a, b, n, w]) => bRow(E, n, w, {a, b})), sort: {key: "games", dir: "desc"}}));
+  sec("h-shards", "Stat shards", null, h("div", {class: "shards"}, ["Offense", "Flex", "Defense"].map((t, k) => table({cols: [{key: "name", label: t, head: true, asc: true, val: x => perkName(x.id), cell: x => pLab(x.id)}, gc, wrc],
+    rows: E.shards[k].map(([id, n, w]) => bRow(E, n, w, {id})), sort: {key: "games", dir: "desc"}}))));
+  sec("h-spells", "Summoner spells", null, table({cols: [{key: "name", label: "Spells", head: true, asc: true, val: x => x.pr.map(spellName).join(" "), cell: x => h("span", {class: "ilab"}, x.pr.map(s => bicon("s" + s, spellName(s))), h("b", {}, x.pr.map(spellName).join(" + ")))}, gc, sc, wrc, rc],
+    rows: E.spells.map(([pr, n, w]) => bRow(E, n, w, {pr})), sort: {key: "games", dir: "desc"}}));
+  panel.append(h("div", {class: "card soon"}, h("h3", {}, "Rune WPA · coming with timelines"), h("p", {class: "note"}, "Win probability added by keystone needs match timelines (still downloading).")));
 }
 function splitBarsRate(items){
   return h("div", {class: "split"}, items.map(([lbl, x]) => [h("span", {}, lbl),
@@ -712,17 +1148,19 @@ function viewMatchup(r, c){
   let b = champId(r.args[1]);
   const laneGames = (j, k) => { const w = vsWin(S, i, j, k, true); return w.n; };
   let ro = r.q.role != null && ROLE_IDX[r.q.role] != null ? ROLE_IDX[r.q.role] : null;
-  if (b && ro == null){ let best = -1; for (let k = 0; k < 5; k++){ const n = laneGames(POS[b], k); if (n > best && n > 0){ best = n; ro = k; } } }
+  if (b && ro == null) ro = muRole(S, a, b);
   const rr = ro != null ? ro : mainRole(S, i);
   const opps = ST.champs.map((id, j) => ({id, j, n: j === i ? 0 : laneGames(j, rr)})).filter(x => x.n > 0).sort((x, y) => y.n - x.n);
   const go = (bb, k) => { location.hash = link("matchup", [a, bb], {...base(c), role: k != null ? ROLES[k] : null}); };
-  const sel = h("select", {"aria-label": "Opponent", onchange: e => go(e.target.value, rr)}, h("option", {value: ""}, "Choose an opponent…"),
-    opps.map(o => h("option", {value: o.id, selected: o.id === b ? true : null}, `${nameOf(o.id)} · ${grp(o.n)} games`)));
+  const cbA = combo({label: "First champion", value: nameOf(a), items: () => champItems(S), onPick: x => { location.hash = link("matchup", [x, ...(b ? [b] : [])], {...base(c), role: ro != null ? ROLES[ro] : null}); }});
+  const cbB = combo({label: "Opponent", placeholder: "Choose an opponent…", value: b ? nameOf(b) : "",
+    items: () => opps.slice().sort((x, y) => nameOf(x.id).localeCompare(nameOf(y.id))).map(o => ({id: o.id, name: nameOf(o.id), sub: `${grp(o.n)} games${rr != null ? " · " + ROLE_L[rr] : ""}`})), onPick: x => go(x, rr)});
   const nameA = nameOf(a);
   main.append(h("div", {class: "head"}, portrait(a, true), h("h1", {}, h("a", {href: link("champ", [a], {...base(c), role: rr != null ? ROLES[rr] : null})}, nameA), " vs ", b ? h("a", {href: link("champ", [b], {...base(c), role: rr != null ? ROLES[rr] : null})}, nameOf(b)) : "…"),
     b ? portrait(b, true) : null, h("span", {class: "grow"}), b ? openButton(`Stats: ${nameA} vs ${nameOf(b)} (${c.mode === "pro" ? "pro " + c.year : "solo queue"})`, matchupProgram(c, a, b, ro)) : null));
   const roles = b ? [0, 1, 2, 3, 4].filter(k => laneGames(POS[b], k) > 0) : [];
-  main.append(h("div", {class: "filters"}, sel, b ? h("button", {type: "button", class: "btn", onclick: () => go2(b, a, ro)}, "Swap sides") : null,
+  main.append(h("div", {class: "mucb"}, cbA, h("button", {type: "button", class: "btn", id: "swap", disabled: b ? null : true, title: "Swap the two champions", "aria-label": "Swap sides", onclick: () => go2(b, a, ro)}, "⇄ Swap"), cbB));
+  main.append(h("div", {class: "filters"},
     roles.length > 1 ? h("div", {class: "seg", role: "group", "aria-label": "Lane"}, roles.map(k => h("button", {type: "button", "aria-pressed": String(ro === k), onclick: () => go(b, k)}, `${ROLE_L[k]} · ${grp(laneGames(POS[b], k))}`))) : null,
     h("span", {class: "note"}, `${S.name} · same lane${ro != null ? ", " + ROLE_L[ro] : ""}`)));
   function go2(x, y, k){ location.hash = link("matchup", [x, y], {...base(c), role: k != null ? ROLES[k] : null}); }
@@ -861,6 +1299,11 @@ function viewAbout(r, c){
     h("li", {}, "Win, pick and ban rates are counts from the data, with 95% Wilson intervals (the small grey range next to each rate). A rate from fewer than the dataset's minimum games reads “too little data”; pairs under the minimum aren't stored at all."),
     h("li", {}, "Averages (gold difference at 15, WPA, …) show the mean with a 95% interval of ±1.96 SD/√n. Green or red means the interval excludes 50% (rates) or 0 (differences); plain means it doesn't."),
     h("li", {}, "The same functions are in the Rift Logic language: winrate(), pickrate(), presence(), stat(), matchups(), wpa() and winprob(). “Open in Rift Logic” on a champion or matchup opens a program that reproduces the page's numbers.")));
+  items.push(h("h2", {}, "Items, runes and summoner spells"), h("ul", {},
+    h("li", {}, "Solo queue only: Oracle's Elixir (pro) has no item, rune or summoner-spell data, so the Builds and Runes tabs show a notice in pro mode."),
+    h("li", {}, "The same ranked solo games as the tier list, per champion and role (Riot's team position; 100+ games in the role). Items are the final inventory at the end of the game: completed items (2000+ gold) and boots. Core builds are sets of completed items that were all in the final inventory; the order isn't known."),
+    h("li", {}, "“Δ vs without”: win rate with the item minus without it, with Newcombe's 95% interval. It's biased up (players who finish more items played longer games and more often won them), so “Δ same item count” compares against the champion's win rate in games that ended with the same number of completed items."),
+    h("li", {}, "Rows under 30 games aren't stored; rows under 100 are greyed. Purchase order, first item, starting items, item timing and item / rune WPA need match timelines, which are still downloading.")));
   items.push(h("h2", {}, "Win probability added (WPA)"), h("p", {}, "WPA follows the team's win probability through the game: the side prior before the game, the model's estimate at 15 minutes (gold, XP and kill differences), then the result (1 or 0). The change from the start to 15 minutes is split among the five players by Shapley values of their gold, XP and kill differences against their lane opponent: that's lane WPA. The change from 15 minutes to the end is split equally: team WPA. Total = lane + team, in percentage points per game. Lane opponents' lane WPA is exactly opposite, so a matchup's WPA is zero-sum."),
     Object.values(P).some(d => d.avg && d.avg.wpaDraft) ? h("p", {}, "With the draft phase: the change from the side prior to the draft model's estimate (after champion select, equal teams) is draft WPA, split by each player's champion terms; lane WPA then runs from the draft estimate to 15 minutes. Total = draft + lane + team.") : null,
     h("p", {}, "WPA is pro only: it needs minute-by-minute data, which the solo-queue dataset doesn't have yet."));
@@ -896,12 +1339,13 @@ function viewAbout(r, c){
 /* ---------- boot ---------- */
 function render(){
   if (!ST) return;
+  RTOK++;
   const r = parseHash(), c = ctx(r.q);
   if (r.q.mode) MODE = c.mode;
   drawChrome(r, c);
   const V = {tier: viewTier, champ: viewChamp, matchup: viewMatchup, winprob: viewWinprob, about: viewAbout}[r.view] || viewTier;
   try { V(r, c); } catch (e) { $("main").textContent = ""; $("main").append(h("div", {class: "card err"}, `Something went wrong: ${e.message}`)); throw e; }
-  document.title = ({tier: "Tier list", champ: nameOf(champId(r.args[0]) || ""), matchup: "Matchup", winprob: "Win probability", about: "Methods"}[r.view] || "Tier list") + " · Rift Logic Stats";
+  document.title = ({tier: "Tier list", champ: nameOf(champId(r.args[0]) || "") + (r.args[1] && tabOf(r.args[1]) !== "overview" ? " " + TABS.find(t => t[0] === tabOf(r.args[1]))[1].toLowerCase() : ""), matchup: "Matchup", winprob: "Win probability", about: "Methods"}[r.view] || "Tier list") + " · Rift Logic Stats";
 }
 function start(d){
   ST = d; POS = Object.create(null); ST.champs.forEach((id, i) => { POS[id] = i; });
@@ -911,7 +1355,7 @@ function start(d){
 const ready = PAGE.inline ? Promise.resolve(PAGE.inline.stats)
   : fetch("stats.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 window.__stats = {ready: ready.then(d => { start(d); return true; }, e => { $("main").textContent = ""; $("main").append(h("div", {class: "card err"}, `The match data (stats.json) could not be loaded: ${e.message}. Reload to try again.`)); throw e; }),
-  dataset: (m, y) => dataset(m, y), vsWin, vsWpa, champWin, avgOf, pos: id => POS[id], render};
+  dataset: (m, y) => dataset(m, y), vsWin, vsWpa, champWin, avgOf, pos: id => POS[id], render, builds: () => loadBuilds()};
 })();
 </script>
 
