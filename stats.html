@@ -118,6 +118,7 @@ tbody th .ph{width:26px;height:26px;border-radius:4px}
 tbody th small{color:var(--muted);font-weight:400;margin-left:2px}
 tbody tr:hover{background:var(--surface-2)}
 tr.small td,tr.small th{opacity:.5}
+.fi .lown{opacity:.45}
 td.rk{color:var(--faint);font-size:12px;width:2.5em}
 td small{color:var(--muted);font-size:11px;margin-left:5px}
 .cib{display:inline-block;position:relative;width:54px;height:6px;border-radius:3px;background:var(--inset);vertical-align:middle;margin-left:8px}
@@ -1291,7 +1292,36 @@ let ENG = null, engP = null;
 const SB_DUMMY = {squishy: {hp: 1800, armor: 70, mr: 45, l: "Squishy"}, bruiser: {hp: 3000, armor: 120, mr: 75, l: "Bruiser"}, tank: {hp: 4500, armor: 220, mr: 140, l: "Tank"}};
 const SB_LIM = {hp: [500, 6000, 50], armor: [0, 300, 5], mr: [0, 300, 5]};
 const SB = {id: null, items: [null, null, null, null, null, null], level: 11, combo: null, steps: "", hp: 1800, armor: 70, mr: 45, pick: -1, timer: 0, wait: null, done: null, ui: null};
-const SB_FALLBACK = ["R", "Q", "E", "W", "AA"];                    // no guide combo: the engine's default rotation (R, Q, E, W), then an attack
+/* no guide combo: a class-aware rotation the engine picks. Each template (abilities, AA weaves) is padded with attacks, cut to
+   the steps that start within SB_WIN seconds and scored by its damage landing within SB_WIN s, on a fixed setup (level 11, no
+   items, the squishy dummy), so the pick is deterministic per champion; the champion's class orders the templates (ties). */
+const SB_WIN = 5;
+const SB_TPL = {
+  marks: "Q AA W AA E AA R AA",           // marksmen / on-hit: abilities between attacks, then attacks fill the window
+  marksR: "R AA Q AA W AA E AA",
+  twice: "R Q AA W AA E AA Q AA W AA E",  // mages: abilities again as cooldowns allow
+  weave: "Q AA W AA E AA R",               // bruisers / assassins: abilities with attack weaves
+  burst: "R Q E W AA"};                    // the engine's default rotation
+const SB_CLASS_TPL = {Marksman: ["marks", "marksR"], Mage: ["twice", "burst"], Fighter: ["weave", "burst"], Assassin: ["burst", "weave"], Tank: ["weave", "burst"], Support: ["twice", "burst"]};
+const sbFbCache = new Map();
+function sbFallback(id){
+  if (sbFbCache.has(id)) return sbFbCache.get(id);
+  const cls = ((ENG.kb.champs[id] || {}).classes || []);
+  const order = [...new Set([...cls.flatMap(c => SB_CLASS_TPL[c] || []), ...Object.keys(SB_TPL)])];
+  let best = null;
+  for (const k of order){
+    const steps = [...SB_TPL[k].split(" "), ...Array(8).fill("AA")];
+    let v = null;
+    try { const res = ENG.RL.run(`Champion x = ${id}(11);\nDummy d = Dummy(hp: 1800, armor: 70, mr: 45);\nauto r = x.perform({${steps.join(", ")}}, vs: d);\nprint(r);`, [], {maxMs: 2000});
+      const row = res.items.flatMap(x => x.rows || []).find(r => r.v && r.v.t === "comboresult"); v = row ? row.v : null; } catch (e) { v = null; }
+    if (!v) continue;
+    const score = (v.hits || []).filter(x => x.t <= SB_WIN).reduce((a, x) => a + x.v, 0);
+    const keep = v.steps.filter(x => x.t < SB_WIN).length;       // steps are in time order: the ones that start in the window
+    if (!best || score > best.score + 1e-6) best = {k, score, steps: steps.slice(0, Math.max(1, keep))};
+  }
+  const out = best ? best.steps : SB_TPL.burst.split(" ");
+  sbFbCache.set(id, out); return out;
+}
 function loadEngine(){
   if (engP) return engP;
   if (PAGE.inline) return Promise.reject(new Error("the sandbox runs on riftlogic.dev"));
@@ -1419,7 +1449,7 @@ function sbCommon(U, c, S, i, ro){
 function sbUI(sec, body, c, S, id, i, ro){
   if (SB.id !== id){
     const d = sbDefaultCombo(id); SB.id = id; SB.items = [null, null, null, null, null, null]; SB.pick = -1;
-    SB.combo = d ? d.name : null; SB.steps = (d ? d.steps : SB_FALLBACK).join(" ");
+    SB.combo = d ? d.name : null; SB.steps = (d ? d.steps : sbFallback(id)).join(" ");
   }
   const name = nameOf(id), cs = sbCombos(id), U = {sec};
   U.slots = h("div", {class: "sb-slots", role: "list", "aria-label": `${name}'s items`});
@@ -1436,8 +1466,8 @@ function sbUI(sec, body, c, S, id, i, ro){
   const stepsIn = h("input", {type: "text", id: "sb-steps", class: "sb-steps-in", value: SB.steps, spellcheck: "false", autocomplete: "off", "aria-label": "Combo steps, in order",
     oninput: e => { SB.steps = e.target.value; const m = cs.find(x => x.steps.join(" ") === sbTokens(SB.steps).join(" ")); SB.combo = m ? m.name : null; cSel.value = SB.combo || ""; sbSchedule(400); }});
   const cSel = h("select", {id: "sb-combo", "aria-label": "Combo", onchange: e => { const m = cs.find(x => x.name === e.target.value);
-      SB.combo = m ? m.name : null; if (m) SB.steps = m.steps.join(" "); else if (!e.target.value) SB.steps = SB_FALLBACK.join(" "); stepsIn.value = SB.steps; sbSchedule(0); }},
-    cs.map(x => h("option", {value: x.name, selected: x.name === SB.combo}, `${x.name} · ${x.steps.join(" ")}`)), h("option", {value: "", selected: !SB.combo}, cs.length ? "Custom" : "Default rotation (R Q E W, then AA)"));
+      SB.combo = m ? m.name : null; if (m) SB.steps = m.steps.join(" "); else if (!e.target.value) SB.steps = sbFallback(id).join(" "); stepsIn.value = SB.steps; sbSchedule(0); }},
+    cs.map(x => h("option", {value: x.name, selected: x.name === SB.combo}, `${x.name} · ${x.steps.join(" ")}`)), h("option", {value: "", selected: !SB.combo}, cs.length ? "Custom" : `Auto rotation (${sbFallback(id).join(" ")})`));
   U.rng = {}; U.num = {}; U.pre = {};
   const dRow = (k, l) => { const [lo, hi, st] = SB_LIM[k];
     U.rng[k] = h("input", {type: "range", id: `sb-${k}`, min: lo, max: hi, step: st, value: SB[k], "aria-label": `Dummy ${l}`, oninput: e => sbSetDummy(U, {[k]: e.target.value})});
@@ -1463,7 +1493,7 @@ function sbUI(sec, body, c, S, id, i, ro){
       h("div", {class: "sb-ctl"}, h("label", {for: "sb-combo"}, "Combo"), h("span", {class: "grow"}, cSel)),
       h("div", {class: "sb-ctl"}, h("label", {for: "sb-steps"}, "Steps"), h("span", {class: "grow"}, stepsIn)),
       h("p", {class: "note", id: "sb-combo-src", style: "margin-top:6px"}, lib ? `Guide combo: ${lib.use || lib.name}${lib.src && lib.src.length ? ` (${lib.src.length} source${lib.src.length > 1 ? "s" : ""})` : ""}.`
-        : cs.length ? "Your own sequence: steps run in order, each as soon as it can." : `No guide combo for ${name} in the library: the engine's default rotation R, Q, E, W, then an attack. Edit the steps freely.`)),
+        : cs.length ? "Your own sequence: steps run in order, each as soon as it can." : `No guide combo for ${name} in the library: the rotation that deals the most damage in its first ${SB_WIN} s of a few templates for ${name}'s class (${((ENG.kb.champs[id] || {}).classes || []).join(" / ") || "no class"}: abilities, attack weaves, abilities again as cooldowns allow), picked by the engine at level 11 without items. Edit the steps freely.`)),
     dm), U.err, U.res,
     h("div", {class: "sb-foot"}, h("p", {class: "note"}, `Default ability ranks for the level; every step hits; the dummy's health above 1000 is bonus health, its armor and MR are bonus resists (practice tool). Items with stacks start unstacked.`), U.open));
   SB.ui = U; sbSlots(U); sbSetDummy(U, {}); sbSchedule(0);
@@ -1515,11 +1545,11 @@ function viewBuilds(panel, c, S, id, i, ro, tab){
     const base0 = rate(E.w, E.n, BUILDS.min);
     panel.append(h("p", {class: "lede", id: "b-lede"}, `${name} as ${ROLE_L[r]}: `, h("b", {id: "b-n"}, grp(E.n)), ` solo-queue games, `, h("b", {}, pct(base0.v)), ` win rate (95% CI ${pct(base0.lo)}–${pct(base0.hi)}). ` +
       (tab === "builds" ? "Items are the final inventory at the end of each game, so there's no purchase order." : "The rune page and summoner spells each player locked in.")));
-    (tab === "builds" ? drawItems : drawRunes)(panel, E, name);
+    (tab === "builds" ? drawItems : drawRunes)(panel, E, name, r);
     panel.append(h("p", {class: "note"}, `Rows with fewer than ${BUILDS.min} games aren't stored; rows under ${GREY} are greyed. Win rate: 95% Wilson interval in small type. ${grp(BUILDS.games)} ranked solo games, patch 16.x (the same games as the solo tier list).`));
   }, e => { if (tok !== RTOK) return; ld.remove(); panel.append(h("div", {class: "card err"}, `The build data (builds.json) could not be loaded: ${e.message}.`)); });
 }
-function drawItems(panel, E, name){
+function drawItems(panel, E, name, r){
   const iLab = id => h("span", {class: "ilab"}, bicon("i" + id, itemName(id)), h("b", {}, itemName(id)));
   // core builds: one horizontal row of build cards: the most common 3-item build, the other 3-item cores, then 2-item cores (each by games)
   const c3 = E.core3.map(([set, n, w]) => bRow(E, n, w, {set, k: 3})).sort((a, b) => b.n - a.n), c2 = E.core2.map(([set, n, w]) => bRow(E, n, w, {set, k: 2})).sort((a, b) => b.n - a.n);
@@ -1545,6 +1575,7 @@ function drawItems(panel, E, name){
     table({cols: icols, rows: items, sort: {key: "games", dir: "desc"}, limit: 12}),
     h("p", {class: "note"}, `${name} finished 0–6 completed items: ${E.nLeg.map((x, k) => `${k}: ${pct(x / nl, 0)}`).join(" · ")}.`),
     h("p", {class: "note", id: "item-wpa-note"}, h("b", {}, "Item WPA"), ` · the team's win probability ${BUILDS.wpaWindow || 5} minutes after the item was completed vs the minute before, compared with similar game states at the same minute (match timelines). Observational: who buys what, and when, isn't random.`)));
+  if (E.first && E.first.length) panel.append(firstItemTiming(E, name, r));
   // boots
   const boots = E.boots.map(([id, n, w]) => bRow(E, n, w, {id, name: itemName(id)}));
   panel.append(h("section", {class: "sec", "aria-labelledby": "h-boots"}, h("h2", {id: "h-boots"}, "Boots", h("small", {}, "final inventory; “No boots” includes games that sold them")),
@@ -1552,6 +1583,29 @@ function drawItems(panel, E, name){
       {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "share", label: "Share", val: x => x.share, cell: shareCell},
       {key: "wr", label: "Win rate", val: x => x.wr.ok ? x.wr.v : null, cell: x => wrCell(x.wr, true), cls: "gcol"}],
       rows: boots, sort: {key: "games", dir: "desc"}})));
+}
+/* first-item timing: WPA of the champion's common first completed items by completion minute (builds.json "first", from
+   match timelines), with the role's all-champion curve (stats.json winprob.solo.firstItem) underneath; cells under GREY_FI greyed */
+const GREY_FI = 30;
+function firstItemTiming(E, name, r){
+  const edges = BUILDS.firstEdges || [0, 10, 12, 14, 16, 18, 20, 99], bk = edges.slice(0, -1).map((a, k) => [a, edges[k + 1]]);
+  const bl = ([a, b]) => a === 0 ? `<${b}` : b >= 99 ? `${a}+` : `${a}–${b}`;
+  const cell = c => {
+    if (!c) return h("span", {class: "tl"}, "–");
+    const [a, b, n, m, sd] = c, se = sd / Math.sqrt(n), lo = m - 1.96 * se, hi = m + 1.96 * se;
+    return h("span", {class: n < GREY_FI ? "lown" : clsCI(lo, hi, 0), "data-n": n, title: `done ${bl([a, b])} min: ${sgn(m, 1)} pp WPA, 95% CI ${sgn(lo, 1)} to ${sgn(hi, 1)}, ${grp(n)} completions${n < GREY_FI ? " (too few to read)" : ""}`},
+      sgn(m, 1), h("small", {}, grp(n)));
+  };
+  const rows = E.first.map(([id, n, m, cells]) => ({id, n, m, name: itemName(id), c: bk.map(([a]) => cells.find(x => x[0] === a) || null)}));
+  const cols = [{key: "name", label: "First item", head: true, asc: true, val: x => x.name, cell: x => h("span", {class: "ilab"}, bicon("i" + x.id, x.name), h("b", {}, x.name))},
+    {key: "games", label: "Games", title: "games where it was the first completed item (timeline games)", val: x => x.n, cell: x => grp(x.n)},
+    {key: "all", label: "WPA", title: "mean item WPA over all completion times, pp", val: x => x.m, cell: x => sgn(x.m, 1)},
+    ...bk.map((b, k) => ({key: "b" + k, label: bl(b), title: `completed ${bl(b)} min: item WPA in pp (completions in small type)`, val: x => x.c[k] && x.c[k][2] >= GREY_FI ? x.c[k][3] : null, cell: x => cell(x.c[k])}))];
+  const WS = ST.winprob && ST.winprob.solo, role = WS && WS.firstItem ? WS.firstItem.filter(x => x[0] === r) : [];
+  return h("section", {class: "sec fi", id: "first-item", "aria-labelledby": "h-first"}, h("h2", {id: "h-first"}, "First item timing", h("small", {}, "item WPA of the first completed item by the minute it was done")),
+    table({cols, rows, sort: {key: "games", dir: "desc"}}),
+    role.length ? h("p", {class: "note", id: "fi-role"}, h("b", {}, `All champions, ${ROLE_L[r]}`), " · " + role.map(([, a, b, n, m]) => `${bl([a, b])} min ${sgn(m, 1)}`).join(" · ") + " pp.") : null,
+    h("p", {class: "note"}, `Item WPA as above (${BUILDS.wpaWindow || 5} minutes after completion vs the minute before, against similar game states), split by when ${name} completed it; minutes are game time. Cells under ${GREY_FI} completions are greyed. Earlier items usually mean a lead already, which the WPA baseline only partly removes.`));
 }
 function drawRunes(panel, E, name){
   const pLab = (id, cls) => h("span", {class: "ilab"}, bicon("p" + id, perkName(id), "rn" + (cls ? " " + cls : "")), h("b", {}, perkName(id)));
@@ -1722,7 +1776,7 @@ const ready = PAGE.inline ? Promise.resolve(PAGE.inline.stats)
   : fetch("stats.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 window.__stats = {ready: ready.then(d => { start(d); return true; }, e => { $("main").textContent = ""; $("main").append(h("div", {class: "card err"}, `The match data (stats.json) could not be loaded: ${e.message}. Reload to try again.`)); throw e; }),
   dataset: (m, y) => dataset(m, y), vsWin, vsWpa, withWin, champWin, avgOf, pos: id => POS[id], render, builds: () => loadBuilds(),
-  engine: () => loadEngine(), sandbox: () => SB.wait || Promise.resolve(), sandboxProgram: () => SB.ui && SB.ui.prog};
+  engine: () => loadEngine(), sandbox: () => SB.wait || Promise.resolve(), sandboxProgram: () => SB.ui && SB.ui.prog, sandboxFallback: (id, fresh) => { if (fresh) sbFbCache.delete(id); return sbFallback(id); }};
 })();
 </script>
 
