@@ -159,7 +159,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-9Ge41ADoMhRKuAQdsiqYcaP432rxQDaavM9egBpdy2Q=' 'sha256-STS+1DKBQFl8uz/qjakrBOTuWIjXjc/JgoRl/5TZTfU=' 'sha256-SnEyqdrUIAjMQ3Pq7sYC2Zi1tpSPCA+KP02wt8E/T2c=' 'sha256-cczWMvp+GJONlczbhw9v8DmhWB81PCuw3a3ItS3S9F8='"
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-8BgNHEzifYoMX7hKs31akRq5VxihHtmXLTTXaWn+Zpc=' 'sha256-STS+1DKBQFl8uz/qjakrBOTuWIjXjc/JgoRl/5TZTfU=' 'sha256-cczWMvp+GJONlczbhw9v8DmhWB81PCuw3a3ItS3S9F8=' 'sha256-le/7BBWhyQO9wiLwvtUPIoW3f82RI4jmXJKUomxoQ6A='"
         }
       ]
     },
@@ -177,7 +177,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-9Ge41ADoMhRKuAQdsiqYcaP432rxQDaavM9egBpdy2Q=' 'sha256-STS+1DKBQFl8uz/qjakrBOTuWIjXjc/JgoRl/5TZTfU=' 'sha256-SnEyqdrUIAjMQ3Pq7sYC2Zi1tpSPCA+KP02wt8E/T2c=' 'sha256-cczWMvp+GJONlczbhw9v8DmhWB81PCuw3a3ItS3S9F8='"
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-8BgNHEzifYoMX7hKs31akRq5VxihHtmXLTTXaWn+Zpc=' 'sha256-STS+1DKBQFl8uz/qjakrBOTuWIjXjc/JgoRl/5TZTfU=' 'sha256-cczWMvp+GJONlczbhw9v8DmhWB81PCuw3a3ItS3S9F8=' 'sha256-le/7BBWhyQO9wiLwvtUPIoW3f82RI4jmXJKUomxoQ6A='"
         }
       ]
     }

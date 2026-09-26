@@ -124,6 +124,7 @@ td:only-child{color:var(--ink)}
       <li><a href="#combo">Combo</a></li>
       <li><a href="#dummy">Practice-tool dummy</a></li>
       <li><a href="#builtins">Built-in functions</a></li>
+      <li><a href="#stats">Real-game stats</a></li>
       <li class="grp">Reasoning</li>
       <li><a href="#rules">Rules and claims</a></li>
       <li><a href="#facts">Correcting the data</a></li>
@@ -209,6 +210,7 @@ assert(canKill(a, tank, 5), "Syndra kills Garen in 5 seconds");</pre>
         <tr><td>TeamComp</td><td>A list of champions.</td></tr>
         <tr><td>Fight</td><td>The result of <code>fight(…)</code>.</td></tr>
         <tr><td>Fights</td><td>The result of <code>fights(…)</code>, a sweep of fights (<a href="#fights">Fight sweeps</a>).</td></tr>
+        <tr><td>Stat</td><td>A number from real games with its sample: <code>winrate(Syndra, vs: Orianna)</code> (<a href="#stats">Real-game stats</a>). It compares and calculates as its value.</td></tr>
         <tr><td>Dummy</td><td>The practice-tool target dummy, <code>Dummy(hp: 3000, resists: 50)</code>. It is also a Champion, so it goes anywhere a target does (<a href="#dummy">Practice-tool dummy</a>).</td></tr>
         <tr><td>auto</td><td>Whatever the value is.</td></tr>
       </tbody></table></div>
@@ -530,7 +532,64 @@ print(r.floatingText);</pre>
         <tr><td>fights  range(0, 1200, 50)</td><td>See <a href="#fights">Fight sweeps</a>; <code>range(from, to, step)</code> is a list of numbers, both ends included.</td></tr>
         <tr><td>canDodge(b, a.Q, distance: d, using: b.E, reaction: 0.25)</td><td>See <a href="#physics">Physics and dodging</a>.</td></tr>
         <tr><td>Champion(Syndra, 11)  ItemSet(…)  TeamComp(…)</td><td>Constructors.</td></tr>
+        <tr><td>winrate  pickrate  banrate  presence  games  stat  matchups  topPicks</td><td>Numbers from real games. See <a href="#stats">Real-game stats</a>.</td></tr>
       </tbody></table></div>
+    </section>
+
+    <section id="stats">
+      <h2>Real-game stats</h2>
+      <p>Everything else in Rift Logic is computed from the game files. These functions instead read what happened in real games: ranked solo queue by default, pro play with <code>pro: true</code>. Each returns a <b>Stat</b>: a number together with its sample size and a 95% interval, printed like <code>51.2% (n 7,713; 95% CI 50.1–52.3%)</code>. If there are too few games, it says so instead of giving a noisy number. Example: <i>Real-game stats</i> in the editor.</p>
+<pre>print(winrate(Syndra));                              // 51.2% (n 7,713; 95% CI 50.1–52.3%)
+print(winrate(Syndra, role: "mid"));                 // 50.6% (n 5,270; 95% CI 49.3–52.0%)
+print(winrate(Syndra, vs: Orianna));                 // 54.4% (n 241; 95% CI 48.0–60.5%)   any roles
+print(winrate(Syndra, vs: Orianna, lane: true));     // 53.3% (n 167; 95% CI 45.7–60.7%)   same lane
+print(winrate(Syndra, with: Nautilus));              // 49.9% (n 675; 95% CI 46.2–53.7%)   same team
+print(winrate(Syndra, vs: Orianna, pro: true));      // 43.7% (n 142; 95% CI 35.8–51.9%)
+print(presence(Syndra, pro: true));                  // 29.2% (2,638 picks or bans in 9,026 games; 95% CI 28.3–30.2%)
+print(stat(Syndra, "gd15", pro: true));              // +114 gold (n 1,223 games; 95% CI +61 to +167 gold)
+print(winrate(Syndra, vs: Rammus, pro: true));       // too little data: fewer than 20 games (pro play 2026 doesn't store pairs under 20 games)
+assert(winrate(Syndra, vs: Orianna) &gt; 0.5);        // a Stat compares and calculates as its value</pre>
+      <p>These outputs were produced on 2026-09-25 with the data described below; they change when the data is rebuilt.</p>
+      <div class="tscroll"><table><tbody>
+        <tr><td>winrate(c)</td><td>Share of c's games that c's team won. <code>c</code> is a champion: <code>Syndra</code>, <code>Syndra(11)</code> (the level is ignored) or <code>"Syndra"</code>.</td></tr>
+        <tr><td>winrate(c, vs: d)</td><td>Games with c and d on opposite teams, in any roles. <code>lane: true</code>: only games where both played the same role (summed over the roles that have enough games; <code>role: "mid"</code> picks one role and implies the same lane). <code>winrate(c, vs: d)</code> and <code>winrate(d, vs: c)</code> count the same games, so they add up to 100%.</td></tr>
+        <tr><td>winrate(c, with: d)</td><td>Games with c and d on the same team.</td></tr>
+        <tr><td>games(…)</td><td>The number of games behind <code>winrate(…)</code> with the same arguments (0 for a pair under the minimum, see below).</td></tr>
+        <tr><td>pickrate(c)  banrate(c)  presence(c)</td><td>Share of all games in which c was picked, banned, or either (a champion is never both in one game). <code>pickrate</code> also takes <code>role:</code>, <code>patch:</code> and <code>league:</code> (then the share of that patch's or league's games); bans are stored for the whole dataset only. Solo-queue bans are the ten bans of each game.</td></tr>
+        <tr><td>stat(c, "gd15")</td><td>A per-game average with a 95% interval (mean ± 1.96 SD / √n). Pro only: <code>gd10 gd15 xpd10 xpd15 csd10 csd15</code> (gold, XP and CS difference against the opponent in the same position at 10 and 15 minutes). Both: <code>kills deaths assists dmgshare dpm cspm</code> (damage share of the team's damage to champions, damage to champions per minute, CS per minute), and <code>kda</code> = (kills + assists) / deaths from the averages (no interval). Takes <code>role:</code>.</td></tr>
+        <tr><td>matchups(c, lane:, role:, min:)</td><td>A list of Stats: c's win rate against every champion with enough games, best first. Printed, its working shows the best and worst six. <code>min: 100</code> raises the minimum number of games.</td></tr>
+        <tr><td>topPicks(role:, by:, n:, min:)</td><td>A list of the <code>n</code> (default 10) champions with the highest <code>by:</code> <code>"pickrate"</code> (default), <code>"winrate"</code>, <code>"banrate"</code> or <code>"presence"</code>. Ranking by win rate puts small samples at the top (a 46-game 65% beats a 2,800-game 54%): add <code>min: 500</code>.</td></tr>
+      </tbody></table></div>
+      <h3>Options</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>pro: true</td><td>Pro play instead of ranked solo queue.</td></tr>
+        <tr><td>year: 2025  year: "2025+"</td><td>Pro only: which pro dataset, <code>2026</code> (default), <code>2025</code>, or <code>"2025+"</code> (2025 and 2026 together).</td></tr>
+        <tr><td>role: "mid"</td><td><code>"top"</code>, <code>"jungle"</code>, <code>"mid"</code>, <code>"bot"</code> or <code>"support"</code> (also <code>jng</code>, <code>middle</code>, <code>adc</code>, <code>sup</code>…). Solo queue uses Riot's assigned position (teamPosition).</td></tr>
+        <tr><td>patch: "16.18"</td><td>One patch (write 16.10 as <code>"16.10"</code>: the number 16.10 is 16.1). <code>winrate</code> and <code>pickrate</code> of one champion only.</td></tr>
+        <tr><td>league: "LCK"</td><td>Pro only: one league (any case). <code>winrate</code> and <code>pickrate</code> of one champion only; an unknown league lists the ones there are.</td></tr>
+        <tr><td>length: "short"  length: "long"</td><td>Win rate in games under 25 minutes, or of 32 minutes or more (the draft page's split).</td></tr>
+      </tbody></table></div>
+      <p>One of <code>role:</code>, <code>patch:</code>, <code>league:</code>, <code>length:</code> at a time: the data stores each split on its own, not their combinations. Pairs (<code>vs:</code>, <code>with:</code>) are stored for the whole dataset only.</p>
+      <h3>A Stat</h3>
+      <div class="tscroll"><table><tbody>
+        <tr><td>s &gt; 0.5  s - t  abs(s - 0.5)  double x = s;</td><td>A Stat is its value in comparisons, arithmetic and maths functions (win rates are shares: 0.512, not 51.2). With too little data this is an error that names the reason, so check <code>s.enough</code> first when looping.</td></tr>
+        <tr><td>s.value  s.n  s.wins  s.low  s.high</td><td>The value; the games (for pick and ban rates, all games); the wins (or picks, bans: also <code>s.count</code>); the 95% interval (Wilson score interval for rates, normal for means; <code>s.sd</code> for means).</td></tr>
+        <tr><td>s.enough  s.why  s.what  s.source  s.champ  s.other</td><td>Whether there is enough data, and if not why; what the number is; the dataset; the champion (and the <code>vs:</code>/<code>with:</code> one) as Champions.</td></tr>
+      </tbody></table></div>
+      <h3>The data</h3>
+      <ul>
+        <li><b>Solo queue</b>: ranked solo games (queue 420) of patch 16.x from this project's Riot API crawl (high-ranked players; about a quarter each from EUW, KR, NA and OCE), 15 minutes or longer (no remakes): <b>49,858 games from 2026-02-26 to 2026-09-23</b>, mostly patches 16.16–16.18. The same games as the Draft page.</li>
+        <li><b>Pro</b>: <a href="https://oracleselixir.com/tools/downloads" rel="noopener noreferrer">Oracle's Elixir</a> match data (downloaded 2026-09-22), every league in the file, games with ten player rows: <b>2026: 9,026 games (2026-01-08 to 2026-09-22); 2025: 10,041 games; 2025+: 19,067</b>. Bans are the teams' ban1–ban5. The @10/@15 differences are missing for some games (some leagues' data is partial), so <code>stat()</code>'s n can be below the champion's games.</li>
+        <li><b>Minimum sample</b>: 30 games in solo queue, 20 in pro. A win rate or average from fewer games is reported as too little data, and pairs (vs, same lane, with) under the minimum are not stored at all, so for them it can only say "fewer than 30". Pick, ban and presence rates are shares of every game, so they always have a number.</li>
+        <li>Built by <code>src/stats_export.py</code> into <code>stats.json</code> (about 1.3 MB). The editor loads it the first time a program names one of these functions and then runs the program again; the command line (<code>tools/rl.js</code>) reads <code>web/stats.json</code>.</li>
+      </ul>
+      <h3>Reading them carefully</h3>
+      <ul>
+        <li><b>Solo-queue win rates are observational.</b> A champion's win rate mixes in who picks it (mains and one-tricks win more on hard champions; weaker players drift to others), what else is in the draft, and blind or counter picks. A matchup win rate is not a counter by itself: the champion picked second often picked <i>because</i> it counters.</li>
+        <li><b>Pro win rates carry team strength.</b> Strong teams get the meta champions and win anyway; every league from LCK to minor regions is pooled, and samples are small. Presence (picks + bans) is the more reliable pro signal of how highly a champion is rated.</li>
+        <li><b>Small samples.</b> Read the interval, not the point: <code>53.3% (n 167; 95% CI 45.7–60.7%)</code> is consistent with an even matchup. <code>matchups()</code> and <code>topPicks(by: "winrate")</code> list the extremes, which are where small samples land; use <code>min:</code>.</li>
+        <li>Every result's working says which games it counted, and the footnotes name the dataset and these caveats.</li>
+      </ul>
     </section>
 
     <section id="rules">

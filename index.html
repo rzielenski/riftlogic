@@ -397,7 +397,7 @@ ul.conds li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px;font-s
  * Pure JavaScript, no DOM. Used by the web page and by tools/rl.js.
  *   const RL = createRiftLogic(KB, CALC);  const res = RL.run(sourceText);
  */
-function createRiftLogic(KB, CALC){
+function createRiftLogic(KB, CALC, STATS0){
 "use strict";
 const ITEMS = CALC.items, ITEMKEYS = Object.keys(ITEMS);
 const CLASSES = ["Assassin","Fighter","Mage","Marksman","Support","Tank"];
@@ -463,7 +463,7 @@ function findItem(tok){
 
 /* ================= lexer ================= */
 const KEYWORDS = new Set(["if","else","for","while","return","break","continue","true","false","rule","prove","forall"]);
-const TYPES = new Set(["auto","int","double","float","bool","string","void","Champion","Item","ItemSet","TeamComp","Ability","List","Rune","Fight","Fights","Combo","ComboResult","Dummy","Summoner"]);
+const TYPES = new Set(["auto","int","double","float","bool","string","void","Champion","Item","ItemSet","TeamComp","Ability","List","Rune","Fight","Fights","Combo","ComboResult","Dummy","Summoner","Stat"]);
 function lex(text){
   const toks=[]; let i=0, line=1;
   const push=(type,value,start)=>toks.push({type,value,line,start,end:i});
@@ -8527,7 +8527,7 @@ function copy(v){
 }
 function typeName(v){
   if (typeof v==="number") return "number"; if (typeof v==="boolean") return "bool"; if (typeof v==="string") return "string";
-  return {champ:"Champion", ability:"Ability", item:"Item", set:"ItemSet", comp:"TeamComp", list:"list", tag:"tag", cls:"class", slot:"ability slot", fn:"function", builtin:"function", pred:"claim", rune:"Rune", fight:"Fight", fights:"Fights", combo:"Combo", comboresult:"ComboResult", summoner:"Summoner"}[v&&v.t] || "value";
+  return {champ:"Champion", ability:"Ability", item:"Item", set:"ItemSet", comp:"TeamComp", list:"list", tag:"tag", cls:"class", slot:"ability slot", fn:"function", builtin:"function", pred:"claim", rune:"Rune", fight:"Fight", fights:"Fights", combo:"Combo", comboresult:"ComboResult", summoner:"Summoner", stat:"Stat"}[v&&v.t] || "value";
 }
 function show(v){
   if (typeof v==="number") return fmt(v);
@@ -8552,6 +8552,7 @@ function show(v){
     }
     case "fight": { const a=v.units.filter(u=>u.side===0&&u.alive).length, b=v.units.filter(u=>u.side===1&&u.alive).length; return `fight: side 1 has ${a} alive, side 2 has ${b} alive after ${fmt(v.end)}s`; }
     case "fights": return sweepLine(v);
+    case "stat": return showStat(v);
     case "tag": case "cls": case "slot": return v.name;
     default: return typeName(v);
   }
@@ -8611,6 +8612,8 @@ function coerce(type, v, line){
     if (type==="auto"){ if (v.items.length && v.items.every(x=>x&&x.t==="item")) return {t:"set", items:v.items.map(x=>x.key)};
       if (v.items.length && v.items.every(x=>x&&x.t==="champ")) return {t:"comp", champs:v.items.map(copy)}; }
   }
+  if (v && v.t==="stat" && ["int","double","float"].includes(type)){ try { v=statNum(v); } catch(e){ throw new LangError(e.message, line); } }
+  if (type==="Stat" && !(v && v.t==="stat")) throw new LangError(`expected a Stat (from winrate(), pickrate(), stat(), …) but got ${typeName(v)}`, line);
   if (type==="int" && typeof v==="number") return Math.trunc(v);
   if ((type==="double"||type==="float"||type==="int") && typeof v!=="number") throw new LangError(`expected a number but got ${typeName(v)}`, line);
   if (type==="bool" && typeof v!=="boolean") return truthy(v);
@@ -8630,6 +8633,197 @@ class Env { constructor(parent){ this.parent=parent; this.vars=new Map(); }
   def(n,v){ this.vars.set(n,v); } }
 class Ret { constructor(v){ this.v=v; } }
 const BREAK={}, CONTINUE={};
+
+/* ================= real-game stats: winrate(), pickrate(), banrate(), presence(), games(), stat(), matchups(), topPicks() =================
+   Data: web/stats.json from src/stats_export.py. It holds counts (games, wins, picks, bans), never bare rates: ranked solo queue
+   patch 16.x (data/matches.db) and pro play from Oracle's Elixir (datasets "2026" = default, "2025", "2025+"). Rates get a 95%
+   Wilson interval, means a normal one (1.96 SD / sqrt n). Under a dataset's minimum (D.min: solo 30, pro 20 games) a win rate
+   or mean is "too little data", and pairs under it are not stored at all. The page fetches stats.json the first time a program
+   names one of these functions and hands it over with setStats(); tools/rl.js passes it to createRiftLogic. */
+let STATS = STATS0 || null, SX = null;
+function setStats(d){ STATS = d || null; SX = null; }
+const STAT_FNS = ["winrate","pickrate","banrate","presence","games","stat","matchups","topPicks"];
+const STAT_ROLE = {top:0, jungle:1, jng:1, jg:1, mid:2, middle:2, bot:3, bottom:3, adc:3, support:4, sup:4, supp:4, utility:4};
+const STAT_ROLES = ["top","jungle","mid","bot","support"];
+/* stat() names: [description, unit, signed]. Pro only: the @10/@15 differences (Oracle's Elixir: against the same-position opponent) */
+const STAT_AVG = {gd10:["gold difference at 10 min vs the lane opponent","gold",1], gd15:["gold difference at 15 min vs the lane opponent","gold",1],
+  xpd10:["XP difference at 10 min vs the lane opponent","XP",1], xpd15:["XP difference at 15 min vs the lane opponent","XP",1],
+  csd10:["CS difference at 10 min vs the lane opponent","CS",1], csd15:["CS difference at 15 min vs the lane opponent","CS",1],
+  kills:["kills per game","",0], deaths:["deaths per game","",0], assists:["assists per game","",0], kda:["KDA, (kills + assists) / deaths from the per-game averages","",0],
+  dmgshare:["share of the team's damage to champions","%",0], dpm:["damage to champions per minute","",0], cspm:["CS per minute","",0]};
+const grp = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const spct = x => (Math.round(x*1000)/10).toFixed(1);
+function wilson(k, n){ if (!(n>0)) return [0, 1]; const z=1.96, p=k/n, d=1+z*z/n, c=(p+z*z/(2*n))/d, h=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n))/d; return [Math.max(0, c-h), Math.min(1, c+h)]; }
+function statsData(){
+  if (!STATS) throw new Error("real-game stats aren't loaded (web/stats.json). The page loads them the first time a program uses winrate(), pickrate(), …; the command line (tools/rl.js) reads web/stats.json");
+  if (!SX){ const pos=Object.create(null); STATS.champs.forEach((id, i)=>{ pos[id]=i; }); SX={pos, sets:new Map()}; }
+  return SX;
+}
+function statsSet(pro, year){
+  const X=statsData(), key=pro ? "pro:"+year : "solo";
+  if (X.sets.has(key)) return X.sets.get(key);
+  const D = pro ? STATS.pro[year] : STATS.solo;
+  const pairs = (a, w) => { const m=new Map(); for (let i=0; i<a.length; i+=w) m.set(a.slice(i, i+w-2).join("|"), [a[i+w-2], a[i+w-1]]); return m; };
+  const avg={}; for (const [k, rows] of Object.entries(D.avg||{})){ const m=new Map(); for (const [c, r, n, mean, sd] of rows) m.set(c+"|"+r, {n, mean, sd}); avg[k]=m; }
+  const S={D, pro, year, name: pro ? `pro play ${year}` : "ranked solo queue 16.x", vs:pairs(D.vs, 4), lane:pairs(D.lane, 5), with:pairs(D.with, 4), avg};
+  S.source = `${D.label}: ${grp(D.games)} games, ${D.dates[0]} to ${D.dates[1]}`;
+  X.sets.set(key, S); return S;
+}
+function statNote(S){
+  if (!TR) return;
+  TR.notes.add(`${S.source} (web/stats.json); rates and means below ${S.D.min} games are reported as too little data, and pairs under ${S.D.min} games aren't stored`);
+  TR.notes.add(S.pro ? "pro stats are observational: win rates carry team strength (strong teams get the meta picks) and every league in the file is pooled, from LCK to minor regions; samples are small"
+                     : "solo-queue stats are observational: win rates mix in who picks the champion (mains, one-tricks, skill) and the rest of the draft; a matchup rate is not a counter by itself");
+}
+function statChamp(v, fn, what){
+  const X=statsData(), id = v && v.t==="champ" && !v.dummy ? v.champ : typeof v==="string" ? IDX[norm(v)] : null;
+  if (!id) throw new Error(`${fn}(): ${what} is a champion (Syndra, Syndra(11) or "Syndra"), not ${typeof v==="string" ? `"${v}"` : typeName(v)}`);
+  const i=X.pos[id]; if (i==null) throw new Error(`${fn}(): ${KB.champs[id].name} has no games in the stats data`);
+  return {id, i, name:KB.champs[id].name};
+}
+const patchSort = (a, b) => { const x=a.split(".").map(Number), y=b.split(".").map(Number); return x[0]-y[0] || x[1]-y[1]; };
+/* options shared by every accessor: pro:, year:, role:, patch:, league:, length:, lane:; allowed = the ones fn takes */
+function statOpts(named, fn, allowed){
+  named=named||{}; checkNamed(named, allowed, fn+"(…)"); statsData();
+  const o={pro: named.pro!=null && truthy(named.pro)};
+  for (const k of ["year","league"]) if (named[k]!=null && !o.pro) throw new Error(`${fn}(…, ${k}: …) is for pro play: add pro: true`);
+  o.year=String(STATS.proDefault);
+  if (named.year!=null){ const y=String(named.year); if (!own(STATS.pro, y)) throw new Error(`year: is ${Object.keys(STATS.pro).map(k=>/^\d+$/.test(k) ? k : `"${k}"`).join(", ")} (pro datasets; default ${STATS.proDefault})`); o.year=y; }
+  o.S=statsSet(o.pro, o.year);
+  const D=o.S.D;
+  if (named.role!=null){ const r=STAT_ROLE[norm(named.role)]; if (r==null) throw new Error(`role: is "top", "jungle", "mid", "bot" or "support"`); o.role=r; }
+  if (named.patch!=null){ const p=String(named.patch).split("."), k = p.length>=2 && /^\d+$/.test(p[0]) && /^\d+$/.test(p[1]) ? `${+p[0]}.${+p[1]}` : null;
+    if (!k || !own(D.patchGames, k)) throw new Error(`patch: ${show(named.patch)} isn't in ${o.S.name}. Its patches: ${Object.keys(D.patchGames).sort(patchSort).join(", ")} (write patch 16.10 as "16.10")`);
+    o.patch=k; }
+  if (named.league!=null){ const L=Object.keys(D.leagueGames||{}).find(x=>norm(x)===norm(named.league));
+    if (!L) throw new Error(`league: ${show(named.league)} isn't in ${o.S.name}. Leagues: ${Object.entries(D.leagueGames||{}).sort((a, b)=>b[1]-a[1]).map(e=>e[0]).join(", ")}`); o.league=L; }
+  if (named.length!=null){ const l=String(named.length).toLowerCase(); if (l!=="short" && l!=="long") throw new Error(`length: is "short" (games under ${STATS.short} min) or "long" (${STATS.long} min or more)`); o.length=l; }
+  o.lane = named.lane!=null && truthy(named.lane);
+  const sl=["role","patch","league","length"].filter(k=>o[k]!=null);
+  if (sl.length>1) throw new Error(`${fn}(): use one of role:, patch:, league:, length: at a time (the data stores each split on its own)`);
+  statNote(o.S);
+  return o;
+}
+const sliceText = o => o.role!=null ? ` as ${STAT_ROLES[o.role]}` : o.patch!=null ? ` on patch ${o.patch}` : o.league!=null ? ` in ${o.league}` : o.length==="short" ? `, short games (under ${STATS.short} min)` : o.length==="long" ? `, long games (${STATS.long}+ min)` : "";
+function mkRate(k, n, o, x){
+  const min = x.min ?? o.S.D.min, enough = n>=min && n>0, [lo, hi]=wilson(k, n);
+  const why = enough ? null : x.unstored ? `too little data: fewer than ${min} games (${o.S.name} doesn't store pairs under ${min} games)` : `too little data: ${grp(n)} game${n===1?"":"s"} (fewer than ${min}) in ${o.S.name}`;
+  return {t:"stat", kind:"rate", fn:x.fn, what:x.what, value: n>0 ? k/n : NaN, n, k, low:lo, high:hi, enough, why, min, source:o.S.source, sname:o.S.name,
+          champ:x.champ, other:x.other ?? null, label:x.label ?? null, countWord:x.countWord || null};
+}
+/* win rate of champion A (index record) with the options o; B: {rel:"vs"|"with", c} */
+function statWin(A, o, B, fn){
+  const S=o.S, D=S.D;
+  if (!B){
+    if (o.lane) throw new Error(`${fn}(…, lane: true) needs vs: (the champion in the same lane)`);
+    const i=A.i, pick = rows => { const e=(rows||[]).find(r=>r[0]===i); return e ? [e[1], e[2]] : [0, 0]; };
+    const [g, w] = o.role!=null ? [D.role[i][2*o.role], D.role[i][2*o.role+1]] : o.patch!=null ? pick(D.patch[o.patch]) : o.league!=null ? pick(D.league[o.league])
+      : o.length!=null ? (o.length==="short" ? [D.dur[i][0], D.dur[i][1]] : [D.dur[i][2], D.dur[i][3]]) : D.gw[i];
+    line(`${S.name}: ${A.name} won ${grp(w)} of ${grp(g)} games${sliceText(o)}`);
+    return mkRate(w, g, o, {fn, what:`${A.name} win rate${sliceText(o)}`, champ:A.id});
+  }
+  const rel=B.rel, C=B.c;
+  if (C.i===A.i) throw new Error(`${fn}(): a champion can't be ${rel==="vs" ? "against" : "with"} itself`);
+  if (o.patch!=null || o.league!=null || o.length!=null) throw new Error(`${fn}(…, ${rel}: …): pairs are stored for the whole dataset only (no patch:, league: or length:)`);
+  if (rel==="with" && (o.lane || o.role!=null)) throw new Error(`${fn}(…, with: …): the same-team table has no roles (no lane: or role:)`);
+  const lane = rel==="vs" && (o.lane || o.role!=null), [x, y] = A.i<C.i ? [A.i, C.i] : [C.i, A.i];
+  let g=0, w=0, found=false, roles=[];
+  if (lane){ for (let r=0; r<5; r++){ if (o.role!=null && r!==o.role) continue; const e=S.lane.get(`${x}|${y}|${r}`); if (e){ g+=e[0]; w+=e[1]; found=true; roles.push(`${STAT_ROLES[r]} ${grp(e[0])}`); } } }
+  else { const e=S[rel].get(`${x}|${y}`); if (e){ g=e[0]; w=e[1]; found=true; } }
+  if (found && A.i!==x && rel==="vs") w=g-w;   /* stored: wins of the lower index; teammates win together */
+  const where = rel==="with" ? " (same team)" : lane ? ` (same lane${o.role!=null ? ", "+STAT_ROLES[o.role] : ""})` : " (any roles)";
+  const what=`${A.name} win rate ${rel} ${C.name}${where}`;
+  if (found) line(`${S.name}: ${A.name} won ${grp(w)} of ${grp(g)} games ${rel==="vs" ? "against" : "with"} ${C.name}${where}${lane && o.role==null && roles.length ? `: ${roles.join(", ")} games (roles with ${S.D.min}+ games)` : ""}`);
+  else line(`${S.name}: ${A.name} and ${C.name} ${rel==="vs" ? "met" : "played together"}${where} in fewer than ${S.D.min} games (not stored)`);
+  return mkRate(w, g, o, {fn, what, champ:A.id, other:C.id, unstored:!found});
+}
+function statWinrate(a, named, fn){
+  named=named||{};
+  if (a.length!==1) throw new Error(`${fn}(champion, vs:, with:, role:, lane:, patch:, league:, length:, pro:, year:) takes one champion; name the other one with vs: or with:`);
+  const o=statOpts(named, fn, ["vs","with","role","lane","patch","league","length","pro","year"]), A=statChamp(a[0], fn, "the first argument");
+  if (named.vs!=null && named.with!=null) throw new Error(`${fn}(): give vs: or with:, not both`);
+  const rel = named.vs!=null ? "vs" : named.with!=null ? "with" : null;
+  return statWin(A, o, rel ? {rel, c:statChamp(named[rel], fn, rel+":")} : null, fn);
+}
+/* pickrate / banrate / presence: picks, bans or both over the games of the dataset (or of the patch / league) */
+function statPickOf(A, o, fn){
+  const S=o.S, D=S.D, i=A.i;
+  if (fn!=="pickrate" && (o.role!=null || o.patch!=null || o.league!=null)) throw new Error(`${fn}(): bans are stored for the whole dataset only (no role:, patch: or league:)`);
+  const pick = rows => { const e=(rows||[]).find(r=>r[0]===i); return e ? e[1] : 0; };
+  const picks = o.role!=null ? D.role[i][2*o.role] : o.patch!=null ? pick(D.patch[o.patch]) : o.league!=null ? pick(D.league[o.league]) : D.gw[i][0];
+  const n = o.patch!=null ? D.patchGames[o.patch] : o.league!=null ? D.leagueGames[o.league] : D.games, bans=D.bans[i];
+  const k = fn==="pickrate" ? picks : fn==="banrate" ? bans : picks+bans, cw={pickrate:"picks", banrate:"bans", presence:"picks or bans"}[fn];
+  line(`${S.name}: ${A.name} ${fn==="pickrate" ? `picked${sliceText(o)} in` : fn==="banrate" ? "banned in" : `picked (${grp(picks)}) or banned (${grp(bans)}) in`} ${grp(k)} of ${grp(n)} games${fn==="pickrate" && (o.patch!=null || o.league!=null) ? sliceText(o) : ""}`);
+  return mkRate(k, n, o, {fn, what:`${A.name} ${fn==="pickrate" ? "pick rate" : fn==="banrate" ? "ban rate" : "presence (picks + bans)"}${sliceText(o)}`, champ:A.id, countWord:cw, min:1});
+}
+function statPick(a, named, fn){
+  if (a.length!==1) throw new Error(`${fn}(champion, ${fn==="pickrate" ? "role:, patch:, league:, " : ""}pro:, year:) takes one champion`);
+  const o=statOpts(named, fn, fn==="pickrate" ? ["role","patch","league","pro","year"] : ["pro","year"]);
+  return statPickOf(statChamp(a[0], fn, "the argument"), o, fn);
+}
+function statMean(a, named){
+  if (a.length!==2 || typeof a[1]!=="string") throw new Error(`stat(champion, "name", role:, pro:, year:): names ${Object.keys(STAT_AVG).map(k=>`"${k}"`).join(", ")}`);
+  const o=statOpts(named, "stat", ["role","pro","year"]), S=o.S, D=S.D, A=statChamp(a[0], "stat", "the first argument"), key=a[1], M=STAT_AVG[key];
+  if (!M) throw new Error(`stat(…, "${key}"): no such stat.${hint(key, Object.keys(STAT_AVG))} Names: ${Object.keys(STAT_AVG).join(", ")}`);
+  const need = key==="kda" ? ["kills","deaths","assists"] : [key];
+  for (const k of need) if (!S.avg[k]) throw new Error(`stat(…, "${key}") is pro only (Oracle's Elixir has it; the solo-queue data doesn't): add pro: true. Solo queue has ${Object.keys(S.avg).join(", ")}, kda`);
+  const r=o.role ?? -1, games = o.role!=null ? D.role[A.i][2*o.role] : D.gw[A.i][0], es=need.map(k=>S.avg[k].get(A.i+"|"+r));
+  const base={t:"stat", kind:"mean", fn:"stat", key, what:`${A.name} ${M[0]}${sliceText(o)}`, unit:M[1], signed:!!M[2], min:D.min, source:S.source, sname:S.name, champ:A.id, other:null, label:null};
+  if (es.some(e=>!e)){ const why = games>=D.min ? `too little data: fewer than ${D.min} of ${A.name}'s ${grp(games)} games${sliceText(o)} in ${S.name} record ${key}` : `too little data: ${grp(games)} game${games===1?"":"s"}${sliceText(o)} (fewer than ${D.min}) in ${S.name}`;
+    line(`${S.name}: ${A.name}${sliceText(o)}: ${why}`); return {...base, value:NaN, n:games, enough:false, why}; }
+  if (key==="kda"){ const [K, De, As]=es, v=(K.mean+As.mean)/Math.max(De.mean, 1e-9);
+    line(`${S.name}: ${A.name}${sliceText(o)} averages ${fmt(K.mean)} / ${fmt(De.mean)} / ${fmt(As.mean)} over ${grp(K.n)} games → KDA (${fmt(K.mean)} + ${fmt(As.mean)}) / ${fmt(De.mean)} = ${fmt(v)}`);
+    return {...base, value:v, n:K.n, low:null, high:null, sd:null, enough:true, why:null, note:"ratio of the averages, no interval"}; }
+  const e=es[0], h=1.96*e.sd/Math.sqrt(e.n), sc = M[1]==="%" ? 100 : 1;
+  line(`${S.name}: ${A.name}${sliceText(o)} ${M[0]}: mean ${fmt(e.mean*sc)}${M[1]==="%" ? "%" : ""} over ${grp(e.n)} games (SD ${fmt(e.sd*sc)}${M[1]==="%" ? "%" : ""}; 95% CI mean ± 1.96 SD / √n)`);
+  return {...base, value:e.mean, n:e.n, sd:e.sd, low:e.mean-h, high:e.mean+h, enough:true, why:null};
+}
+/* min: for matchups / topPicks: the fewest games a row needs (at least the dataset's own minimum) */
+function statMin(named, o){ const m=(named||{}).min; if (m==null) return o.S.D.min; if (typeof m!=="number" || !(m>=0)) throw new Error("min: is the fewest games a row needs, e.g. min: 100"); return Math.max(o.S.D.min, m); }
+function statMatchups(a, named){
+  if (a.length!==1) throw new Error("matchups(champion, lane:, role:, pro:, year:) takes one champion");
+  const o=statOpts(named, "matchups", ["lane","role","pro","year","min"]), A=statChamp(a[0], "matchups", "the argument"), out=[], minG=statMin(named, o);
+  const saved=TR; TR=null;
+  try { STATS.champs.forEach((id, j)=>{ if (j===A.i) return; const s=statWin(A, o, {rel:"vs", c:{id, i:j, name:KB.champs[id].name}}, "matchups"); if (s.enough && s.n>=minG) out.push({...s, label:`vs ${KB.champs[id].name}`}); }); }
+  finally { TR=saved; }
+  out.sort((x, y)=>y.value-x.value || y.n-x.n);
+  const lane = o.lane || o.role!=null, where = lane ? ` in the same lane${o.role!=null ? " ("+STAT_ROLES[o.role]+")" : ""}` : " (any roles)";
+  line(`${o.S.name}: ${A.name} against ${out.length} champions${where} with ${minG}+ games, best first`);
+  const show1 = s => line(`  ${s.label.slice(3)}: ${spct(s.value)}% (n ${grp(s.n)}; 95% CI ${spct(s.low)}–${spct(s.high)}%)`);
+  if (out.length<=12) out.forEach(show1); else { out.slice(0, 6).forEach(show1); line(`  … ${out.length-12} more …`); out.slice(-6).forEach(show1); }
+  budgetValues(out.length);
+  return {t:"list", items:out};
+}
+function statTop(a, named){
+  named=named||{};
+  if (a.length) throw new Error("topPicks(role:, by:, n:, pro:, year:, patch:, league:) takes options only");
+  const o=statOpts(named, "topPicks", ["role","patch","league","pro","year","by","n","length","min"]), minG=statMin(named, o);
+  const by = named.by==null ? "pickrate" : String(named.by);
+  if (!["pickrate","winrate","banrate","presence"].includes(by)) throw new Error(`by: is "pickrate" (default), "winrate", "banrate" or "presence"`);
+  const n = named.n==null ? 10 : named.n;
+  if (!(typeof n==="number" && n>=1 && n<=200)) throw new Error("n: is how many champions to list (1–200)");
+  if (by!=="winrate" && o.length!=null) throw new Error(`topPicks(…, length: …) ranks win rates only (by: "winrate")`);
+  const out=[], saved=TR; TR=null;
+  try { STATS.champs.forEach((id, i)=>{ const A={id, i, name:KB.champs[id].name}, s = by==="winrate" ? statWin(A, o, null, "topPicks") : statPickOf(A, o, by);
+    if (s.enough && s.k>0 && (by!=="winrate" || s.n>=minG)) out.push({...s, label:A.name}); }); }
+  finally { TR=saved; }
+  out.sort((x, y)=>y.value-x.value || y.n-x.n);
+  const top=out.slice(0, Math.round(n));
+  line(`${o.S.name}: top ${top.length} by ${by}${sliceText(o)}${by==="winrate" ? ` (champions with ${minG}+ games)` : ""}`);
+  top.forEach((s, j)=>line(`  ${j+1}. ${s.label}: ${spct(s.value)}% (${s.countWord ? `${grp(s.k)} ${s.countWord}` : `n ${grp(s.n)}`}; 95% CI ${spct(s.low)}–${spct(s.high)}%)`));
+  budgetValues(top.length);
+  return {t:"list", items:top};
+}
+function showStat(v){
+  const pre = v.label ? v.label+": " : "";
+  if (!v.enough) return pre+v.why;
+  if (v.kind==="rate") return pre+`${spct(v.value)}% (${v.countWord ? `${grp(v.k)} ${v.countWord} in ${grp(v.n)} games` : `n ${grp(v.n)}`}; 95% CI ${spct(v.low)}–${spct(v.high)}%)`;
+  const f = x => v.unit==="%" ? spct(x)+"%" : (v.signed && x>0 ? "+" : "")+(Math.abs(x)>=10 ? String(Math.round(x)) : fmt(x)), u = v.unit && v.unit!=="%" ? " "+v.unit : "";
+  if (v.low==null) return pre+`${f(v.value)} (n ${grp(v.n)} games; ${v.note})`;
+  return pre+`${f(v.value)}${u} (n ${grp(v.n)} games; 95% CI ${f(v.low)} to ${f(v.high)}${u})`;
+}
+/* a Stat used as a number (comparisons, arithmetic, min/abs/…): its value, or an error when there is too little data */
+function statNum(v){ if (!v || v.t!=="stat") return v; if (!v.enough) throw new Error(`${v.what}: ${v.why}. Check .enough before using it as a number`); return v.value; }
 
 function Interpreter(ast, emitRaw){
   let quiet = false;
@@ -8928,6 +9122,22 @@ function Interpreter(ast, emitRaw){
         }
         return v;
       }
+      case "stat": {
+        const v=obj, rate=v.kind==="rate";
+        if (name==="value"){ const x=statNum(v); line(`${v.what} = ${showStat({...v, label:null})}`); return x; }
+        if (name==="enough") return v.enough;
+        if (name==="n" || name==="games") return v.n;
+        if (rate && (name==="wins" || name==="count")) return v.k;
+        if (name==="low" || name==="high"){ if (!v.enough) throw new LangError(`${v.what}: ${v.why}`, ln); if (v[name]==null) throw new LangError(`${v.what} has no interval (${v.note})`, ln); return v[name]; }
+        if (name==="sd" && !rate && v.sd!=null) return v.sd;
+        if (name==="source") return v.source;
+        if (name==="what") return v.what;
+        if (name==="why") return v.why || "";
+        if (name==="champ") return mkChamp(v.champ, globals.get("defaultLevel"));
+        if (name==="other"){ if (!v.other) throw new LangError(`${v.what} has no second champion`, ln); return mkChamp(v.other, globals.get("defaultLevel")); }
+        const has=["value","n","games",...(rate?["wins","count"]:["sd"]),"low","high","enough","source","what","why","champ",...(v.other?["other"]:[])];
+        throw new LangError(`a Stat has ${has.join(", ")}.${hint(name, has)}`, ln);
+      }
       case "rune": { if (name==="name") return runeName(obj.key); if (name==="description") return CALC.runes[obj.key].desc; throw new LangError(`a Rune has name and description`, ln); }
       case "comp": case "list": {
         const arr = obj.t==="comp" ? obj.champs : obj.items;
@@ -8947,7 +9157,7 @@ function Interpreter(ast, emitRaw){
   function fieldsOf(S){ return [...new Set(Object.values(S.calcs).map(x=>x[0]).concat(Object.values(S.dv).map(x=>x[0])))].slice(0,16); }
 
   /* ---- builtins ---- */
-  const num = (a, fn) => { if (typeof a!=="number") throw new Error(`${fn}() takes numbers`); return a; };
+  const num = (a, fn) => { a=statNum(a); if (typeof a!=="number") throw new Error(`${fn}() takes numbers`); return a; };
   const BUILTINS = {
     min:(a)=>Math.min(...a.map(x=>num(x,"min"))), max:(a)=>Math.max(...a.map(x=>num(x,"max"))), abs:(a)=>Math.abs(num(a[0],"abs")),
     floor:(a)=>Math.floor(num(a[0],"floor")), ceil:(a)=>Math.ceil(num(a[0],"ceil")), round:(a)=>Math.round(num(a[0],"round")),
@@ -8963,6 +9173,11 @@ function Interpreter(ast, emitRaw){
       return runFight([0, 1].map(i=>applyGap(teamOf(a[i]).map(copy), lg ? lg[i] : 0, gg ? gg[i] : 0, i+1, notes)), a[2], fo); },
     crossover:(a, named)=>crossover(a, named),
     fights:(a, named)=>sweep(a, named),
+    /* real-game stats (web/stats.json): see statOpts / statWin above */
+    winrate:(a, named)=>statWinrate(a, named, "winrate"),
+    games:(a, named)=>{ const s=statWinrate(a, named, "games"); if (s.why && !s.n) line(`games(…) = 0: ${s.why}`); return s.n; },
+    pickrate:(a, named)=>statPick(a, named, "pickrate"), banrate:(a, named)=>statPick(a, named, "banrate"), presence:(a, named)=>statPick(a, named, "presence"),
+    stat:(a, named)=>statMean(a, named), matchups:(a, named)=>statMatchups(a, named), topPicks:(a, named)=>statTop(a, named),
     range:(a)=>{ if (a.length<2 || a.length>3 || a.some(x=>typeof x!=="number")) throw new Error("range(from, to) or range(from, to, step): numbers from “from” to “to”, both included, e.g. range(0, 1200, 50)");
       return {t:"list", items:rangeList(a[0], a[1], a.length>2 ? a[2] : (a[1]>=a[0] ? 1 : -1))}; },
     canKill:(a, named)=>{ const f=killFight(a, named, a[2]); const u=f.units[1]; return u.dummy ? u.wouldDieAt!=null : !u.alive; },
@@ -9206,12 +9421,19 @@ function Interpreter(ast, emitRaw){
     }
     throw new LangError(`can't evaluate ${e.k}`, e.line);
   }
+  /* a Stat (winrate(), stat(), …) is its value in comparisons and arithmetic; string + Stat prints it */
+  function unstat(op, a, b, ln){
+    if (!((a && a.t==="stat") || (b && b.t==="stat")) || (op==="+" && (typeof a==="string" || typeof b==="string"))) return [a, b];
+    try { return [statNum(a), statNum(b)]; } catch(e){ throw new LangError(e.message, ln); }
+  }
   function binop(op, a, b, ln){
+    [a, b]=unstat(op, a, b, ln);
     if (["==","!="].includes(op)){ let eq; if (a&&b&&a.t==="champ"&&b.t==="champ") eq=champKey(a)===champKey(b); else if (a&&b&&a.t==="item"&&b.t==="item") eq=a.key===b.key; else if (typeof a==="number"&&typeof b==="number") eq=Math.abs(a-b)<1e-9; else eq=a===b; return op==="=="?eq:!eq; }
     if (["<","<=",">",">="].includes(op)){ if(typeof a!=="number"||typeof b!=="number") throw new LangError(`can only compare numbers, not ${typeName(a)} and ${typeName(b)}`, ln); return {"<":a<b,"<=":a<=b,">":a>b,">=":a>=b}[op]; }
     return arith(op, a, b, ln);
   }
   function arith(op, a, b, ln){
+    [a, b]=unstat(op, a, b, ln);
     if (op==="+" && (typeof a==="string"||typeof b==="string")){ const r=show(a)+show(b); if (r.length>1e6) throw new LangError("string longer than 1,000,000 characters (a string doubling in a loop?)", ln); return r; }
     if (op==="+" && a&&a.t==="set") return {t:"set", items:checkItemLimits([...a.items, ...toItems(b,"+")], "+")};
     if (op==="+" && a&&a.t==="comp"){ if(!b||b.t!=="champ") throw new LangError("add a Champion to a TeamComp", ln); checkSize(a.champs.length+1, "TeamComp", ln, 0); return {t:"comp", champs:[...a.champs.map(copy), copy(b)]}; }
@@ -9473,7 +9695,7 @@ function run(text, libs, opts){
   return {items, functions:ast.filter(s=>s.k==="func").length, rules:ast.filter(s=>s.k==="rule").length,
           usage:{steps:BUDGET.steps, values:BUDGET.values, results:BUDGET.results, traceLines:BUDGET.lines, ms:Date.now()-BUDGET.t0}};
 }
-return {run, parse, KB, CALC, ITEMS, ITEMKEYS, CLASSES, SLOTS, IDX, TAGS, KEYWORDS, TYPES, STATLABEL, RUNE_KEYS,
+return {run, parse, KB, CALC, ITEMS, ITEMKEYS, CLASSES, SLOTS, IDX, TAGS, KEYWORDS, TYPES, STATLABEL, RUNE_KEYS, setStats, STAT_FNS, statsLoaded:()=>!!STATS,
         norm, fmt, fmtc, show, label, champName, runeName, findItem, findRune, typeName, sweepStats, sweepGrid,
         _internals:{itemCalc, stats, MODELLED_ITEMS, simInterim}};
 }
@@ -9625,6 +9847,21 @@ print(s.share, s.low, s.high, s.byLevel(9).share, s.byLevel(16).share, s.byStart
 assert(s.sideMismatches == 0, "swapping sides never changes a result");
 assert(s.low <= s.share && s.share <= s.high, "the interval contains the share");`,
 
+"Real-game stats": `// Win rates, pick and ban rates and laning numbers from real games: ranked solo queue (patch 16.x, the default)
+// and pro play (pro: true; Oracle's Elixir, 2026 by default, year: 2025 or "2025+"). Every result has its game count
+// and a 95% interval; with too few games it says so instead of giving a number.
+print(winrate(Syndra), winrate(Syndra, role: "mid"), winrate(Syndra, vs: Orianna, lane: true));
+print(winrate(Syndra, with: Nautilus), winrate(Syndra, vs: Orianna, pro: true));
+print(pickrate(Syndra, pro: true), banrate(Syndra, pro: true), presence(Syndra, pro: true));
+print(stat(Syndra, "gd15", pro: true), stat(Syndra, "dmgshare"), stat(Syndra, "kda", pro: true, role: "mid"));
+print(matchups(Syndra, role: "mid", min: 50));               // open it: best and worst mid matchups with 50+ games
+print(topPicks(pro: true, by: "presence", n: 5), topPicks(role: "mid", pro: true, n: 5));
+
+Stat s = winrate(Syndra, vs: Orianna, pro: true);
+print(s.n, s.wins, s.low, s.high);
+if (s.enough) assert(s.low < 0.5 && s.high > 0.5, "pro: no clear edge either way (the interval includes 50%)");
+print(winrate(Syndra, vs: Rammus, pro: true));               // too little data`,
+
 "Conqueror vs Electrocute": `// Runes over time: which keystone kills a tank faster, and which survives a duel?
 Champion conq  = Darius(11).with(Stridebreaker, Sterak, Conqueror, AdaptiveForce, AdaptiveForce);
 Champion elec  = Darius(11).with(Stridebreaker, Sterak, Electrocute, AdaptiveForce, AdaptiveForce);
@@ -9768,7 +10005,7 @@ const AC = (() => {
   for (const [k,R] of Object.entries(CALC.runes)) base.push(C(ident(R.name), "rune", R.name));
   for (const t of TYPES) base.push(C(t, "type", ""));
   for (const k of ["if","else","for","while","return","break","continue","true","false","rule","prove","forall"]) base.push(C(k, "keyword", ""));
-  for (const [f,d] of [["assert","assert(cond, \"title\")"],["print","print(a, b, …)"],["fight","fight(side1, side2, seconds, start:, skill:, perfectAim:, levelGap:, goldGap:)"],["fights","fights(team1, team2, seconds, starts:, levels:, roles:, bothSides:, skill:, levelGaps:, goldGaps:)"],["crossover","crossover(team1, team2, seconds, axis: \"level\" | \"gold\", starts:, bothSides:) team 1's lead where its share crosses 50%"],["range","range(from, to, step) both ends included"],["canKill","canKill(a, t, seconds, healers:, fightBack:)"],["timeToKill","timeToKill(a, t, healers:, fightBack:)"],["canDodge","canDodge(b, a.Q, distance:, using:, reaction:)"],["champions","champions(Class?)"],["items","items()"],["runes","runes()"],["min","min(a, b)"],["max","max(a, b)"],["abs","abs(x)"],["floor","floor(x)"],["ceil","ceil(x)"],["round","round(x)"],["sqrt","sqrt(x)"],["pow","pow(x, y)"],["defaultLevel","global, default 11"],["gameMinute","global, default 20"],["Dummy","Dummy(hp:, armor:, mr:) practice-tool target dummy"]])
+  for (const [f,d] of [["assert","assert(cond, \"title\")"],["print","print(a, b, …)"],["fight","fight(side1, side2, seconds, start:, skill:, perfectAim:, levelGap:, goldGap:)"],["fights","fights(team1, team2, seconds, starts:, levels:, roles:, bothSides:, skill:, levelGaps:, goldGaps:)"],["crossover","crossover(team1, team2, seconds, axis: \"level\" | \"gold\", starts:, bothSides:) team 1's lead where its share crosses 50%"],["range","range(from, to, step) both ends included"],["winrate","winrate(champ, vs:, with:, role:, lane:, patch:, league:, length:, pro:, year:) real games: a Stat with n and 95% CI"],["pickrate","pickrate(champ, role:, patch:, league:, pro:, year:) share of games it was picked in"],["banrate","banrate(champ, pro:, year:) share of games it was banned in"],["presence","presence(champ, pro:, year:) picks + bans"],["games","games(champ, vs:, with:, role:, lane:, pro:, …) number of games"],["stat","stat(champ, \"gd15\", role:, pro:, year:) per-game average: gd10 gd15 xpd10 xpd15 csd10 csd15 (pro), kills deaths assists kda dmgshare dpm cspm"],["matchups","matchups(champ, lane:, role:, min:, pro:, year:) win rate vs every opponent with enough games, best first"],["topPicks","topPicks(role:, by: \"pickrate\" | \"winrate\" | \"banrate\" | \"presence\", n:, min:, pro:, year:, patch:, league:)"],["canKill","canKill(a, t, seconds, healers:, fightBack:)"],["timeToKill","timeToKill(a, t, healers:, fightBack:)"],["canDodge","canDodge(b, a.Q, distance:, using:, reaction:)"],["champions","champions(Class?)"],["items","items()"],["runes","runes()"],["min","min(a, b)"],["max","max(a, b)"],["abs","abs(x)"],["floor","floor(x)"],["ceil","ceil(x)"],["round","round(x)"],["sqrt","sqrt(x)"],["pow","pow(x, y)"],["defaultLevel","global, default 11"],["gameMinute","global, default 20"],["Dummy","Dummy(hp:, armor:, mr:) practice-tool target dummy"]])
     base.push(C(f, "builtin", d));
   for (const c of CLASSES) base.push(C(c, "class", "champion class"));
   base.push(C("AA", "slot", "auto attack, for combos"));
@@ -10032,6 +10269,8 @@ function valueOf(v, text){
     case "list": return {node: [h("span",{class:"v"}, String(v.items.length)), h("span",{class:"sub"}, ` ${v.items.length && v.items[0] ? RL.typeName(v.items[0]).toLowerCase() + (v.items.length>1?"s":"") : "items"}`)],
       detail: v.items.length ? () => h("div",{class:"chips"}, v.items.slice(0, 200).map(x => h("span",{class:"chip"}, x && x.t==="champ" ? `${RL.champName(x)} ${x.level}` : show(x))), v.items.length > 200 ? h("span",{class:"chip"}, `+${v.items.length-200}`) : null) : null};
     case "combo": return {node: stepChain(v.steps)};
+    case "stat": { const s = show(v), i = s.indexOf(" (");
+      return v.enough && i > 0 ? {node: [h("span",{class:"v"}, s.slice(0, i)), h("span",{class:"sub"}, " " + s.slice(i + 1))]} : {node: h("span",{class:"v str"}, s)}; }
     case "rune": { const R = CALC.runes[v.key]; return {node: h("span",{class:"v"}, show(v)), detail: R && R.desc ? () => h("p",{class:"desc"}, R.desc) : null}; }
     default: return {node: h("span",{class:"v str"}, show(v))};
   }
@@ -10293,13 +10532,28 @@ function renderError(item){
 /* ================= run ================= */
 let timer = null;
 const tally = $("tally");
+/* real-game stats (winrate(), pickrate(), …): stats.json (~1.3 MB) is fetched the first time a program names one of them, then the
+   program runs again. The engine is synchronous, so a run before it has arrived shows "loading" instead of results. */
+const STATS_RE = new RegExp(`\\b(${(RL.STAT_FNS || []).join("|")})\\s*\\(`);
+let statsState = null;                     // null, "loading", "ok", or why loading failed
+function loadStats(then){
+  statsState = "loading";
+  fetch("stats.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then(d => { RL.setStats(d); statsState = "ok"; }, e => { statsState = `stats.json could not be loaded: ${e.message}`; })
+    .then(then);
+}
 function run(why){
   const out = $("out"); out.replaceChildren();
+  if (RL.setStats && !RL.statsLoaded() && statsState !== "ok" && STATS_RE.test(src.value)){
+    if (!statsState) loadStats(() => run(why));
+    if (statsState === "loading"){ out.append(h("div",{class:"empty"}, "Loading real-game stats (stats.json)…")); return; }
+  }
   let res;
   // time limit: the page runs on every edit, so an endless loop (or a loop of fights) stops with an error instead of freezing the
   // tab: 3 s while typing, 10 s for Run / Ctrl+Enter / an example (the engine's step, size and output limits apply to both)
   const typing = why === "typing", maxMs = typing ? 3000 : 10000;
   try { res = RL.run(src.value, [], {maxMs}); } catch (e) { res = {items:[{kind:"error", line:null, msg:`internal error: ${e.message}`}], functions:0, rules:0}; }
+  if (statsState && statsState !== "ok" && statsState !== "loading") for (const it of res.items) if (it.kind === "error" && /stats aren't loaded/.test(it.msg)) it.msg += ` (${statsState})`;
   if (typing) for (const it of res.items) if (it.kind === "error" && /\(time limit\)/.test(it.msg)) it.msg += " While you type the editor stops programs after 3 s; press Ctrl/⌘ + Enter or Run to allow 10 s.";
   errorLines = new Map();
   const n = {ok:0, no:0, warn:0, err:0}; let firstErr = null;
