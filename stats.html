@@ -133,28 +133,6 @@ td small{color:var(--muted);font-size:11px;margin-left:5px}
 .split span:first-child{color:var(--muted)}
 .split span:last-child{text-align:right;font-family:var(--mono);font-size:12px}
 
-/* win probability */
-.wp{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:14px;align-items:start}
-.ctl{display:grid;gap:12px}
-.ctl .r{display:grid;gap:4px}
-.ctl .r div{display:flex;align-items:center;gap:8px}
-.ctl input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
-.ctl input[type=number]{width:86px}
-.ctl label{font:500 12px/1.2 var(--sans);color:var(--muted)}
-.pwin{font:600 44px/1 var(--sans);letter-spacing:-.02em}
-svg.chart{width:100%;height:auto;display:block}
-svg.chart text{font:11px var(--mono);fill:var(--muted)}
-svg.chart .grid{stroke:var(--line);stroke-width:1}
-svg.chart .axis{stroke:var(--line-strong);stroke-width:1}
-svg.chart .ref{stroke:var(--faint);stroke-dasharray:3 3}
-svg.chart .other{fill:none;stroke:var(--faint);stroke-width:1.2;opacity:.8}
-svg.chart .main{fill:none;stroke:var(--accent);stroke-width:2.4}
-svg.chart .pt{fill:var(--accent);stroke:var(--surface);stroke-width:2}
-.dteams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.dteams .card{display:grid;gap:6px}
-.dteams .B{border-top:3px solid var(--side1)}.dteams .R{border-top:3px solid var(--side2)}
-.dteams label{display:grid;grid-template-columns:62px minmax(0,1fr);align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.dteams input{height:30px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface-2);padding:0 8px;min-width:0}
 .soon{border-style:dashed;color:var(--muted)}
 .codebox textarea{width:100%;height:220px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface-2);font:12px/1.55 var(--mono);padding:10px;resize:vertical}
 .prose{max-width:860px;display:grid;gap:10px}
@@ -207,7 +185,13 @@ svg.chart .pt{fill:var(--accent);stroke:var(--surface);stroke-width:2}
 .notice b{font-weight:600}
 .more-link{font-size:12.5px;text-decoration:none}.more-link:hover{text-decoration:underline}
 
-/* tier grid */
+/* tier list: one band per tier (S..D), best first left to right */
+.tiers{display:grid;gap:6px}
+.band{display:grid;grid-template-columns:64px minmax(0,1fr);border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:8px;background:var(--surface-2);min-width:0}
+.band .bh{display:grid;align-content:center;justify-items:center;gap:3px;padding:8px 4px;border-right:1px solid var(--line);text-align:center}
+.band .bh h3{margin:0;font:700 22px/1 var(--sans);color:var(--tc)}
+.band .bh small{font-size:10.5px;color:var(--muted);line-height:1.2}
+.band .grid{padding:6px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
 .tile{position:relative;display:grid;justify-items:center;gap:2px;padding:8px 4px 7px;border-radius:8px;background:var(--surface);border:1px solid var(--line);text-decoration:none;color:var(--ink);min-width:0;border-top:3px solid var(--tc,var(--line-strong))}
 .tile:hover{border-color:var(--accent);border-top-color:var(--tc,var(--accent))}
@@ -216,6 +200,8 @@ svg.chart .pt{fill:var(--accent);stroke:var(--surface);stroke-width:2}
 .tile .wr{font:600 13px/1.1 var(--mono)}
 .tile small{font-size:10.5px;color:var(--muted)}
 .tile .tb{position:absolute;top:5px;left:6px;font:700 10px/1 var(--mono);color:var(--tc)}
+.tile .ri{position:absolute;top:4px;right:5px;width:14px;height:14px;color:var(--muted)}
+.tile .ri svg{width:14px;height:14px;fill:currentColor;display:block}
 .tile.small{opacity:.45;border-top-color:var(--line-strong)}
 .t-S{--tc:#E4B94F}.t-A{--tc:var(--ok)}.t-B{--tc:var(--accent)}.t-C{--tc:var(--muted)}.t-D{--tc:var(--no)}
 :root[data-theme="light"] .t-S{--tc:#A07310}
@@ -252,11 +238,13 @@ details.lowg summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin:4
   .rtabs button{padding:0 8px}
   .recent{margin-left:0}
   .grid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))}
-  .two,.wp{grid-template-columns:minmax(0,1fr)}
+  .band{grid-template-columns:minmax(0,1fr)}
+  .band .bh{display:flex;justify-content:flex-start;gap:8px;padding:6px 10px;border-right:0;border-bottom:1px solid var(--line)}
+  .band .bh h3{font-size:17px}
+  .two{grid-template-columns:minmax(0,1fr)}
   .nav{order:3;width:100%}
   .head h1{font-size:19px}
   .card .big{font-size:22px}
-  .dteams{grid-template-columns:minmax(0,1fr)}
 }
 </style>
 <div class="app">
@@ -438,7 +426,7 @@ function draftValue(mode, i, r){
   return 100 * (dP(X, B, E) - dP(X, E, E));
 }
 
-/* ---------- routing: #/tier?mode=pro&role=mid, #/champ/Syndra?mode=solo, #/matchup/Syndra/Orianna, #/winprob, #/about ---------- */
+/* ---------- routing: #/tier?mode=pro&role=mid, #/champ/Syndra?mode=solo, #/matchup/Syndra/Orianna, #/about (an old #/winprob link lands on the tier list) ---------- */
 function parseHash(){
   const raw = location.hash.replace(/^#\/?/, ""), [path, qs] = raw.split("?");
   const parts = path.split("/").filter(Boolean).map(decodeURIComponent);
@@ -602,7 +590,7 @@ function recentAdd(id, r){ try { const a = recentGet().filter(x => x.id !== id);
 function drawChrome(r, c){
   const nav = $("nav"); nav.textContent = "";
   const L = PAGE.links || {};
-  const items = [["tier", "Champions"], ["winprob", "Win probability"], ["about", "Methods"]];
+  const items = [["tier", "Champions"], ["about", "Methods"]];
   for (const [v, t] of items) nav.append(h("a", {href: link(v, [], base(c)), "aria-current": r.view === v || (v === "tier" && (r.view === "champ" || r.view === "matchup")) ? "page" : null}, t));
   for (const [k, t] of [["app", "Editor"], ["draft", "Draft"], ["docs", "Docs"]]) if (L[k]) nav.append(h("a", {class: "ext", href: L[k], rel: /^https:/.test(L[k]) ? "noopener noreferrer" : null}, t));
   $("m-pro").setAttribute("aria-pressed", String(c.mode === "pro")); $("m-solo").setAttribute("aria-pressed", String(c.mode === "solo"));
@@ -656,7 +644,7 @@ function drawCrumbs(r, c, S, cur, role){
   } else if (r.view === "matchup" && cur){
     add("Stats", home); if (role != null) add(ROLE_L[role], roleHome(role));
     add(nameOf(cur), champLink(c, cur, "matchups", role)); const b = champId(r.args[1]); add(b ? "vs " + nameOf(b) : "Matchup");
-  } else { add("Stats", home); add(r.view === "winprob" ? "Win probability" : r.view === "about" ? "Methods" : "Champions"); }
+  } else { add("Stats", home); add(r.view === "about" ? "Methods" : "Champions"); }
   el.append(ol);
   const rec = recentGet().filter(x => x.id !== (r.view === "champ" ? cur : null));
   if (rec.length) el.append(h("div", {class: "recent", "aria-label": "Recently viewed"}, h("span", {}, "Recent"),
@@ -691,97 +679,64 @@ function viewTier(r, c){
   const patch = q.patch && D.patchGames[q.patch] ? q.patch : null, league = S.pro && q.league && (D.leagueGames || {})[q.league] ? q.league : null;
   if (patch || league) role = null;
   const dmin = patch || league ? D.min : S.pro ? 50 : 200;              // default floor: the dataset minimum is 20 / 30 games, noisy at the top of a list
-  const min = q.min != null && +q.min >= D.min ? +q.min : dmin, whole = !patch && !league;
-  const nav = over => link("tier", [], {...base(c), role: role != null ? ROLES[role] : null, patch, league, min: min !== dmin ? min : null, view: q.view === "table" ? "table" : null, s: q.s, d: q.d, ...over});
-  const X = draftModel(c.mode);
-  const rows = [];
-  ST.champs.forEach((id, i) => {
-    const sl = {role, patch, league}, wr = champWin(S, i, sl); wr.min = min;
-    if (!wr.n) return;
-    const rr = role != null ? role : null, mr = mainRole(S, i);
-    const N = patch ? D.patchGames[patch] : league ? D.leagueGames[league] : D.games;
-    const row = {id, i, name: nameOf(id), n: wr.n, wr, small: wr.n < min, mr, pick: wr.n / N,
-      ban: whole ? D.bans[i] / D.games : null, pres: whole ? (D.gw[i][0] + D.bans[i]) / D.games : null};
-    if (whole && S.pro){ row.wpa = avgOf(S, "wpa", i, rr); row.lane = avgOf(S, "wpaLane", i, rr); row.team = avgOf(S, "wpaTeam", i, rr); row.gd15 = avgOf(S, "gd15", i, rr); }
-    if (whole) for (const k of S.extra) row[k] = avgOf(S, k, i, rr);
-    if (X) row.draft = draftValue(c.mode, i, role != null ? role : mr);
-    rows.push(row);
-  });
+  const min = q.min != null && +q.min >= D.min ? +q.min : dmin;
+  const nav = over => link("tier", [], {...base(c), role: role != null ? ROLES[role] : null, patch, league, min: min !== dmin ? min : null, q: q.q || null, ...over});
   const qv = (q.q || "").trim();
-  const ok = x => x && x.ok && !Number.isNaN(x.v) ? x.v : null;
-  const cols = [
-    {key: "name", label: "Champion", head: true, asc: true, val: x => x.name, cell: x => h("a", {href: link("champ", [x.id], {...base(c), role: role != null ? ROLES[role] : x.mr != null ? ROLES[x.mr] : null})}, portrait(x.id), h("b", {}, x.name), role == null && x.mr != null ? h("small", {}, ROLE_L[x.mr]) : null)},
-    {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)},
-    {key: "wr", label: "Win rate", title: "95% Wilson interval in small type; green / red: the interval excludes 50%", val: x => ok(x.wr), cell: x => wrCell(x.wr, true), cls: "gcol"},
-    {key: "pick", label: "Pick", title: role != null ? `picked as ${ROLE_L[role]} / all games` : "picked / games", val: x => x.pick, cell: x => pct(x.pick)},
-  ];
-  if (whole) cols.push({key: "ban", label: "Ban", val: x => x.ban, cell: x => pct(x.ban)}, {key: "pres", label: "Presence", title: "picked (any role) or banned / games", val: x => x.pres, cell: x => pct(x.pres)});
-  if (whole && S.pro){
-    const f = v => sgn(v);
-    cols.push({key: "wpa", label: "WPA", title: "win probability added per game, percentage points (pro)", val: x => ok(x.wpa), cell: x => meanCell(x.wpa, f), cls: "gcol"},
-      {key: "lane", label: "Lane", title: "WPA in the lane phase (up to 15 min)", val: x => ok(x.lane), cell: x => meanCell(x.lane, f)},
-      {key: "team", label: "Team", title: "WPA from 15 min to the end", val: x => ok(x.team), cell: x => meanCell(x.team, f)},
-      {key: "gd15", label: "GD@15", title: "gold difference at 15 min vs the lane opponent", val: x => ok(x.gd15), cell: x => meanCell(x.gd15, sgInt)});
-  }
-  if (whole) for (const k of S.extra) cols.push({key: k, label: phaseLabel(k), title: `${phaseLabel(k)}: win probability added in this phase, percentage points`, val: x => ok(x[k]), cell: x => meanCell(x[k], v => sgn(v)), cls: "gcol"});
-  if (X) cols.push({key: "draft", label: "Pick WPA", title: "draft model: pick WPA (pp) of this champion in this role as blue's first pick into an empty draft, i.e. pickwpa(c, role:, side: \"blue\")", val: x => x.draft, cell: x => x.draft == null ? h("span", {class: "tl"}, "–") : h("span", {class: x.draft > 0.5 ? "up" : x.draft < -0.5 ? "dn" : ""}, sgn(x.draft)), cls: "gcol"});
-  const sortKey = cols.some(x => x.key === q.s) ? q.s : S.pro && whole ? "wpa" : "wr";
-  const sortDir = q.d === "asc" ? "asc" : q.d === "desc" ? "desc" : sortKey === "name" ? "asc" : "desc";
-
   const main = $("main"); main.textContent = "";
-  const view = q.view === "table" ? "table" : "grid";
-  const viewSeg = h("div", {class: "seg", role: "group", "aria-label": "Layout"}, [["grid", "Grid"], ["table", "Table"]].map(([k, t]) =>
-    h("button", {type: "button", "aria-pressed": String(view === k), onclick: () => { location.hash = nav({view: k === "grid" ? null : k}); }}, t)));
   const mins = [...new Set([D.min, 50, 100, 200, 500, S.pro ? 50 : 1000, min])].sort((a, b) => a - b);
   const minSel = h("label", {class: "f"}, "Min games", h("select", {onchange: e => { location.hash = nav({min: +e.target.value === dmin ? null : e.target.value}); }}, mins.map(m => h("option", {value: m, selected: m === min ? true : null}, m))));
-  const search = h("input", {type: "search", placeholder: view === "grid" ? "Filter tiles" : "Filter the table", "aria-label": "Filter champions", value: qv, autocomplete: "off"});
+  const search = h("input", {type: "search", placeholder: "Filter champions", "aria-label": "Filter champions", value: qv, autocomplete: "off"});
   const holder = h("div", {class: "sec"});
   const match = x => { const s = norm(search.value); return !s || norm(x.name).includes(s) || norm(x.id).includes(s); };
-  const drawTable = () => {
-    const vis = rows.filter(match);
-    holder.textContent = "";
-    holder.append(table({cols, rows: vis, rank: true, sort: {key: sortKey, dir: sortDir},
-      caption: `${S.name}${role != null ? ", " + ROLE_L[role] : ""}${patch ? ", patch " + patch : ""}${league ? ", " + league : ""}: ${vis.filter(x => !x.small).length} champions with ${min}+ games; greyed rows have fewer. Small type: 95% interval.`,
-      onSort: st => { history.replaceState(null, "", nav({s: st.key, d: st.dir, q: search.value || null})); }}));
-  };
-  /* grid: one section per role (or the chosen role / slice); tiers from the low end of the 95% interval, ranked within the section */
-  const sections = role != null ? [role] : patch || league ? [undefined] : [0, 1, 2, 3, 4];
-  const secRows = sections.map(k => {
+  /* tiers from the low end of the 95% interval, as within-role percentiles (a patch / league slice: within the slice). One role:
+     that role's list. All roles: ONE list of champion-role entries (a champion in two roles appears twice), each role's tiers
+     merged, sorted within a band by the within-role percentile (so supports aren't judged against carries). Each tier is its own
+     band, best first from left to right. */
+  const TIERS = [["S", "top 10%"], ["A", "next 20%"], ["B", "middle 40%"], ["C", "next 20%"], ["D", "bottom 10%"]];
+  const rankRole = k => {
     const rs = [];
     ST.champs.forEach((id, i) => {
       const wr = k === undefined ? champWin(S, i, {patch, league}) : champWin(S, i, {role: k});
       if (wr.n < D.min) return;
-      rs.push({id, i, name: nameOf(id), n: wr.n, wr, small: wr.n < min});
+      rs.push({id, i, r: k, name: nameOf(id), n: wr.n, wr, small: wr.n < min});
     });
     const ranked = rs.filter(x => !x.small).sort((a, b) => b.wr.lo - a.wr.lo || b.n - a.n);
-    ranked.forEach((x, j) => { const p = j / ranked.length; x.tier = p < 0.1 ? "S" : p < 0.3 ? "A" : p < 0.7 ? "B" : p < 0.9 ? "C" : "D"; });
-    return {k, ranked, small: rs.filter(x => x.small).sort((a, b) => b.n - a.n)};
-  });
-  const tile = (x, k) => h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: champLink(c, x.id, "overview", k === undefined ? undefined : k),
-    title: `${x.name}${k != null ? " · " + ROLE_L[k] : ""}: ${pct(x.wr.v)} in ${grp(x.n)} games, 95% CI ${pct(x.wr.lo)}–${pct(x.wr.hi)}${x.tier ? ", tier " + x.tier : `, fewer than ${min} games`}`},
-    x.tier ? h("span", {class: "tb", "aria-hidden": "true"}, x.tier) : null, portrait(x.id), h("b", {}, x.name), h("span", {class: "wr " + clsCI(x.wr.lo, x.wr.hi, 0.5)}, pct(x.wr.v)), h("small", {}, grp(x.n) + " games"));
-  const drawGrid = () => {
+    ranked.forEach((x, j) => { const p = j / ranked.length; x.rank = j + 1; x.p = p; x.tier = p < 0.1 ? "S" : p < 0.3 ? "A" : p < 0.7 ? "B" : p < 0.9 ? "C" : "D"; });
+    return {ranked, small: rs.filter(x => x.small)};
+  };
+  const all = role == null && !patch && !league;
+  const secRows = [(() => {
+    if (!all){ const R = rankRole(patch || league ? undefined : role); return {k: patch || league ? undefined : role, ranked: R.ranked, small: R.small.sort((a, b) => b.n - a.n)}; }
+    const Rs = [0, 1, 2, 3, 4].map(rankRole);
+    return {k: null, ranked: Rs.flatMap(R => R.ranked).sort((a, b) => a.p - b.p || b.wr.lo - a.wr.lo),
+      small: Rs.flatMap(R => R.small).sort((a, b) => b.n - a.n)};
+  })()];
+  const tile = x => h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: champLink(c, x.id, "overview", x.r === undefined ? undefined : x.r),
+    "data-role": x.r != null ? ROLES[x.r] : null, "data-p": x.p != null ? x.p.toFixed(4) : null,
+    title: `${x.name}${x.r != null ? " · " + ROLE_L[x.r] : ""}: ${pct(x.wr.v)} in ${grp(x.n)} games, 95% CI ${pct(x.wr.lo)}–${pct(x.wr.hi)}${x.tier ? `, tier ${x.tier} (#${x.rank}${x.r != null ? " " + ROLE_L[x.r] : ""})` : `, fewer than ${min} games`}`},
+    x.tier ? h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank) : null, all && x.r != null ? h("span", {class: "ri", title: ROLE_L[x.r]}, roleIcon(x.r)) : null,
+    portrait(x.id), h("b", {}, x.name), h("span", {class: "wr " + clsCI(x.wr.lo, x.wr.hi, 0.5)}, pct(x.wr.v)), h("small", {}, grp(x.n) + " games"));
+  const draw = () => {
     holder.textContent = "";
     for (const s of secRows){
       const rk = s.ranked.filter(match), sm = s.small.filter(match);
-      const title = s.k === undefined ? "All roles" : ROLE_L[s.k];
-      const hd = h("h2", {}, s.k != null ? roleIcon(s.k) : null, title, h("small", {}, `${rk.length} champions with ${min}+ games`));
+      const title = s.k == null ? (all ? "All roles" : "All roles (slice)") : ROLE_L[s.k];
+      const hd = h("h2", {}, s.k != null ? roleIcon(s.k) : null, title, h("small", {}, all ? `${rk.length} champion-role entries with ${min}+ games` : `${rk.length} champions with ${min}+ games`));
+      const bands = TIERS.map(([t, share]) => { const xs = rk.filter(x => x.tier === t); return xs.length ? h("div", {class: "band t-" + t, "data-tier": t, role: "group", "aria-label": `Tier ${t}`},
+        h("div", {class: "bh"}, h("h3", {}, t), h("small", {}, share), h("small", {}, `${xs.length} champion${xs.length === 1 ? "" : "s"}`)), h("div", {class: "grid"}, xs.map(tile))) : null; }).filter(Boolean);
       holder.append(h("section", {class: "sec rsec", "data-role": s.k == null ? "all" : ROLES[s.k]}, hd,
-        rk.length ? h("div", {class: "grid"}, rk.map(x => tile(x, s.k))) : h("p", {class: "note"}, "No champion matches."),
-        sm.length ? h("details", {class: "lowg"}, h("summary", {}, `${sm.length} more with ${D.min}–${min - 1} games (too few to rank)`), h("div", {class: "grid"}, sm.map(x => tile(x, s.k)))) : null));
+        bands.length ? h("div", {class: "tiers"}, bands) : h("p", {class: "note"}, "No champion matches."),
+        sm.length ? h("details", {class: "lowg"}, h("summary", {}, `Not enough games: ${sm.length} more with ${D.min}–${min - 1} games (too few to rank)`), h("div", {class: "grid"}, sm.map(tile))) : null));
     }
   };
-  const draw = () => view === "grid" ? drawGrid() : drawTable();
   let deb = 0;
   search.addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(() => { draw(); history.replaceState(null, "", nav({q: search.value || null})); }, 120); });
   const N = patch ? D.patchGames[patch] : league ? D.leagueGames[league] : D.games;
   main.append(h("div", {class: "sec"},
     h("div", {class: "head"}, h("h1", {}, c.mode === "pro" ? "Pro tier list" : "Solo queue tier list"), h("span", {class: "sub"}, `${S.name}${role != null ? " · " + ROLE_L[role] : ""} · ${grp(N)} games${patch ? " on " + patch : ""}${league ? " in " + league : ""} · ${D.dates[0]} to ${D.dates[1]}`)),
-    h("div", {class: "filters"}, viewSeg, minSel, search),
-    view === "grid" ? h("p", {class: "legend", id: "tier-legend"}, h("span", {}, "Tier = rank by the low end of the 95% win-rate interval (a cautious win rate, so a few lucky games don't top the list), within each role:"),
-      ["S top 10%", "A next 20%", "B middle 40%", "C next 20%", "D bottom 10%"].map(t => h("span", {class: "t-" + t[0]}, h("i"), t)), h("span", {}, `Faded tiles: fewer than ${min} games.`)) : null,
-    view === "table" && !whole ? h("p", {class: "note"}, "Ban, presence" + (S.pro ? ", WPA and laning columns" : " columns") + " are stored for the whole dataset only, so they're hidden for a patch or league slice.") : null,
-    view === "table" && !S.pro ? h("p", {class: "note"}, "Win probability added needs minute-by-minute data, which only the pro dataset has. Switch to Pro for WPA and laning columns.") : null,
+    h("div", {class: "filters"}, minSel, search),
+    h("p", {class: "legend", id: "tier-legend"}, h("span", {}, `Tier = rank by the low end of the 95% win-rate interval (a cautious win rate, so a few lucky games don't top the list), ${patch || league ? "within the slice" : all ? "as percentiles within each role, merged into one list (a champion in two roles appears twice); within a tier, best percentile first, left to right" : "within the role; best first, left to right"}:`),
+      TIERS.map(([t, share]) => h("span", {class: "t-" + t}, h("i"), `${t} ${share}`)), h("span", {}, `Champions with fewer than ${min} games are under “Not enough games”.`)),
     holder));
   draw();
 }
@@ -932,7 +887,7 @@ function viewChamp(r, c){
     cards.append(card("Game length", null, null, splitBarsRate([[`<${ST.short} min`, sh], [`${ST.long}+ min`, lg]]),
       h("div", {class: "ci"}, sh.ok && lg.ok ? `${lg.v > sh.v ? "+" : MINUS}${Math.abs(100 * (lg.v - sh.v)).toFixed(1)} pp in long games (all roles)` : "all roles")));
     const X = draftModel(c.mode);
-    if (X && ro != null){ const v = draftValue(c.mode, i, ro); cards.append(card("Draft model", v == null ? h("span", {class: "tl"}, "–") : pp(v, 1), `pick WPA of ${name} as ${ROLE_L[ro]}: blue's first pick into an empty draft, vs the role's typical pick`)); }
+    if (X && ro != null){ const v = draftValue(c.mode, i, ro); cards.append(card("Draft model", v == null ? h("span", {class: "tl"}, "–") : h("span", {id: "c-pick"}, pp(v, 1)), `pick WPA of ${name} as ${ROLE_L[ro]}: blue's first pick into an empty draft, vs the role's typical pick`)); }
     if (!S.pro){ const bc = card("Most common build", null, null, h("div", {class: "ci"}, "loading…")); bc.id = "c-build"; cards.append(bc); buildTeaser(bc, c, id, ro != null ? ro : mainRole(S, i)); }
     P(cards);
     // by role
@@ -1194,94 +1149,7 @@ function viewMatchup(r, c){
   main.append(h("p", {class: "note"}, "A matchup rate isn't a counter by itself: it also carries who picks each champion and the rest of the draft." + (S.pro ? " Pro WPA splits the team's win probability: 0–15 min by the players' gold, XP and kill differences vs their lane opponents, 15 min–end equally." : "")));
 }
 
-/* ---------- 4. win probability ---------- */
-const WPS = {at: 20, gold: 2000, xp: 0, kills: 0, side: "neutral", full: false};
-function wpCalc(W, at, g, xp, kd, side, full){
-  const T = W.times, s = {blue: 1, red: -1, neutral: 0}[side] || 0;
-  let i = 0; while (i < T.length - 1 && at > T[i + 1]) i++;
-  const t0 = T[i], t1 = T[Math.min(i + 1, T.length - 1)], l = t1 > t0 ? Math.max(0, Math.min(1, (at - t0) / (t1 - t0))) : 0, c0 = W.t[t0], c1 = W.t[t1], mix = (u, v) => (1 - l) * u + l * v;
-  const z = !full ? s * mix(c0.b0g, c1.b0g) + mix(c0.wg, c1.wg) * g / 1000
-    : s * mix(c0.b0, c1.b0) + mix(c0.w[0], c1.w[0]) * g / 1000 + mix(c0.w[1], c1.w[1]) * xp / 1000 + mix(c0.w[2], c1.w[2]) * kd;
-  return sig(z);
-}
-function viewWinprob(r, c){
-  const main = $("main"); main.textContent = "";
-  const W = ST.winprob;
-  main.append(h("div", {class: "head"}, h("h1", {}, "Win probability"), h("span", {class: "sub"}, W ? `pro play model, fitted on ${W.years.join("–")} Oracle's Elixir games` : "")));
-  if (c.mode === "solo") main.append(h("p", {class: "note"}, "The in-game model is pro only: solo queue needs minute-by-minute timelines, which the solo dataset doesn't have yet. The calculator below uses pro play."));
-  if (!W){ main.append(h("p", {class: "note"}, "stats.json has no win probability model.")); return; }
-  const T = W.times, q = r.q;
-  for (const [k, lo, hi] of [["at", T[0], T[T.length - 1]], ["gold", -15000, 15000], ["xp", -12000, 12000], ["kills", -20, 20]]) if (q[k] != null && Number.isFinite(+q[k])) WPS[k] = Math.max(lo, Math.min(hi, +q[k]));
-  if (q.side && ["blue", "red", "neutral"].includes(q.side)) WPS.side = q.side;
-  if (q.full != null) WPS.full = q.full === "1";
-  const out = h("div", {}), chart = h("div", {}), valid = h("div", {class: "note"});
-  const inputs = {};
-  const row = (k, label, min, max, step) => {
-    const rg = h("input", {type: "range", min, max, step, value: WPS[k], "aria-label": label}), nb = h("input", {type: "number", min, max, step, value: WPS[k], "aria-label": label + " (number)"});
-    const set = v => { v = Math.max(min, Math.min(max, +v)); if (!Number.isFinite(v)) return; WPS[k] = v; rg.value = v; nb.value = v; draw(); };
-    rg.addEventListener("input", () => set(rg.value)); nb.addEventListener("change", () => set(nb.value));
-    inputs[k] = {rg, nb, set};
-    return h("div", {class: "r"}, h("label", {}, label), h("div", {}, rg, nb));
-  };
-  const fullBox = h("input", {type: "checkbox", id: "wpfull", checked: WPS.full ? true : null});
-  const sideSel = h("select", {"aria-label": "Side", id: "wpside"}, ["neutral", "blue", "red"].map(s => h("option", {value: s, selected: WPS.side === s ? true : null}, s === "neutral" ? "No side" : s[0].toUpperCase() + s.slice(1) + " side")));
-  const xpRow = row("xp", "XP lead", -12000, 12000, 100), kRow = row("kills", "Kill lead", -20, 20, 1);
-  const ctl = h("div", {class: "card ctl"}, row("at", "Minute", T[0], T[T.length - 1], 0.5), row("gold", "Gold lead (your team; negative when behind)", -15000, 15000, 100),
-    h("label", {class: "f"}, fullBox, "Also set XP and kills (full model)"), xpRow, kRow, h("div", {class: "r"}, h("label", {for: "wpside"}, "Side"), sideSel));
-  fullBox.addEventListener("change", () => { WPS.full = fullBox.checked; draw(); });
-  sideSel.addEventListener("change", () => { WPS.side = sideSel.value; draw(); });
-  main.append(h("div", {class: "wp"}, ctl, h("div", {class: "card"}, out, chart, valid)));
-  function draw(){
-    xpRow.hidden = kRow.hidden = !WPS.full;
-    const p = wpCalc(W, WPS.at, WPS.gold, WPS.xp, WPS.kills, WPS.side, WPS.full);
-    out.textContent = "";
-    out.append(h("h3", {}, "P(win)"), h("div", {class: "pwin", id: "pwin"}, pct(p)),
-      h("p", {class: "note"}, `A pro team ${WPS.gold >= 0 ? grp(WPS.gold) + " gold ahead" : grp(-WPS.gold) + " gold behind"}${WPS.full ? `, ${WPS.xp >= 0 ? "+" : MINUS}${grp(Math.abs(WPS.xp))} XP and ${WPS.kills >= 0 ? "+" : MINUS}${Math.abs(WPS.kills)} kills` : ""} at ${WPS.at} min${WPS.side !== "neutral" ? " on " + WPS.side + " side" : ""} won about ${pct(p, 0)} of the time. ` +
-        (WPS.full ? "Full model: gold, XP and kill differences." : "Gold-only model: its gold weight includes the XP and kills that usually come with a gold lead.")));
-    chart.textContent = ""; chart.append(wpChart(W));
-    const near = T.reduce((a, t) => Math.abs(t - WPS.at) < Math.abs(a - WPS.at) ? t : a, T[0]), V = W.valid && W.valid.t[near];
-    valid.textContent = V ? `Checked on held-out ${W.valid.test} games (fitted on ${W.valid.train}) at ${near} min: calibration error ${(100 * V.model.ece).toFixed(1)} pp (predicted vs observed win rate), AUC ${V.model.auc.toFixed(2)}, log loss ${V.model.logloss} vs ${V.side.logloss} for side alone, ${grp(V.n)} games. Snapshots at ${T.join(", ")} min; minutes between them interpolate the coefficients. No tower, dragon or baron state (Oracle's Elixir doesn't give it at the snapshot).` : "";
-    history.replaceState(null, "", link("winprob", [], {...base(c), at: WPS.at, gold: WPS.gold, ...(WPS.full ? {full: 1, xp: WPS.xp, kills: WPS.kills} : {}), side: WPS.side !== "neutral" ? WPS.side : null}));
-  }
-  draw();
-  main.append(draftCalc(c));
-}
-function wpChart(W){
-  const w = 640, ht = 280, L = 44, R = 12, Tp = 12, B = 34, G = 15000;
-  const x = g => L + (g + G) / (2 * G) * (w - L - R), y = p => Tp + (1 - p) * (ht - Tp - B);
-  const path = (at, full) => { let d = ""; for (let g = -G; g <= G; g += 250){ const p = wpCalc(W, at, g, full ? WPS.xp : 0, full ? WPS.kills : 0, WPS.side, full); d += (d ? "L" : "M") + x(g).toFixed(1) + "," + y(p).toFixed(1); } return d; };
-  let s = `<svg class="chart" viewBox="0 0 ${w} ${ht}" role="img" aria-label="Win probability against gold lead at ${WPS.at} minutes; faint lines: ${W.times.join(", ")} minutes">`;
-  for (const p of [0, 0.25, 0.5, 0.75, 1]) s += `<line class="${p === 0.5 ? "ref" : "grid"}" x1="${L}" x2="${w - R}" y1="${y(p)}" y2="${y(p)}"/><text x="${L - 6}" y="${y(p) + 4}" text-anchor="end">${p * 100}%</text>`;
-  for (const g of [-15000, -10000, -5000, 0, 5000, 10000, 15000]) s += `<line class="${g === 0 ? "ref" : "grid"}" x1="${x(g)}" x2="${x(g)}" y1="${Tp}" y2="${ht - B}"/><text x="${x(g)}" y="${ht - B + 16}" text-anchor="middle">${g === 0 ? "0" : (g > 0 ? "+" : MINUS) + Math.abs(g / 1000) + "k"}</text>`;
-  s += `<text x="${(L + w - R) / 2}" y="${ht - 4}" text-anchor="middle">gold lead</text>`;
-  for (const t of W.times) if (t !== WPS.at) s += `<path class="other" d="${path(t, WPS.full)}"/><text x="${x(G) - 2}" y="${y(wpCalc(W, t, G, WPS.full ? WPS.xp : 0, WPS.full ? WPS.kills : 0, WPS.side, WPS.full)) + (t === W.times[W.times.length - 1] ? 12 : -4)}" text-anchor="end">${t}m</text>`;
-  s += `<path class="main" d="${path(WPS.at, WPS.full)}"/>`;
-  const gp = Math.max(-G, Math.min(G, WPS.gold)), p = wpCalc(W, WPS.at, WPS.gold, WPS.xp, WPS.kills, WPS.side, WPS.full);
-  s += `<circle class="pt" cx="${x(gp)}" cy="${y(p)}" r="5"/></svg>`;
-  const d = h("div", {}); d.innerHTML = s; return d.firstChild;
-}
-/* draft calculator: shown when stats.json has the draft model ("draftwp"); a placeholder until then */
-function draftCalc(c){
-  const X = draftModel(c.mode);
-  const sec = h("section", {class: "sec", "aria-labelledby": "h-draft"}, h("h2", {id: "h-draft"}, `Draft win probability · ${c.mode === "pro" ? "pro" : "solo queue"}`));
-  if (!X){ sec.append(h("div", {class: "card soon", id: "draft-soon"}, h("b", {}, "Coming soon. "), "A pre-game model that scores a whole draft (champion strength by role, lane matchups, duo synergy) is being fitted separately for pro and solo queue. It will appear here when the data ships.")); return sec; }
-  const ids = ST.champs, lists = h("datalist", {id: "dl-champs"}, ids.map(id => h("option", {value: nameOf(id)})));
-  const pick = {B: [null, null, null, null, null], R: [null, null, null, null, null]};
-  const out = h("div", {class: "card"});
-  const team = s => h("div", {class: "card " + s}, h("h3", {}, s === "B" ? "Blue side" : "Red side"), [0, 1, 2, 3, 4].map(r => { const inp = h("input", {list: "dl-champs", "aria-label": `${s === "B" ? "Blue" : "Red"} ${ROLE_L[r]}`, placeholder: "any"});
-    inp.addEventListener("change", () => { const id = champId(inp.value); pick[s][r] = id ? POS[id] : null; if (inp.value && !id) inp.value = ""; calc(); }); return h("label", {}, ROLE_L[r], inp); }));
-  function calc(){
-    const B = pick.B.map(x => x == null ? -1 : x), R = pick.R.map(x => x == null ? -1 : x);
-    const p = dP(X, B, R), n = pick.B.concat(pick.R).filter(x => x != null).length;
-    out.textContent = "";
-    out.append(h("h3", {}, "Blue side P(win)"), h("div", {class: "pwin", id: "dwp"}, pct(p)),
-      h("p", {class: "note"}, `${n} of 10 champions set; an empty slot counts as the role's typical pick. Equal team strength (no rating term). The same model as draftwp() in Rift Logic${X.prof ? "" : " (this stats.json has no comp-profile terms)"}; draft effects are small and observational.`));
-  }
-  sec.append(lists, h("div", {class: "dteams"}, team("B"), team("R")), out);
-  calc(); return sec;
-}
-
-/* ---------- 5. methods ---------- */
+/* ---------- 4. methods ---------- */
 function viewAbout(r, c){
   const main = $("main"); main.textContent = "";
   const S = ST.solo, W = ST.winprob, P = ST.pro;
@@ -1340,12 +1208,14 @@ function viewAbout(r, c){
 function render(){
   if (!ST) return;
   RTOK++;
-  const r = parseHash(), c = ctx(r.q);
+  let r = parseHash();
+  if (r.view === "winprob"){ history.replaceState(null, "", link("tier", [], r.q.mode ? {mode: r.q.mode} : {})); r = parseHash(); }   // the calculator page was removed
+  const c = ctx(r.q);
   if (r.q.mode) MODE = c.mode;
   drawChrome(r, c);
-  const V = {tier: viewTier, champ: viewChamp, matchup: viewMatchup, winprob: viewWinprob, about: viewAbout}[r.view] || viewTier;
+  const V = {tier: viewTier, champ: viewChamp, matchup: viewMatchup, about: viewAbout}[r.view] || viewTier;
   try { V(r, c); } catch (e) { $("main").textContent = ""; $("main").append(h("div", {class: "card err"}, `Something went wrong: ${e.message}`)); throw e; }
-  document.title = ({tier: "Tier list", champ: nameOf(champId(r.args[0]) || "") + (r.args[1] && tabOf(r.args[1]) !== "overview" ? " " + TABS.find(t => t[0] === tabOf(r.args[1]))[1].toLowerCase() : ""), matchup: "Matchup", winprob: "Win probability", about: "Methods"}[r.view] || "Tier list") + " · Rift Logic Stats";
+  document.title = ({tier: "Tier list", champ: nameOf(champId(r.args[0]) || "") + (r.args[1] && tabOf(r.args[1]) !== "overview" ? " " + TABS.find(t => t[0] === tabOf(r.args[1]))[1].toLowerCase() : ""), matchup: "Matchup", about: "Methods"}[r.view] || "Tier list") + " · Rift Logic Stats";
 }
 function start(d){
   ST = d; POS = Object.create(null); ST.champs.forEach((id, i) => { POS[id] = i; });
