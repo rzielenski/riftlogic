@@ -8434,12 +8434,15 @@ function statTop(a, named){
   return {t:"list", items:top};
 }
 /* ---- win probability (pro): winprob(goldDiff:, at:, …) from the model in stats.json (src/winprob.py), and wpa(champion, …):
-   win probability added per game in percentage points. Team WP path: side prior -> 15 min (model) -> result (1 or 0).
-   lane = the 0 -> 15 min change split among the five players by Shapley values of their gold / XP / kill differences vs
-   the same-position opponent; team = the 15 min -> end change split equally; total = lane + team. */
+   win probability added per game in percentage points. Team WP path: side prior -> draft (draft model, equal ratings) ->
+   15 min (STATS.winprob.pro variant rolePre without its rating term) -> result (1 or 0). draft / lane = Shapley shares of the
+   champions' draft terms / the players' gold, XP, kill and CS differences vs the same-position opponent; team = the rest,
+   split equally (it carries team strength). winprob() picks a variant from its inputs: gold / state (the old models, when no
+   pre-game input, CS or per-position leads are given), goldPre / statePre / rolePre (with rating, draft logit, comp scaling;
+   missing pre-game terms count as even). STATS.winprob.solo is reserved for the solo-queue timeline model (its own features). */
 const WPA_SOLO = fn => `${fn}() is pro play only (add pro: true): solo queue needs timelines for this; not available yet`;
 const WPA_PHASE = {total:["wpa", 0, ""], draft:["wpaDraft", 3, ", draft phase (side prior → draft model)"], lane:["wpaLane", 1, ", lane phase (draft → 15 min)"], team:["wpaTeam", 2, ", team phase (15 min–end)"]};
-function wpaNote(){ if (TR) TR.notes.add("WPA (win probability added, percentage points per game): the team's win probability goes side prior → draft (the pro draft model at equal team ratings, fitted on earlier years) → 15 min (model: gold, XP and kill differences) → result; the draft change is split among the five players by Shapley values of their champions' draft terms (strength, lane matchup vs the opponent, synergy and comp-profile shares), the draft → 15 min change by Shapley values of their gold, XP and kill differences vs the lane opponent (lane), the 15 min → end change equally (team). Team strength still confounds it, as it does win rate"); }
+function wpaNote(){ if (TR) TR.notes.add("WPA (win probability added, percentage points per game): the team's win probability goes side prior → draft (the pro draft model at equal team ratings, fitted on earlier years) → 15 min (the in-game model without its team-rating term: gold and XP by position, kills, CS, the draft logit and comp scaling) → result; the draft change is split among the five players by Shapley values of their champions' draft terms (strength, lane matchup vs the opponent, synergy and comp-profile shares), the draft → 15 min change by Shapley values of their gold, XP, kill and CS differences vs the lane opponent (lane), the 15 min → end change equally (team; it includes team strength, so ratings are never credited to a champion's draft or lane). Team strength still reaches the total through the result, as it does win rate"); }
 function wpaPhase(named){ const p = named.phase==null ? "total" : String(named.phase).toLowerCase(); if (!WPA_PHASE[p]) throw new Error(`phase: is "total" (default), "draft" (the picks: side prior → draft model), "lane" (draft → 15 min) or "team" (15 min–end)`); return p; }
 function statWpaOf(A, o, C, phase, fn){
   if (!o.pro) throw new Error(WPA_SOLO(fn));
@@ -8478,28 +8481,68 @@ function statWpa(a, named){
 }
 function statWinprob(a, named){
   named=named||{};
-  checkNamed(named, ["goldDiff","xpDiff","killDiff","at","side","pro"], "winprob(…)");
-  if (a.length) throw new Error("winprob(goldDiff:, at:, xpDiff:, killDiff:, side:) takes options only, e.g. winprob(goldDiff: 3000, at: 20)");
+  checkNamed(named, ["goldDiff","xpDiff","killDiff","csDiff","roleGold","roleXp","at","side","pro","blue","red","byRole","blueRating","redRating","rating"], "winprob(…)");
+  if (a.length) throw new Error("winprob(goldDiff:, at:, xpDiff:, killDiff:, csDiff:, side:, blue:, red:, blueRating:, redRating:) takes options only, e.g. winprob(goldDiff: 3000, at: 20)");
   if (named.pro!=null && !truthy(named.pro)) throw new Error(WPA_SOLO("winprob"));
-  statsData(); const W=STATS.winprob;
-  if (!W) throw new Error("web/stats.json has no win probability model: rebuild it (src/stats_export.py)");
+  statsData(); const W = STATS.winprob && STATS.winprob.pro;
+  if (!W || !W.variants) throw new Error("web/stats.json has no pro win probability model: rebuild it (src/stats_export.py)");
   const at=named.at, T=W.times;
   if (typeof at!=="number" || !(at===0 || (at>=T[0] && at<=T[T.length-1]))) throw new Error(`at: is the game minute: 0 (the side prior) or ${T[0]} to ${T[T.length-1]} (the model has snapshots at ${T.join(", ")} min; minutes between them interpolate the coefficients)`);
   const num = k => { const v=named[k]; if (v==null) return 0; if (typeof v!=="number" || !Number.isFinite(v)) throw new Error(`${k}: is a number (the team's lead; negative when behind)`); return v; };
-  const g=num("goldDiff"), xp=num("xpDiff"), kd=num("killDiff");
+  const five = k => { const v=named[k]; const arr = v && v.t==="list" ? v.items : Array.isArray(v) ? v : null;
+    if (!arr || arr.length!==5 || arr.some(x => typeof x!=="number" || !Number.isFinite(x))) throw new Error(`${k}: is a list of five numbers, the leads of top, jungle, mid, bot and support over their lane opponents, e.g. {500, -200, 1200, 800, 100}`);
+    return arr; };
+  const byPos = named.roleGold!=null || named.roleXp!=null;
+  if (byPos && (named.roleGold==null || named.roleXp==null)) throw new Error("winprob(): roleGold: and roleXp: go together (five gold leads and five XP leads, top to support)");
+  if (byPos && (named.goldDiff!=null || named.xpDiff!=null)) throw new Error("winprob(): give either goldDiff:/xpDiff: (team totals) or roleGold:/roleXp: (per position), not both");
+  const rg = byPos ? five("roleGold") : null, rx = byPos ? five("roleXp") : null;
+  const g = byPos ? rg.reduce((s, x)=>s+x, 0) : num("goldDiff"), xp = byPos ? rx.reduce((s, x)=>s+x, 0) : num("xpDiff"), kd=num("killDiff"), cs=num("csDiff");
   const sd = named.side==null ? "neutral" : String(named.side).toLowerCase(), s = {blue:1, red:-1, neutral:0}[sd];
   if (s==null) throw new Error(`side: is "blue", "red" or "neutral" (default: no side advantage)`);
-  const sig = z => 1/(1+Math.exp(-z)), gold = named.xpDiff==null && named.killDiff==null;
-  if (at===0){ if (g || xp || kd) throw new Error("winprob(at: 0) is the side prior before the game: no differences yet");
-    const p=sig(s*W.prior); line(`win probability at 0 min (side prior, pro ${W.years.join("–")}): ${sd} side → ${spct(p)}%`); return p; }
+  // pre-game inputs: comps (the pro draft model's rating-neutral logit and the comps' scaling), team ratings. Blue's view, then the team's.
+  const hasComp = named.blue!=null || named.red!=null, hasRating = named.blueRating!=null || named.redRating!=null || named.rating!=null;
+  const pre = hasComp || hasRating || byPos || named.csDiff!=null;
+  if ((hasComp || named.blueRating!=null || named.redRating!=null) && s===0) throw new Error(`winprob(): with blue:/red: or team ratings, say whose leads these are with side: "blue" or "red"`);
+  if (at===0){ if (g || xp || kd || cs || pre) throw new Error("winprob(at: 0) is the side prior before the game: no differences yet (for the pre-game chance of two drafts and ratings use draftwp())");
+    const p=1/(1+Math.exp(-s*W.prior)); line(`win probability at 0 min (side prior, pro ${W.years.join("–")}): ${sd} side → ${spct(p)}%`); return p; }
+  let draftZ=0, scale=0, rdiff=0; const parts=[];
+  if (hasComp){
+    const X=dwpModel(true), byRole = named.byRole!=null && truthy(named.byRole);
+    const B=dwpTeam(X, named.blue, byRole, "winprob", "blue"), R=dwpTeam(X, named.red, byRole, "winprob", "red");
+    for (const Tm of [B, R]) for (let r=0; r<5; r++) if (Tm[r]>=0 && Tm.filter(x=>x===Tm[r]).length>1) throw new Error(`winprob(): a champion appears twice on one side`);
+    draftZ = dwpLogit(X, B, R, 0) - X.M.b0;
+    const sc = W.scaling.champs, S = Tm => Tm.reduce((t, c)=>t+(c>=0 ? sc[c]||0 : 0), 0);
+    scale = S(B) - S(R);
+    parts.push(`blue ${dwpShow(X, B)} vs red ${dwpShow(X, R)}: draft logit ${draftZ>=0?"+":""}${fmt(draftZ)}, scaling ${scale>=0?"+":""}${fmt(scale)} (blue's view)`);
+  }
+  if (named.rating!=null){
+    if (named.blueRating!=null || named.redRating!=null) throw new Error("winprob(): give rating: (the team's Elo lead) or blueRating:/redRating:, not both");
+    if (typeof named.rating!=="number" || !Number.isFinite(named.rating)) throw new Error("rating: is the team's Elo lead over its opponent (a number, e.g. 100)");
+    rdiff = (s<0 ? -1 : 1)*named.rating/400; parts.push(`Elo lead ${named.rating>0?"+":""}${fmt(named.rating)}`);
+  } else if (named.blueRating!=null || named.redRating!=null){
+    if (named.blueRating==null || named.redRating==null) throw new Error(`winprob(): give both blueRating: and redRating: (Elo, or 2026 team names)`);
+    const X=dwpModel(true), b=dwpRating(X.M, named.blueRating, "winprob", "blueRating"), r=dwpRating(X.M, named.redRating, "winprob", "redRating");
+    rdiff=(b.r-r.r)/400; parts.push(`ratings blue ${b.txt} vs red ${r.txt}`);
+  }
+  const sp = s<0 ? -1 : 1;                           // blue-view pre-game terms seen from the team's side
+  const vname = !pre ? (named.xpDiff==null && named.killDiff==null ? "gold" : "state")
+    : byPos ? "rolePre" : (named.xpDiff==null && named.killDiff==null && named.csDiff==null ? "goldPre" : "statePre");
+  const Vm = W.variants[vname], ROLE_N=["top","jungle","mid","bot","support"];
+  const x = {gold:g/1000, xp:xp/1000, kills:kd, cs:cs/100, rating:sp*rdiff, draft:sp*draftZ, scaling:sp*scale};
+  if (byPos) ROLE_N.forEach((r, k)=>{ x["gold:"+r]=rg[k]/1000; x["xp:"+r]=rx[k]/1000; });
   let i=0; while (i<T.length-1 && at>T[i+1]) i++;
-  const t0=T[i], t1=T[Math.min(i+1, T.length-1)], l = t1>t0 ? (at-t0)/(t1-t0) : 0, c0=W.t[t0], c1=W.t[t1], mix=(u, v) => (1-l)*u+l*v;
-  const z = gold ? s*mix(c0.b0g, c1.b0g) + mix(c0.wg, c1.wg)*g/1000
-                 : s*mix(c0.b0, c1.b0) + mix(c0.w[0], c1.w[0])*g/1000 + mix(c0.w[1], c1.w[1])*xp/1000 + mix(c0.w[2], c1.w[2])*kd;
-  const p=sig(z), V=W.valid && W.valid.t[at];
-  line(`win probability at ${fmt(at)} min (${gold ? "gold-only" : "gold + XP + kills"} logistic model, pro ${W.years.join("–")}${l>0 && l<1 ? `, coefficients interpolated between ${t0} and ${t1} min` : ""}): gold ${g>0?"+":""}${grp(g)}${gold ? "" : `, XP ${xp>0?"+":""}${grp(xp)}, kills ${kd>0?"+":""}${fmt(kd)}`}, ${sd} side → ${spct(p)}%`);
-  if (TR){ TR.notes.add(`win probability model: logistic regression per minute snapshot on Oracle's Elixir team rows${V ? `; fitted on ${W.valid.train}, held-out ${W.valid.test} at ${at} min: log loss ${V.model.logloss} (side-only ${V.side.logloss}), Brier ${V.model.brier} (${V.side.brier}), calibration error ${V.model.ece}` : ""}. No tower, dragon or baron state at the snapshot (Oracle's Elixir doesn't give it)`);
-    if (gold && at>0) TR.notes.add("only goldDiff given: the gold-only model (its gold weight includes the XP and kills that usually come with gold). Give xpDiff: / killDiff: for the full model"); }
+  const t0=T[i], t1=T[Math.min(i+1, T.length-1)], l = t1>t0 ? (at-t0)/(t1-t0) : 0, c0=Vm.t[t0], c1=Vm.t[t1], mix=(u, v) => (1-l)*u+l*v;
+  let z = s*mix(c0.b0, c1.b0);
+  Vm.feats.forEach((f, j)=>{ z += mix(c0.w[j], c1.w[j])*(x[f]||0); });
+  const p=1/(1+Math.exp(-z));
+  const what = {gold:"gold-only", state:"gold + XP + kills", goldPre:"gold + pre-game", statePre:"gold + XP + kills + CS + pre-game", rolePre:"gold and XP by position + kills + CS + pre-game"}[vname];
+  const lead = byPos ? `gold by position ${rg.map(v=>(v>0?"+":"")+grp(v)).join(" / ")}, XP ${rx.map(v=>(v>0?"+":"")+grp(v)).join(" / ")}, kills ${kd>0?"+":""}${fmt(kd)}`
+    : `gold ${g>0?"+":""}${grp(g)}${vname==="gold" || vname==="goldPre" ? "" : `, XP ${xp>0?"+":""}${grp(xp)}, kills ${kd>0?"+":""}${fmt(kd)}${vname==="statePre" ? `, CS ${cs>0?"+":""}${fmt(cs)}` : ""}`}`;
+  line(`win probability at ${fmt(at)} min (${what} logistic model, pro ${Vm.years.join("–")}${l>0 && l<1 ? `, coefficients interpolated between ${t0} and ${t1} min` : ""}): ${lead}${parts.length ? "; "+parts.join("; ") : ""}, ${sd} side → ${spct(p)}%`);
+  if (TR){ const near = T.reduce((a2, t)=>Math.abs(t-at)<Math.abs(a2-at) ? t : a2, T[0]), V=W.valid && W.valid.t[near], F=V && V["full model"];
+    TR.notes.add(`pro win probability model (src/winprob.py): logistic regression per minute snapshot on Oracle's Elixir games${F ? `; the full model (gold and XP by position, kills, CS, Elo, the out-of-sample draft logit and comp scaling) fitted on ${W.valid.train}, held-out ${W.valid.test} at ${near} min: log loss ${F.logloss} (gold/XP/kills only ${V["old (gold, XP, kills)"].logloss}, side only ${V.side.logloss}), Brier ${F.brier}, calibration error ${F.ece}` : ""}. No tower, dragon, herald or baron state: Oracle's Elixir has only whole-game totals, which would leak the result`);
+    if (vname==="gold") TR.notes.add("only goldDiff given: the gold-only model (its gold weight includes the XP and kills that usually come with gold). Give xpDiff: / killDiff: for the full model, blue:/red: and ratings for the pre-game terms");
+    if (pre) TR.notes.add(`pre-game terms not given count as even: ${[!hasComp ? "a typical draft and equal comp scaling" : null, !hasRating ? "equal team ratings" : null].filter(Boolean).join(", ") || "none missing"}`); }
   return p;
 }
 /* ---- draft win probability (src/draftwp.py -> stats.json "draftwp"): draftwp(blue:, red:, pro:), pickwpa(c, role:, side:, …),
