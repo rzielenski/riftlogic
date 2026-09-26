@@ -486,6 +486,7 @@ function dataset(mode, year){
   const extra = Object.keys(avg).filter(k => /^wpa/.test(k) && !BASE_WPA.includes(k)).sort();
   const S = {D, mode, pro: mode === "pro", year, key, vs: pairs(D.vs || [], 4), lane: pairs(D.lane || [], 5), with: pairs(D.with || [], 4), avg, wpaPairs, phases, extra,
     name: mode === "pro" ? `pro play ${year}` : "ranked solo queue 16.x"};
+  S.hasWpa = !!avg.wpa; S.laneEnd = S.pro ? 15 : 14;       // solo WPA (Riot timelines): the lane phase ends at 14:00
   SETS.set(key, S); return S;
 }
 const phaseLabel = k => k === "wpa" ? "WPA" : k.replace(/^wpa/, "") + " WPA";
@@ -679,7 +680,7 @@ function roleIcon(r){
 }
 /* the role in the URL: a role index, "all" (null), or undefined (not given: the view picks its default) */
 const roleQ = q => q.role === "all" ? null : q.role != null && ROLE_IDX[q.role] != null ? ROLE_IDX[q.role] : undefined;
-const TABS = [["overview", "Overview"], ["builds", "Builds", "solo"], ["runes", "Runes & spells", "solo"], ["matchups", "Matchups"], ["teammates", "Teammates"], ["wpa", "WPA & laning", "pro"]];
+const TABS = [["overview", "Overview"], ["builds", "Builds", "solo"], ["runes", "Runes & spells", "solo"], ["matchups", "Matchups"], ["teammates", "Teammates"], ["wpa", "WPA & laning"]];   // both modes: pro (Oracle's Elixir) and solo (Riot timelines) WPA
 const tabOf = s => TABS.some(t => t[0] === s) ? s : "overview";
 /* champion page link: role null = all roles; undefined = the champion's main role (not written into the URL) */
 function champLink(c, id, tab, role){
@@ -939,7 +940,9 @@ function champProgram(c, id, r){
   if (c.mode === "pro"){
     L.push(`print(wpa(${A}, ${rlOpts(c, ro)}));`, `print(wpa(${A}, ${rlOpts(c, [...ro, 'phase: "lane"'])}));`, `print(wpa(${A}, ${rlOpts(c, [...ro, 'phase: "team"'])}));`,
       `print(stat(${A}, "gd15", ${rlOpts(c, ro)}));`);
-  } else L.push(`print(stat(${A}, "kda", ${rlOpts(c, ro)}));`);
+  } else { L.push(`print(stat(${A}, "kda", ${rlOpts(c, ro)}));`);
+    const ca = x => [A, ...x].join(", ");
+    if (dataset("solo").hasWpa) L.push(`print(wpa(${ca(ro)}));`, `print(wpa(${ca([...ro, 'phase: "lane"'])}));`, `print(wpLost(${ca(ro)}));`); }
   L.push(`print(winrate(${A}, ${rlOpts(c, ['length: "short"'])}));`, `print(winrate(${A}, ${rlOpts(c, ['length: "long"'])}));`,
     `print(matchups(${A}, ${rlOpts(c, r != null ? ro : ["lane: true"])}));`);
   return L.join("\n") + "\n";
@@ -948,7 +951,7 @@ function matchupProgram(c, a, b, r){
   const A = rlChamp(a), B = rlChamp(b), ro = r != null ? [`role: "${ROLES[r]}"`] : ["lane: true"], L = [];
   L.push(`// ${nameOf(a)} vs ${nameOf(b)}, same lane${r != null ? " (" + ROLE_L[r] + ")" : ""}: ${c.mode === "pro" ? "pro play " + c.year : "ranked solo queue 16.x"} (from the Rift Logic stats page)`);
   L.push(`print(winrate(${A}, ${rlOpts(c, [`vs: ${B}`, ...ro])}));`, `print(winrate(${B}, ${rlOpts(c, [`vs: ${A}`, ...ro])}));`, `print(winrate(${A}, ${rlOpts(c, [`vs: ${B}`])}));`);
-  if (c.mode === "pro"){ const rr = r != null ? [`role: "${ROLES[r]}"`] : [];
+  if (c.mode === "pro" || dataset("solo").hasWpa){ const rr = r != null ? [`role: "${ROLES[r]}"`] : [];
     for (const ph of ["total", "lane", "team"]) L.push(`print(wpa(${A}, ${rlOpts(c, [`vs: ${B}`, ...rr, ...(ph === "total" ? [] : [`phase: "${ph}"`])])}));`); }
   return L.join("\n") + "\n";
 }
@@ -1066,8 +1069,8 @@ function viewChamp(r, c){
     P(bandSec("with-bands", "Teammates · same team, any roles", `${rows.length} teammates (pairs under ${D.min} games aren't stored)`,
       rows, x => x.wr.lo, tile, wFloor, ["teammate", "teammates"]));
   } else if (tab === "wpa"){
-    if (!S.pro){
-      P(modeNotice("wpa-solo", "WPA and laning numbers are pro only for now.", "Win probability added needs minute-by-minute data. Pro games have it (Oracle's Elixir: gold, XP and kills at 10 and 15 minutes); the solo-queue timelines are still downloading, so solo WPA will appear here once they're in.", "pro", "Show pro WPA"));
+    if (!S.hasWpa){
+      P(modeNotice("wpa-solo", "No WPA data in this dataset.", "Win probability added needs minute-by-minute data: rebuild web/stats.json (src/stats_export.py).", S.pro ? "solo" : "pro", S.pro ? "Show solo WPA" : "Show pro WPA"));
       const cards = h("div", {class: "cards"}); cards.append(soloCard(S, i, ro), lengthCard(S, i, ro)); P(cards);
       return;
     }
@@ -1077,9 +1080,9 @@ function viewChamp(r, c){
     const tile = x => tierTile({id: x.id, href: link("matchup", [id, x.id], mq), tier: x.tier, rank: x.rank, name: x.name, val: sgn(x.wpa.v), valCls: clsCI(x.wpa.lo, x.wpa.hi, 0),
       subs: [x.lane.ok && x.team.ok ? `L ${sgn(x.lane.v, 1)} · T ${sgn(x.team.v, 1)}` : "", grp(x.n) + " games"],
       title: `${name} vs ${x.name}: WPA ${pp(x.wpa.v)} per game (95% CI ${sgn(x.wpa.lo)} to ${sgn(x.wpa.hi)}), ${x.ex.filter(([, y]) => y.ok).map(([p, y]) => `${p} ${pp(y.v)}, `).join("")}lane ${x.lane.ok ? pp(x.lane.v) : "–"}, team ${x.team.ok ? pp(x.team.v) : "–"}, ${grp(x.n)} games` + tierTip(x, nR)});
-    P(bandSec("wpa-bands", `WPA by opponent · same lane, ${where}`, "pp per game; L = lane phase (0–15 min), T = team (15 min to the end)",
+    P(bandSec("wpa-bands", `WPA by opponent · same lane, ${where}`, `pp per game; L = lane phase (0–${S.laneEnd} min), T = team (${S.laneEnd} min to the end)`,
       rows, x => x.wpa.lo, tile, muFloor, ["opponent", "opponents"]));
-    P(h("p", {class: "note"}, "WPA splits the team's win probability: 0–15 min by each player's gold, XP and kill differences against the lane opponent (lane), 15 min to the end equally (team). See Methods."));
+    P(h("p", {class: "note"}, `WPA splits the team's win probability: 0–${S.laneEnd} min by each player's gold, XP and kill differences against the lane opponent (lane${S.pro ? "" : "; solo also CS and completed items, and objectives shared by the five"}), ${S.laneEnd} min to the end equally (team). See Methods.`));
   } else viewBuilds(panel, c, S, id, i, ro, tab);
 }
 /* similar champions: cosine similarity of the draft model's champion vectors (stats.json draftwp[mode].emb, src/draftwp.py
@@ -1150,6 +1153,10 @@ function wpaCards(S, i, ro, cards, ids){
   cards.append(card("Win probability added", T.ok ? h("span", {class: clsCI(T.lo, T.hi, 0), id: ids ? "c-wpa" : null}, pp(T.v)) : h("span", {class: "tl"}, "too little data"),
     T.ok ? `per game · 95% CI ${sgn(T.lo)} to ${sgn(T.hi)} · ${grp(T.n)} games` : null, splitBars([["Lane", L], ["Team", Tm], ...ex])));
   const g = k => avgOf(S, k, i, ro);
+  if (!S.pro){ const Lo = g("wpLost"), LL = g("wpLostLane"), U = g("untraded"), Cv = g("conv");
+    cards.append(card("Win probability lost", Lo.ok ? h("span", {id: ids ? "c-wplost" : null, title: "95% CI " + Lo.lo.toFixed(1) + " to " + Lo.hi.toFixed(1) + " pp"}, Lo.v.toFixed(1) + " pp") : h("span", {class: "tl"}, "too little data"),
+      "per game, to the player's own deaths (lower is better)", kv([["Before 14 min", LL.ok ? LL.v.toFixed(1) + " pp" : "–"], ["Untraded deaths", U.ok ? U.v.toFixed(1) : "–"], ["Conversion at 80%", Cv.ok ? pct(Cv.v) : "–"]])));
+    return; }
   cards.append(card("Laning vs opponent", null, null, kv([["Gold @10", g("gd10").ok ? sgInt(g("gd10").v) : "–"], ["Gold @15", g("gd15").ok ? sgInt(g("gd15").v) : "–"],
     ["XP @15", g("xpd15").ok ? sgInt(g("xpd15").v) : "–"], ["CS @15", g("csd15").ok ? sgn(g("csd15").v, 1) : "–"]]), h("div", {class: "ci"}, "means over the games; vs the same-position opponent")));
 }
@@ -1261,7 +1268,8 @@ function deltaCell(x){
   if (!x || !x.ok) return h("span", {class: "tl"}, "–");
   return h("span", {class: clsCI(x.lo, x.hi, 0), title: `95% CI ${sgn(100 * x.lo, 1)} to ${sgn(100 * x.hi, 1)} pp`}, sgn(100 * x.v, 1), h("small", {}, `${sgn(100 * x.lo, 0)}…${sgn(100 * x.hi, 0)}`));
 }
-const wpaSoon = (id, what) => h("p", {class: "note soonl", id}, h("b", {}, `${what} WPA · coming with timelines`), ` · the impact of each ${what.toLowerCase()} will be shown as win probability added once the match timelines are in.`);
+/* a WPA mean in pp with its SD and n -> a deltaCell value (fractions), ok from 30 */
+const wpaVal = (n, m, sd, base) => n >= 30 && m != null ? {ok: true, v: (m - (base || 0)) / 100, lo: (m - (base || 0) - 1.96 * sd / Math.sqrt(n)) / 100, hi: (m - (base || 0) + 1.96 * sd / Math.sqrt(n)) / 100, n} : {ok: false};
 const shareCell = x => h("span", {title: `${grp(x.n)} of the champion's games in this role`}, pct(x.share, x.share < 0.1 ? 1 : 0));
 function soloEntry(id, r){ return BUILDS && BUILDS.champs[id] ? BUILDS.champs[id][String(r)] || null : null; }
 function buildTeaser(el, c, id, r){
@@ -1527,14 +1535,16 @@ function drawItems(panel, E, name){
   else panel.append(h("section", {class: "sec", "aria-labelledby": "h-core"}, h("h2", {id: "h-core"}, "Core builds"), h("p", {class: "note"}, "No item set with enough games.")));
   // single items
   const nl = E.nLeg.reduce((a, x) => a + x, 0);
-  const items = E.items.map(([id, n, w, e]) => { const x = bRow(E, n, w, {id, name: itemName(id)}); const [lo, hi] = wilson(w, n); x.adj = {ok: true, v: (w - e) / n, lo: lo - e / n, hi: hi - e / n}; return x; });
+  const items = E.items.map(([id, n, w, e, wn, wm, wsd]) => { const x = bRow(E, n, w, {id, name: itemName(id)}); const [lo, hi] = wilson(w, n); x.adj = {ok: true, v: (w - e) / n, lo: lo - e / n, hi: hi - e / n}; x.iw = wpaVal(wn, wm, wsd); return x; });
   const icols = [{key: "name", label: "Item", head: true, asc: true, val: x => x.name, cell: x => iLab(x.id)},
     {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, {key: "share", label: "Built in", title: "share of the champion's games in this role that ended with the item", val: x => x.share, cell: shareCell},
     {key: "wr", label: "Win rate", val: x => x.wr.ok ? x.wr.v : null, cell: x => wrCell(x.wr, true), cls: "gcol"},
-    {key: "adj", label: "Δ vs without", title: "win rate with the item minus the champion's win rate in games that ended with the same number of completed items (so longer games don't inflate it), percentage points; 95% interval", val: x => x.adj.v, cell: x => deltaCell(x.adj)}];
+    {key: "adj", label: "Δ vs without", title: "win rate with the item minus the champion's win rate in games that ended with the same number of completed items (so longer games don't inflate it), percentage points; 95% interval", val: x => x.adj.v, cell: x => deltaCell(x.adj)},
+    {key: "iwpa", label: "Item WPA", title: `the team's win probability change from the minute before the item was completed to ${BUILDS.wpaWindow || 5} minutes after, minus the average change of states at the same minute and win probability (percentage points per completion; 95% interval; from match timelines)`, val: x => x.iw.ok ? x.iw.v : null, cell: x => deltaCell(x.iw)}];
   panel.append(h("section", {class: "sec", "aria-labelledby": "h-items"}, h("h2", {id: "h-items"}, "Items", h("small", {}, "completed items (2000+ gold) in the final inventory")),
     table({cols: icols, rows: items, sort: {key: "games", dir: "desc"}, limit: 12}),
-    h("p", {class: "note"}, `${name} finished 0–6 completed items: ${E.nLeg.map((x, k) => `${k}: ${pct(x / nl, 0)}`).join(" · ")}.`), wpaSoon("item-wpa-soon", "Item")));
+    h("p", {class: "note"}, `${name} finished 0–6 completed items: ${E.nLeg.map((x, k) => `${k}: ${pct(x / nl, 0)}`).join(" · ")}.`),
+    h("p", {class: "note", id: "item-wpa-note"}, h("b", {}, "Item WPA"), ` · the team's win probability ${BUILDS.wpaWindow || 5} minutes after the item was completed vs the minute before, compared with similar game states at the same minute (match timelines). Observational: who buys what, and when, isn't random.`)));
   // boots
   const boots = E.boots.map(([id, n, w]) => bRow(E, n, w, {id, name: itemName(id)}));
   panel.append(h("section", {class: "sec", "aria-labelledby": "h-boots"}, h("h2", {id: "h-boots"}, "Boots", h("small", {}, "final inventory; “No boots” includes games that sold them")),
@@ -1548,8 +1558,12 @@ function drawRunes(panel, E, name){
   const wrc = {key: "wr", label: "Win rate", val: x => x.wr.ok ? x.wr.v : null, cell: x => wrCell(x.wr, true), cls: "gcol"};
   const gc = {key: "games", label: "Games", val: x => x.n, cell: x => grp(x.n)}, sc = {key: "share", label: "Share", val: x => x.share, cell: shareCell};
   const sec = (idd, t, sub, ...k) => panel.append(h("section", {class: "sec", "aria-labelledby": idd}, h("h2", {id: idd}, t, sub ? h("small", {}, sub) : null), ...k));
-  sec("h-keys", "Keystones", null, table({cols: [{key: "name", label: "Keystone", head: true, asc: true, val: x => perkName(x.id), cell: x => pLab(x.id)}, gc, sc, wrc],
-    rows: E.keys.map(([id, n, w]) => bRow(E, n, w, {id})), sort: {key: "games", dir: "desc"}}), wpaSoon("rune-wpa-soon", "Rune"));
+  const kb = E.wpaBase || [0, 0, 0];
+  const kwc = {key: "kwpa", label: "WPA vs avg", title: `mean win probability added (total, pp per game) of players on this keystone minus ${name}'s average in the role (${E.wpaBase ? sgn(kb[1], 1) + " pp" : "–"}); 95% interval; lane = the 0–14 min part`, val: x => x.kw.ok ? x.kw.v : null,
+    cell: x => h("span", {}, deltaCell(x.kw), x.kl.ok ? h("small", {class: "tl"}, ` lane ${sgn(100 * x.kl.v, 1)}`) : null)};
+  sec("h-keys", "Keystones", null, table({cols: [{key: "name", label: "Keystone", head: true, asc: true, val: x => perkName(x.id), cell: x => pLab(x.id)}, gc, sc, wrc, kwc],
+    rows: E.keys.map(([id, n, w, kn, kt, ksd, kl, klsd]) => bRow(E, n, w, {id, kw: wpaVal(kn, kt, ksd, kb[1]), kl: wpaVal(kn, kl, klsd, kb[2])})), sort: {key: "games", dir: "desc"}}),
+    h("p", {class: "note", id: "rune-wpa-note"}, h("b", {}, "Rune WPA"), " · the keystone's players' win probability added minus the champion's average in the role (match timelines). Who picks a keystone isn't random (matchup, lane, player), so this is a difference between groups of games, not the rune's effect."));
   const pages = E.pages.map(([pg, n, w]) => bRow(E, n, w, {pg}));
   sec("h-pages", "Rune pages", "most common full pages: keystone, 3 primary, 2 secondary (shards below)", table({cols: [{key: "page", label: "Page", head: true, val: x => x.pg.join(","), cell: x => h("span", {class: "page", title: x.pg.map(perkName).join(", ")},
     x.pg.map((p, k) => [k === 4 ? h("span", {class: "sep"}) : null, bicon("p" + p, perkName(p), "rn" + (k === 0 ? " lg" : ""))]), h("b", {class: "sr"}, x.pg.map(perkName).join(", ")))}, gc, sc, wrc],
@@ -1604,23 +1618,23 @@ function viewMatchup(r, c){
   cards.append(card(`${nameB} win rate`, wrBig(wb, "m-wr2"), w.ok ? `95% CI ${pct(wb.lo)}–${pct(wb.hi)} · the same ${grp(w.n)} games` : null));
   cards.append(card("Any roles, opposite teams", any.ok ? pct(any.v) : h("span", {class: "tl"}, "too little data"), any.ok ? `${nameA}'s win rate · 95% CI ${pct(any.lo)}–${pct(any.hi)} · ${grp(any.n)} games` : null));
   let lede = null;
-  if (S.pro){
+  if (S.hasWpa){
     const T = vsWpa(S, i, j, ro, 0), L = vsWpa(S, i, j, ro, 1), Tm = vsWpa(S, i, j, ro, 2);
     const neg = x => x.ok ? {...x, v: -x.v, lo: -x.hi, hi: -x.lo} : x;
     const XP = S.phases.slice(3).map((ph, k) => [ph[0].toUpperCase() + ph.slice(1), vsWpa(S, i, j, ro, 3 + k)]);
-    cards.append(card(`${nameA} WPA`, T.ok ? h("span", {class: clsCI(T.lo, T.hi, 0), id: "m-wpa"}, pp(T.v)) : h("span", {class: "tl"}, "too little data"), T.ok ? `per game · ${grp(T.n)} games with 15-min data` : null, splitBars([...XP, ["Lane", L], ["Team", Tm]])));
+    cards.append(card(`${nameA} WPA`, T.ok ? h("span", {class: clsCI(T.lo, T.hi, 0), id: "m-wpa"}, pp(T.v)) : h("span", {class: "tl"}, "too little data"), T.ok ? `per game · ${grp(T.n)} games with ${S.laneEnd}-min data` : null, splitBars([...XP, ["Lane", L], ["Team", Tm]])));
     cards.append(card(`${nameB} WPA`, T.ok ? pp(-T.v) : h("span", {class: "tl"}, "–"), T.ok ? "exactly the opposite: lane opponents' WPA cancels" : null, splitBars([...XP.map(([a, x]) => [a, neg(x)]), ["Lane", neg(L)], ["Team", neg(Tm)]])));
     if (L.ok){
       const base1 = avgOf(S, "wpaLane", i, ro);
       const noise = L.lo <= 0 && L.hi >= 0;
-      lede = `In ${grp(L.n)} pro games with ${nameA} against ${nameB}${ro != null ? " in " + ROLE_L[ro].toLowerCase() : " in the same lane"}, ${nameA}'s lane-phase WPA averaged ${pp(L.v, 1)} (95% CI ${sgn(L.lo, 1)} to ${sgn(L.hi, 1)}): ${noise ? "within noise" : L.lo > 0 ? nameA + " wins this lane" : nameB + " wins this lane"}` +
+      lede = `In ${grp(L.n)} ${S.pro ? "pro" : "solo-queue"} games with ${nameA} against ${nameB}${ro != null ? " in " + ROLE_L[ro].toLowerCase() : " in the same lane"}, ${nameA}'s lane-phase WPA averaged ${pp(L.v, 1)} (95% CI ${sgn(L.lo, 1)} to ${sgn(L.hi, 1)}): ${noise ? "within noise" : L.lo > 0 ? nameA + " wins this lane" : nameB + " wins this lane"}` +
         (base1.ok ? `; ${nameA}'s usual lane WPA${ro != null ? " as " + ROLE_L[ro] : ""} is ${pp(base1.v, 1)}` : "") +
-        (Tm.ok ? `. After 15 minutes: ${pp(Tm.v, 1)}${Tm.lo <= 0 && Tm.hi >= 0 ? " (within noise)" : ""}.` : ".");
+        (Tm.ok ? `. After ${S.laneEnd} minutes: ${pp(Tm.v, 1)}${Tm.lo <= 0 && Tm.hi >= 0 ? " (within noise)" : ""}.` : ".");
     }
-  } else if (w.ok) lede = `${nameA} won ${grp(w.k)} of ${grp(w.n)} solo-queue games against ${nameB} in the same lane: ${pct(w.v)} (95% CI ${pct(w.lo)}–${pct(w.hi)}), ${w.lo > 0.5 ? "favouring " + nameA : w.hi < 0.5 ? "favouring " + nameB : "not distinguishable from even"}. Lane-phase WPA needs minute data (pro only).`;
+  } else if (w.ok) lede = `${nameA} won ${grp(w.k)} of ${grp(w.n)} solo-queue games against ${nameB} in the same lane: ${pct(w.v)} (95% CI ${pct(w.lo)}–${pct(w.hi)}), ${w.lo > 0.5 ? "favouring " + nameA : w.hi < 0.5 ? "favouring " + nameB : "not distinguishable from even"}. `;
   if (lede) main.append(h("p", {class: "lede", id: "m-lede"}, lede));
   main.append(cards);
-  main.append(h("p", {class: "note"}, "A matchup rate isn't a counter by itself: it also carries who picks each champion and the rest of the draft." + (S.pro ? " Pro WPA splits the team's win probability: 0–15 min by the players' gold, XP and kill differences vs their lane opponents, 15 min–end equally." : "")));
+  main.append(h("p", {class: "note"}, "A matchup rate isn't a counter by itself: it also carries who picks each champion and the rest of the draft." + (S.pro ? " Pro WPA splits the team's win probability: 0–15 min by the players' gold, XP and kill differences vs their lane opponents, 15 min–end equally." : S.hasWpa ? " Solo WPA splits the team's win probability: 0–14 min by the players' gold, XP, kill, CS and completed-item differences vs their lane opponents, 14 min–end equally." : "")));
 }
 
 /* ---------- 4. methods ---------- */
@@ -1644,10 +1658,17 @@ function viewAbout(r, c){
   items.push(h("h2", {}, "Items, runes and summoner spells"), h("ul", {},
     h("li", {}, "Solo queue only: Oracle's Elixir (pro) has no item, rune or summoner-spell data, so the Builds and Runes tabs show a notice in pro mode."),
     h("li", {}, "The same ranked solo games as the tier list, per champion and role (Riot's team position; 100+ games in the role). Items are the final inventory at the end of the game: completed items (2000+ gold) and boots. Core builds are sets of completed items that were all in the final inventory; the order isn't known."),
-    h("li", {}, "“Δ vs without” compares an item's win rate with the champion's games that ended with the same number of completed items, so longer games don't inflate it. Item and rune impact will be shown as WPA (win probability added) from match timelines."),
-    h("li", {}, "Rows under 30 games aren't stored; rows under 100 are greyed. Purchase order, first item, starting items, item timing and item / rune WPA need match timelines, which are still downloading.")));
+    h("li", {}, "“Δ vs without” compares an item's win rate with the champion's games that ended with the same number of completed items, so longer games don't inflate it. Item WPA (from match timelines) is the team's win probability change around the item's completion, vs similar game states; rune WPA compares a keystone's players with the champion's average (observational)."),
+    h("li", {}, "Rows under 30 games aren't stored; rows under 100 are greyed. Starting items aren't shown.")));
   items.push(h("h2", {}, "Win probability added (WPA)"), h("p", {}, "WPA follows the team's win probability through the game: the side prior before the game, the draft model's estimate after champion select (equal team strength), the in-game model's estimate at 15 minutes, then the result (1 or 0). Each change is split among the five players: the draft change by their champions' draft terms, the change to 15 minutes by Shapley values of their gold, XP, kill and CS differences against their lane opponent (lane WPA), and the change from 15 minutes to the end equally (team WPA). Total = draft + lane + team, in percentage points per game. Lane opponents' WPA is exactly opposite, so a matchup's WPA is zero-sum."),
-    h("p", {}, "Team strength is never credited to a pick or a lane: the draft estimate is at equal ratings, and the 15-minute point leaves out the model's team-rating term, so the rating's effect lands in team WPA. WPA is pro only: it needs minute-by-minute data, which the solo-queue dataset doesn't have yet."));
+    h("p", {}, "Team strength is never credited to a pick or a lane: the draft estimate is at equal ratings, and the 15-minute point leaves out the model's team-rating term, so the rating's effect lands in team WPA."),
+    h("p", {id: "solo-wpa-method"}, "Solo queue has its own WPA (a separate model, never mixed with pro): from Riot match timelines, the solo draft model's estimate (cross-fitted: each game scored by the model fitted on the other four fifths of games) → the solo in-game model at 14:00 → the result. Lane WPA splits the draft → 14 min change by the players' gold, XP, kill, CS and completed-item differences against their lane opponent; objectives count for the five equally. There is no team rating in solo queue."));
+  const WS = ST.winprob && ST.winprob.solo;
+  if (WS && WS.valid){
+    const R = WS.valid.res, row = (k, lab) => R[k] ? [lab, String(R[k].all.logloss), String(R[k].all.brier), `${(100 * R[k].all.ece).toFixed(1)} pp`, R[k].all.auc.toFixed(3), ["10", "20", "30"].map(t => R[k][t] ? R[k][t].logloss : "–").join(" · ")] : null;
+    items.push(h("h2", {}, "In-game model (solo queue)"), h("p", {}, `One logistic regression per game minute (1–${WS.maxMinute}) on ${grp(WS.games)} ranked solo games with a Riot timeline. At each minute it uses only what is known then: gold and XP by position, kills, CS, champions dead on the clock, turrets by tier, plates, inhibitors (and whether they are down), drakes by type, soul point and soul, elder and its buff, void grubs, Rift Herald, Baron and its buff, completed items, the cross-fitted draft logit and the comps' timeline scaling (each champion's team out- or under-performing the state-based win probability as minutes pass). Held out: the last 15% of games by date (${grp(WS.valid.test)} games; minutes 3+ pooled).`),
+      dl([["Model", "Log loss", "Brier", "Calibration error", "AUC", "Log loss at 10 · 20 · 30 min"], ...[["full", "full model"], ["team", "team totals (the language's winprob)"], ["proStyle", "pro-style features"], ["gold", "gold only"]].map(([k, l]) => row(k, l)).filter(Boolean)]));
+  }
   if (W && W.valid && W.valid.t){
     const V = W.valid, F = k => V.t[k] && (V.t[k]["full model"] || V.t[k].model), O = k => V.t[k] && (V.t[k]["old (gold, XP, kills)"] || null);
     const isNew = W.times.some(t => V.t[t] && V.t[t]["full model"]);   // the older stats.json: one "model" row per minute, gold / XP / kills only

@@ -8247,7 +8247,7 @@ const BREAK={}, CONTINUE={};
    names one of these functions and hands it over with setStats(); tools/rl.js passes it to createRiftLogic. */
 let STATS = STATS0 || null, SX = null;
 function setStats(d){ STATS = d || null; SX = null; }
-const STAT_FNS = ["winrate","pickrate","banrate","presence","games","stat","matchups","topPicks","wpa","winprob","draftwp","pickwpa","laneDiff","similar"];
+const STAT_FNS = ["winrate","pickrate","banrate","presence","games","stat","matchups","topPicks","wpa","winprob","draftwp","pickwpa","laneDiff","similar","itemWpa","eventWpa","wpLost"];
 const STAT_ROLE = {top:0, jungle:1, jng:1, jg:1, mid:2, middle:2, bot:3, bottom:3, adc:3, support:4, sup:4, supp:4, utility:4};
 const STAT_ROLES = ["top","jungle","mid","bot","support"];
 /* stat() names: [description, unit, signed]. Pro only: the @10/@15 differences (Oracle's Elixir: against the same-position opponent) */
@@ -8462,15 +8462,14 @@ function statMatchups(a, named){
   const by = named.by==null ? "winrate" : String(named.by);
   if (by!=="winrate" && by!=="wpa") throw new Error(`matchups(…, by: …) is "winrate" (default) or "wpa" (pro, same lane)`);
   if (named.phase!=null && by!=="wpa") throw new Error(`matchups(…, phase: …) goes with by: "wpa"`);
-  if (by==="wpa" && !o.pro) throw new Error(WPA_SOLO("matchups(…, by: \"wpa\")"));
   const phase = by==="wpa" ? wpaPhase(named) : null;
   const saved=TR; TR=null;
   try { STATS.champs.forEach((id, j)=>{ if (j===A.i) return; const C={id, i:j, name:KB.champs[id].name}, s = by==="wpa" ? statWpaOf(A, o, C, phase, "matchups") : statWin(A, o, {rel:"vs", c:C}, "matchups"); if (s.enough && s.n>=minG) out.push({...s, label:`vs ${KB.champs[id].name}`}); }); }
   finally { TR=saved; }
   out.sort((x, y)=>y.value-x.value || y.n-x.n);
   const lane = o.lane || o.role!=null || by==="wpa", where = lane ? ` in the same lane${o.role!=null ? " ("+STAT_ROLES[o.role]+")" : ""}` : " (any roles)";
-  line(`${o.S.name}: ${A.name} against ${out.length} champions${where} with ${minG}+ games, ${by==="wpa" ? `by win probability added${WPA_PHASE[phase][2]}, ` : ""}best first`);
-  if (by==="wpa") wpaNote();
+  line(`${o.S.name}: ${A.name} against ${out.length} champions${where} with ${minG}+ games, ${by==="wpa" ? `by win probability added${wpaPtxt(o, WPA_PHASE[phase][2])}, ` : ""}best first`);
+  if (by==="wpa") wpaNote(o.pro);
   const show1 = s => line(by==="wpa" ? `  ${showStat({...s, label:s.label.slice(3)})}` : `  ${s.label.slice(3)}: ${spct(s.value)}% (n ${grp(s.n)}; 95% CI ${spct(s.low)}–${spct(s.high)}%)`);
   if (out.length<=12) out.forEach(show1); else { out.slice(0, 6).forEach(show1); line(`  … ${out.length-12} more …`); out.slice(-6).forEach(show1); }
   budgetValues(out.length);
@@ -8484,7 +8483,7 @@ function statTop(a, named){
   const by = named.by==null ? "pickrate" : String(named.by);
   if (!["pickrate","winrate","banrate","presence","wpa"].includes(by)) throw new Error(`by: is "pickrate" (default), "winrate", "banrate", "presence" or "wpa" (win probability added, pro); "draftwpa" ranks picks for a draft (blue:, red:, side:)`);
   if (named.phase!=null && by!=="wpa") throw new Error(`topPicks(…, phase: …) goes with by: "wpa"`);
-  if (by==="wpa"){ if (!o.pro) throw new Error(WPA_SOLO(`topPicks(…, by: "wpa")`)); if (o.patch!=null || o.league!=null || o.length!=null) throw new Error(`topPicks(…, by: "wpa") takes role: only (WPA is stored per champion and role)`); }
+  if (by==="wpa"){ if (o.patch!=null || o.league!=null || o.length!=null) throw new Error(`topPicks(…, by: "wpa") takes role: only (WPA is stored per champion and role)`); }
   const phase = by==="wpa" ? wpaPhase(named) : null;
   const n = named.n==null ? 10 : named.n;
   if (!(typeof n==="number" && n>=1 && n<=200)) throw new Error("n: is how many champions to list (1–200)");
@@ -8497,8 +8496,8 @@ function statTop(a, named){
   finally { TR=saved; }
   out.sort((x, y)=>y.value-x.value || y.n-x.n);
   const top=out.slice(0, Math.round(n));
-  line(`${o.S.name}: top ${top.length} by ${by==="wpa" ? `win probability added${WPA_PHASE[phase][2]}` : by}${sliceText(o)}${by==="winrate" || by==="wpa" ? ` (champions with ${minG}+ games)` : ""}`);
-  if (by==="wpa") wpaNote();
+  line(`${o.S.name}: top ${top.length} by ${by==="wpa" ? `win probability added${wpaPtxt(o, WPA_PHASE[phase][2])}` : by}${sliceText(o)}${by==="winrate" || by==="wpa" ? ` (champions with ${minG}+ games)` : ""}`);
+  if (by==="wpa") wpaNote(o.pro);
   top.forEach((s, j)=>line(by==="wpa" ? `  ${j+1}. ${showStat(s)}` : `  ${j+1}. ${s.label}: ${spct(s.value)}% (${s.countWord ? `${grp(s.k)} ${s.countWord}` : `n ${grp(s.n)}`}; 95% CI ${spct(s.low)}–${spct(s.high)}%)`));
   budgetValues(top.length);
   return {t:"list", items:top};
@@ -8510,20 +8509,20 @@ function statTop(a, named){
    split equally (it carries team strength). winprob() picks a variant from its inputs: gold / state (the old models, when no
    pre-game input, CS or per-position leads are given), goldPre / statePre / rolePre (with rating, draft logit, comp scaling;
    missing pre-game terms count as even). STATS.winprob.solo is reserved for the solo-queue timeline model (its own features). */
-const WPA_SOLO = fn => `${fn}() is pro play only (add pro: true): solo queue needs timelines for this; not available yet`;
 const WPA_PHASE = {total:["wpa", 0, ""], draft:["wpaDraft", 3, ", draft phase (side prior → draft model)"], lane:["wpaLane", 1, ", lane phase (draft → 15 min)"], team:["wpaTeam", 2, ", team phase (15 min–end)"]};
-function wpaNote(){ if (TR) TR.notes.add("WPA (win probability added, percentage points per game): the team's win probability goes side prior → draft (the pro draft model at equal team ratings, fitted on earlier years) → 15 min (the in-game model without its team-rating term: gold and XP by position, kills, CS, the draft logit and comp scaling) → result; the draft change is split among the five players by Shapley values of their champions' draft terms (strength, lane matchup vs the opponent, synergy and comp-profile shares), the draft → 15 min change by Shapley values of their gold, XP, kill and CS differences vs the lane opponent (lane), the 15 min → end change equally (team; it includes team strength, so ratings are never credited to a champion's draft or lane). Team strength still reaches the total through the result, as it does win rate"); }
+const wpaPtxt = (o, t) => o.pro ? t : t.replace("15 min", "14 min");
+function wpaNote(pro){ if (pro===false){ if (TR) TR.notes.add("solo WPA (win probability added, percentage points per game; ranked solo 16.x games with a Riot timeline, src/winprob_solo.py): the team's win probability goes side prior → draft (the solo draft model, cross-fitted: each game scored by the model fitted on the other 4/5 of games) → 14:00 (the solo in-game model: gold and XP by position, kills, CS, deaths on the clock, turrets, drakes, soul, grubs, herald, baron, completed items, the draft logit and timeline scaling) → result; the draft change is split among the five players by Shapley values of their champions' draft terms, the draft → 14 min change by Shapley values of their gold, XP, kill, CS and completed-item differences vs the lane opponent (objectives count for the five equally), the 14 min → end change equally (team)"); return; }
+  if (TR) TR.notes.add("WPA (win probability added, percentage points per game): the team's win probability goes side prior → draft (the pro draft model at equal team ratings, fitted on earlier years) → 15 min (the in-game model without its team-rating term: gold and XP by position, kills, CS, the draft logit and comp scaling) → result; the draft change is split among the five players by Shapley values of their champions' draft terms (strength, lane matchup vs the opponent, synergy and comp-profile shares), the draft → 15 min change by Shapley values of their gold, XP, kill and CS differences vs the lane opponent (lane), the 15 min → end change equally (team; it includes team strength, so ratings are never credited to a champion's draft or lane). Team strength still reaches the total through the result, as it does win rate"); }
 function wpaPhase(named){ const p = named.phase==null ? "total" : String(named.phase).toLowerCase(); if (!WPA_PHASE[p]) throw new Error(`phase: is "total" (default), "draft" (the picks: side prior → draft model), "lane" (draft → 15 min) or "team" (15 min–end)`); return p; }
 function statWpaOf(A, o, C, phase, fn){
-  if (!o.pro) throw new Error(WPA_SOLO(fn));
-  const S=o.S, D=S.D, [key, j, ptxt]=WPA_PHASE[phase];
+  const S=o.S, D=S.D, [key, j, ptxt0]=WPA_PHASE[phase], ptxt=wpaPtxt(o, ptxt0), mins = o.pro ? 15 : 14;
   if (!S.avg[key]) throw new Error(`${S.name} has no WPA data: rebuild web/stats.json (src/stats_export.py)`);
   const where = C ? ` vs ${C.name} (same lane${o.role!=null ? ", "+STAT_ROLES[o.role] : ""})` : sliceText(o);
   const base={t:"stat", kind:"mean", fn, key, what:`${A.name} win probability added${ptxt}${where}`, unit:"pp", signed:true, min:D.min, source:S.source, sname:S.name, champ:A.id, other:C ? C.id : null, label:null};
   let n=0, mean=0, sd=0;
   if (!C){
     const r=o.role ?? -1, e=S.avg[key].get(A.i+"|"+r), games = o.role!=null ? D.role[A.i][2*o.role] : D.gw[A.i][0];
-    if (!e){ const why = games>=D.min ? `too little data: fewer than ${D.min} of ${A.name}'s ${grp(games)} games${sliceText(o)} in ${S.name} have 15-minute data` : `too little data: ${grp(games)} game${games===1?"":"s"}${sliceText(o)} (fewer than ${D.min}) in ${S.name}`;
+    if (!e){ const why = games>=D.min ? `too little data: fewer than ${D.min} of ${A.name}'s ${grp(games)} games${sliceText(o)} in ${S.name} have ${mins}-minute data` : `too little data: ${grp(games)} game${games===1?"":"s"}${sliceText(o)} (fewer than ${D.min}) in ${S.name}`;
       line(`${S.name}: ${A.name}${sliceText(o)}: ${why}`); return {...base, value:NaN, n:games, enough:false, why}; }
     ({n, mean, sd}=e);
   } else {
@@ -8532,28 +8531,27 @@ function statWpaOf(A, o, C, phase, fn){
     let s1=0, s2=0;
     for (let r=0; r<5; r++){ if (o.role!=null && r!==o.role) continue; const e=S.wpaPairs.get(`${x}|${y}|${r}`); if (!e) continue;
       const k=e[0], m=sg*e[1+2*j], d=e[2+2*j]; n+=k; s1+=k*m; s2+=(k-1)*d*d+k*m*m; parts.push(`${STAT_ROLES[r]} ${grp(k)}`); }
-    if (!n){ const why=`too little data: fewer than ${D.min} games (${S.name} doesn't store pairs under ${D.min} games)`; line(`${S.name}: ${A.name} and ${C.name} met in the same lane with 15-minute data in fewer than ${D.min} games (not stored)`);
+    if (!n){ const why=`too little data: fewer than ${D.min} games (${S.name} doesn't store pairs under ${D.min} games)`; line(`${S.name}: ${A.name} and ${C.name} met in the same lane with ${mins}-minute data in fewer than ${D.min} games (not stored)`);
       return {...base, value:NaN, n:0, enough:false, why}; }
     mean=s1/n; sd = n>1 ? Math.sqrt(Math.max(0, (s2-n*mean*mean)/(n-1))) : 0;
     if (parts.length>1) line(`${S.name}: ${A.name} vs ${C.name}, same lane: ${parts.join(", ")} games (roles pooled)`);
   }
   const h=1.96*sd/Math.sqrt(n), sgn = x => (x>0 ? "+" : "")+fmt(x);
   line(`${S.name}: ${A.name} win probability added${ptxt}${where}: mean ${sgn(mean)} pp per game over ${grp(n)} games (SD ${fmt(sd)} pp; 95% CI mean ± 1.96 SD / √n)`);
-  wpaNote();
+  wpaNote(o.pro);
   return {...base, value:mean, n, sd, low:mean-h, high:mean+h, enough:true, why:null};
 }
 function statWpa(a, named){
   named=named||{};
   if (a.length!==1) throw new Error("wpa(champion, phase:, role:, vs:, pro: true, year:) takes one champion; name the lane opponent with vs:");
   const o=statOpts(named, "wpa", ["phase","role","vs","pro","year"]), phase=wpaPhase(named);
-  if (!o.pro) throw new Error(WPA_SOLO("wpa"));
   return statWpaOf(statChamp(a[0], "wpa", "the first argument"), o, named.vs!=null ? statChamp(named.vs, "wpa", "vs:") : null, phase, "wpa");
 }
 function statWinprob(a, named){
   named=named||{};
+  if (named.pro!=null && !truthy(named.pro)){ if (a.length) throw new Error("winprob(pro: false, goldDiff:, at:, …) takes options only"); return statWinprobSolo(named); }
   checkNamed(named, ["goldDiff","xpDiff","killDiff","csDiff","roleGold","roleXp","at","side","pro","blue","red","byRole","blueRating","redRating","rating"], "winprob(…)");
   if (a.length) throw new Error("winprob(goldDiff:, at:, xpDiff:, killDiff:, csDiff:, side:, blue:, red:, blueRating:, redRating:) takes options only, e.g. winprob(goldDiff: 3000, at: 20)");
-  if (named.pro!=null && !truthy(named.pro)) throw new Error(WPA_SOLO("winprob"));
   statsData(); const W = STATS.winprob && STATS.winprob.pro;
   if (!W || !W.variants) throw new Error("web/stats.json has no pro win probability model: rebuild it (src/stats_export.py)");
   const at=named.at, T=W.times;
@@ -8614,6 +8612,124 @@ function statWinprob(a, named){
     if (vname==="gold") TR.notes.add("only goldDiff given: the gold-only model (its gold weight includes the XP and kills that usually come with gold). Give xpDiff: / killDiff: for the full model, blue:/red: and ratings for the pre-game terms");
     if (pre) TR.notes.add(`pre-game terms not given count as even: ${[!hasComp ? "a typical draft and equal comp scaling" : null, !hasRating ? "equal team ratings" : null].filter(Boolean).join(", ") || "none missing"}`); }
   return p;
+}
+/* ---- solo queue in-game model (src/winprob_solo.py -> STATS.winprob.solo; a separate model from pro, fitted on Riot
+   timelines): winprob(pro: false, goldDiff:, at:, towers:, dragons:, barons:, …), itemWpa(item, champ:, role:),
+   eventWpa(type, at:, by:), wpLost(champion, role:, phase:). Coefficients per game minute 1..40 (later minutes use 40;
+   fractional minutes interpolate). Variants: "gold" (goldDiff only) and "team" (team totals + objectives + draft + scaling). */
+const SOLO_WP_ARGS = {towers:"towers", plates:"plates", inhibs:"inhib", inhibsDown:"inhibDown", dragons:"dragons", soulPoint:"soulPoint", soul:"soul",
+  elders:"elder", elderActive:"elderActive", grubs:"grubs", heralds:"herald", barons:"baron", baronActive:"baronActive", items:"legend", deadDiff:"alive"};
+function soloWP(){ statsData(); const W=STATS.winprob && STATS.winprob.solo; if (!W || !W.variants) throw new Error("web/stats.json has no solo win probability model: rebuild it (src/stats_export.py)"); return W; }
+function soloCoef(Vm, at){ const M=Vm.t.length-1, a=Math.min(at, M), i=Math.floor(a), j=Math.min(i+1, M), l=a-i; return Vm.t[i].map((v, k)=>(1-l)*v+l*Vm.t[j][k]); }
+function statWinprobSolo(named){
+  checkNamed(named, ["goldDiff","xpDiff","killDiff","at","side","pro","blue","red","byRole", ...Object.keys(SOLO_WP_ARGS)], "winprob(pro: false, …)");
+  const W=soloWP(), at=named.at, M=W.maxMinute;
+  if (typeof at!=="number" || !Number.isFinite(at) || at<0) throw new Error(`at: is the game minute: 0 (the side prior) or later (the solo model has coefficients for every minute 1 to ${M}; later minutes use ${M})`);
+  const num = k => { const v=named[k]; if (v==null) return 0; if (typeof v!=="number" || !Number.isFinite(v)) throw new Error(`${k}: is a number (the team's lead; negative when behind)`); return v; };
+  const sd = named.side==null ? "neutral" : String(named.side).toLowerCase(), s = {blue:1, red:-1, neutral:0}[sd];
+  if (s==null) throw new Error(`side: is "blue", "red" or "neutral" (default: no side advantage)`);
+  const objs = Object.keys(SOLO_WP_ARGS).filter(k=>named[k]!=null), hasComp = named.blue!=null || named.red!=null;
+  if (hasComp && s===0) throw new Error(`winprob(pro: false): with blue:/red:, say whose leads these are with side: "blue" or "red"`);
+  if (at===0){ if (named.goldDiff!=null || named.xpDiff!=null || named.killDiff!=null || objs.length || hasComp) throw new Error("winprob(at: 0, pro: false) is the side prior before the game: no leads yet (for the pre-game chance of two drafts use draftwp())");
+    const p=1/(1+Math.exp(-s*W.prior)); line(`win probability at 0 min (side prior, ranked solo 16.x): ${sd} side → ${spct(p)}%`); return p; }
+  const vname = named.xpDiff==null && named.killDiff==null && !objs.length && !hasComp ? "gold" : "team";
+  const Vm=W.variants[vname], c=soloCoef(Vm, at), x={gold:num("goldDiff")/1000, xp:num("xpDiff")/1000, kills:num("killDiff")};
+  objs.forEach(k=>{ x[SOLO_WP_ARGS[k]]=num(k); });
+  let draftB=0, scale=0; const parts=[];
+  if (vname==="team"){
+    const X=dwpModel(false); draftB=X.M.b0;
+    if (hasComp){ const byRole = named.byRole!=null && truthy(named.byRole);
+      const B=dwpTeam(X, named.blue, byRole, "winprob", "blue"), R=dwpTeam(X, named.red, byRole, "winprob", "red");
+      for (const Tm of [B, R]) for (let r=0; r<5; r++) if (Tm[r]>=0 && Tm.filter(y=>y===Tm[r]).length>1) throw new Error(`winprob(): a champion appears twice on one side`);
+      draftB = dwpLogit(X, B, R, 0);
+      const sc=W.scaling.champs, S = Tm => Tm.reduce((t, k)=>t+(k>=0 ? sc[k]||0 : 0), 0); scale=S(B)-S(R);
+      parts.push(`blue ${dwpShow(X, B)} vs red ${dwpShow(X, R)}: solo draft logit ${draftB>=0?"+":""}${fmt(draftB)}, comp scaling ${scale>=0?"+":""}${fmt(scale)} (win-rate slope per 10 min of game length, blue's view)`); }
+  }
+  const sp = s<0 ? -1 : 1;
+  let z = s*c[0];
+  Vm.feats.forEach((f, j)=>{ const v = f==="draft" ? (hasComp ? sp : s)*draftB : f==="scaling" ? sp*scale : (x[f]||0); z += c[j+1]*v; });
+  const p=1/(1+Math.exp(-z));
+  const lead = [`gold ${x.gold>0?"+":""}${grp(1000*x.gold)}`].concat(vname==="team" ? [named.xpDiff!=null ? `XP ${x.xp>0?"+":""}${grp(1000*x.xp)}` : null, named.killDiff!=null ? `kills ${x.kills>0?"+":""}${fmt(x.kills)}` : null, ...objs.map(k=>`${k} ${named[k]>0?"+":""}${fmt(named[k])}`)] : []).filter(Boolean).join(", ");
+  line(`solo win probability at ${fmt(at)} min (${vname==="gold" ? "gold-only" : "team state"} model, ranked solo 16.x timelines${at>M ? `, minute ${M} coefficients` : ""}): ${lead}${parts.length ? "; "+parts.join("; ") : ""}, ${sd} side → ${spct(p)}%`);
+  if (TR){ const V=W.valid && W.valid.res, F=V && V.team && V.team.all, G=V && V.gold && V.gold.all;
+    TR.notes.add(`solo win probability model (src/winprob_solo.py): logistic regression per game minute on ${grp(W.games)} ranked solo 16.x games with Riot timelines${F ? `; held-out (last 15% by date) log loss ${F.logloss}, AUC ${F.auc}, calibration error ${F.ece} (team-state model) vs gold only ${G.logloss}` : ""}. Not the pro model: pro uses Oracle's Elixir snapshots without objectives`);
+    if (vname==="gold") TR.notes.add("only goldDiff given: the gold-only solo model (its gold weight includes what usually comes with gold). Give xpDiff:, killDiff:, towers:, dragons:, barons: … for the team-state model");
+    else TR.notes.add(`team-state inputs not given count as even (0 lead)${hasComp ? "" : "; no blue:/red: → a typical draft and equal scaling"}`); }
+  return p;
+}
+const poolMsd = parts => { let n=0, s1=0, s2=0; for (const [k, m, d] of parts){ n+=k; s1+=k*m; s2+=(k-1)*d*d+k*m*m; } const mean = n ? s1/n : NaN; return {n, mean, sd: n>1 ? Math.sqrt(Math.max(0, (s2-n*mean*mean)/(n-1))) : 0}; };
+function soloStat(fn, what, n, mean, sd, min, extra){
+  const h=1.96*sd/Math.sqrt(n), W=soloWP(), source=`ranked solo 16.x timelines: ${grp(W.games)} games, ${W.dates[0]} to ${W.dates[1]}`;
+  if (!(n>=min)) { const why=`too little data: ${grp(n||0)} (fewer than ${min})`; line(`ranked solo queue: ${what}: ${why}`); return {t:"stat", kind:"mean", fn, what, unit:"pp", signed:true, min, source, sname:"ranked solo queue 16.x", value:NaN, n:n||0, enough:false, why, label:null, ...extra}; }
+  return {t:"stat", kind:"mean", fn, what, unit:"pp", signed:true, min, source, sname:"ranked solo queue 16.x", value:mean, n, sd, low:mean-h, high:mean+h, enough:true, why:null, label:null, ...extra};
+}
+function statRoleOpt(named, fn){ if (named.role==null) return null; const r=STAT_ROLE[norm(named.role)]; if (r==null) throw new Error(`${fn}(): role: is "top", "jungle", "mid", "bot" or "support"`); return r; }
+function statItemWpa(a, named){
+  named=named||{}; checkNamed(named, ["champ","role","pro"], "itemWpa(…)");
+  if (named.pro!=null && truthy(named.pro)) throw new Error("itemWpa() is solo queue only: pro data (Oracle's Elixir) has no item purchases");
+  if (a.length!==1 || !(a[0] && a[0].t==="item")) throw new Error("itemWpa(item, champ:, role:) takes one item, e.g. itemWpa(InfinityEdge, champ: Jinx, role: \"bot\")");
+  const W=soloWP(), I=W.items, it=ITEMS[a[0].key], id=it.id, r=statRoleOpt(named, "itemWpa");
+  let e, where="";
+  if (named.champ!=null){
+    const C=statChamp(named.champ, "itemWpa", "champ:"), cr=I.champRole, parts=[];
+    for (let i=0; i<cr.length; i+=6) if (cr[i]===C.i && cr[i+2]===id && (r==null || cr[i+1]===r)) parts.push([cr[i+3], cr[i+4], cr[i+5]]);
+    e=poolMsd(parts); where=` on ${C.name}${r!=null ? " "+STAT_ROLES[r] : ""}`;
+  } else { if (r!=null) throw new Error("itemWpa(): role: goes with champ: (item WPA is stored per item, and per champion and role)"); const q=I.all[String(id)]; e = q ? {n:q[0], mean:q[1], sd:q[2]} : {n:0}; }
+  const what=`${it.name}${where} item WPA (team win probability, last minute before completion → ${I.window} min after, vs states at the same minute and win probability)`;
+  const st=soloStat("itemWpa", what, e.n, e.mean, e.sd, 30, {item:id, nWord:"completions"});
+  if (st.enough) line(`ranked solo queue: ${it.name}${where}: item WPA ${st.value>0?"+":""}${fmt(st.value)} pp per completion over ${grp(st.n)} completions (SD ${fmt(st.sd)} pp; 95% CI ${fmt(st.low)} to ${fmt(st.high)} pp)`);
+  if (TR) TR.notes.add(`item WPA: ${I.note}. Observational: who buys an item, and when, is not random`);
+  return st;
+}
+const EVENT_ALIAS = {baron:"baron", barons:"baron", elder:"elder", herald:"herald", grubs:"grubs", kill:"kill", death:"death", dragon:"dragon", drake:"dragon", soul:"soul", plate:"plate", inhib:"inhib", inhibitor:"inhib",
+  tower:"towerOuter", outer:"towerOuter", toweroutter:"towerOuter", towerouter:"towerOuter", towerinner:"towerInner", inner:"towerInner", towerbase:"towerBase", base:"towerBase", towernexus:"towerNexus", nexus:"towerNexus",
+  infernal:"dragFire", fire:"dragFire", ocean:"dragWater", water:"dragWater", mountain:"dragEarth", earth:"dragEarth", cloud:"dragAir", air:"dragAir", hextech:"dragHextech", chemtech:"dragChemtech"};
+function statEventWpa(a, named){
+  named=named||{}; checkNamed(named, ["at","by","role","pro"], "eventWpa(…)");
+  if (named.pro!=null && truthy(named.pro)) throw new Error("eventWpa() is solo queue only (the pro data has no event times)");
+  if (a.length!==1 || typeof a[0]!=="string") throw new Error(`eventWpa(type, at:, by:) takes one event type as a string: "baron", "elder", "herald", "grubs", "dragon" (or "infernal", "ocean", "mountain", "cloud", "hextech", "chemtech"), "soul", "tower" / "inner" / "base" / "nexus", "inhib", "plate", "kill", "death" (role: for whose)`);
+  const W=soloWP(), E=W.events, k0=EVENT_ALIAS[norm(a[0])];
+  if (!k0) throw new Error(`eventWpa(): unknown event "${a[0]}"; one of baron, elder, herald, grubs, dragon, infernal, ocean, mountain, cloud, hextech, chemtech, soul, tower, inner, base, nexus, inhib, plate, kill, death`);
+  const r=statRoleOpt(named, "eventWpa");
+  if (r!=null && k0!=="death") throw new Error(`eventWpa(): role: goes with "death"`);
+  const key = k0==="death" && r!=null ? "death:"+STAT_ROLES[r] : k0, by = named.by==null ? "swing" : String(named.by).toLowerCase();
+  if (by!=="direct" && by!=="swing") throw new Error(`eventWpa(): by: is "swing" (default: the team's win probability change over the minute it happened, vs similar states: the whole play) or "direct" (the model's value of the event itself, gold and the rest of the state held fixed)`);
+  const at=named.at; if (typeof at!=="number" || !Number.isFinite(at) || at<1) throw new Error(`eventWpa(): at: is the game minute (1 to ${W.maxMinute})`);
+  const m=Math.min(Math.round(at), W.maxMinute), nm=a[0];
+  let v;
+  if (by==="direct"){
+    const keys = key==="dragon" ? Object.keys(E.direct).filter(q=>/^drag/.test(q)) : key==="death" ? Object.keys(E.direct).filter(q=>/^death:/.test(q)) : [key];
+    v = keys.reduce((t, q)=>t+E.direct[q][m], 0)/keys.length;
+    line(`ranked solo queue: ${nm}${r!=null ? " ("+STAT_ROLES[r]+")" : ""} at ${m} min, direct value: ${v>0?"+":""}${fmt(v)} pp of win probability for the team it happens to (the model's change with the event added to real states at that minute, gold held fixed; averaged over both teams' views)`);
+  } else {
+    const kill = key==="kill", rows=E.swing[kill ? "death" : key]||[], q=rows.find(x=>x[0]===m);   /* a kill = the other side of a death */
+    if (!q){ line(`ranked solo queue: ${nm} at ${m} min: too few events (under 30) for a swing (by: "direct" gives the model's value)`); return NaN; }
+    v = kill ? -q[2] : q[2];
+    line(`ranked solo queue: ${nm}${r!=null ? " ("+STAT_ROLES[r]+")" : ""} at ${m} min, swing: ${v>0?"+":""}${fmt(v)} pp over ${grp(q[1])} events (SD ${fmt(q[3])} pp; the team's win probability change over the minute it happened, minus the average for states at the same minute and win probability: the whole play, fight included)`);
+  }
+  if (TR) TR.notes.add(`event WPA (solo, src/winprob_solo.py): ${E.note}`);
+  return v;
+}
+function statWpLost(a, named){
+  named=named||{}; checkNamed(named, ["role","phase","pro"], "wpLost(…)");
+  if (named.pro!=null && truthy(named.pro)) throw new Error("wpLost() is solo queue only (it needs death times: Riot timelines)");
+  if (a.length!==1) throw new Error("wpLost(champion, role:, phase:) takes one champion");
+  const o=statOpts({role:named.role}, "wpLost", ["role"]), A=statChamp(a[0], "wpLost", "the champion"), ph = named.phase==null ? "total" : String(named.phase).toLowerCase();
+  if (ph!=="total" && ph!=="lane") throw new Error(`wpLost(): phase: is "total" (default) or "lane" (deaths before 14:00)`);
+  const key = ph==="lane" ? "wpLostLane" : "wpLost", S=o.S, M=S.avg[key];
+  if (!M) throw new Error("web/stats.json has no WP-lost data: rebuild it (src/stats_export.py)");
+  const r = o.role ?? -1, e=M.get(A.i+"|"+r);
+  // the role's (or everyone's) average: pooled over every champion's row
+  const parts=[]; for (const [kk, v] of M) if (kk.endsWith("|"+r) && kk!==A.i+"|"+r) parts.push([v.n, v.mean, v.sd]);
+  const ref=poolMsd(parts);
+  const what=`${A.name}${sliceText(o)} win probability lost to own deaths${ph==="lane" ? " before 14:00" : ""}`;
+  const st=soloStat("wpLost", what, e ? e.n : 0, e ? e.mean : NaN, e ? e.sd : 0, S.D.min, {champ:A.id, ref:ref.mean, signed:false});
+  if (st.enough){
+    const u=S.avg.untraded && S.avg.untraded.get(A.i+"|"+r), cv=S.avg.conv && S.avg.conv.get(A.i+"|"+r);
+    line(`ranked solo queue: ${what}: ${fmt(st.value)} pp per game over ${grp(st.n)} games (95% CI ${fmt(st.low)}–${fmt(st.high)}); ${r>=0 ? STAT_ROLES[r]+"s" : "all champions"} average ${fmt(ref.mean)} pp → ${st.value-ref.mean>0?"+":""}${fmt(st.value-ref.mean)} pp vs average${u ? `; untraded deaths ${fmt(u.mean)} per game` : ""}${cv ? `; conversion ${spct(cv.mean)}% of ${grp(cv.n)} games where the team reached 80%` : ""}`);
+  }
+  if (TR) TR.notes.add("WP lost (solo): for each of the player's deaths, the team's win probability drop over the minute it happened in (0 when the team gained), shared among the team's deaths in that minute, summed per game. Lower is better. Untraded = no enemy died within 15 s. Conversion = games won when the team's win probability reached 80%. Per-player numbers would need the player's own match history (Riot API)");
+  return st;
 }
 /* ---- draft win probability (src/draftwp.py -> stats.json "draftwp"): draftwp(blue:, red:, pro:), pickwpa(c, role:, side:, …),
    topPicks(by: "draftwpa", …). Two separate logistic models, pro and solo queue ("basically different games"):
@@ -8797,8 +8913,8 @@ function showStat(v){
   if (v.kind==="model") return pre+(v.unit==="pp" ? `${v.value>=0 ? "+" : ""}${fmt(v.value)} pp` : `${spct(v.value)}%`)+` (${v.note})`;
   if (v.kind==="rate") return pre+`${spct(v.value)}% (${v.countWord ? `${grp(v.k)} ${v.countWord} in ${grp(v.n)} games` : `n ${grp(v.n)}`}; 95% CI ${spct(v.low)}–${spct(v.high)}%)`;
   const f = x => v.unit==="%" ? spct(x)+"%" : (v.signed && x>0 ? "+" : "")+(Math.abs(x)>=10 ? String(Math.round(x)) : fmt(x)), u = v.unit && v.unit!=="%" ? " "+v.unit : "";
-  if (v.low==null) return pre+`${f(v.value)} (n ${grp(v.n)} games; ${v.note})`;
-  return pre+`${f(v.value)}${u} (n ${grp(v.n)} games; 95% CI ${f(v.low)} to ${f(v.high)}${u})`;
+  if (v.low==null) return pre+`${f(v.value)} (n ${grp(v.n)} ${v.nWord||"games"}; ${v.note})`;
+  return pre+`${f(v.value)}${u} (n ${grp(v.n)} ${v.nWord||"games"}; 95% CI ${f(v.low)} to ${f(v.high)}${u})`;
 }
 /* a Stat used as a number (comparisons, arithmetic, min/abs/…): its value, or an error when there is too little data */
 function statNum(v){ if (!v || v.t!=="stat") return v; if (!v.enough) throw new Error(`${v.what}: ${v.why}. Check .enough before using it as a number`); return v.value; }
@@ -9162,6 +9278,7 @@ function Interpreter(ast, emitRaw){
     pickrate:(a, named)=>statPick(a, named, "pickrate"), banrate:(a, named)=>statPick(a, named, "banrate"), presence:(a, named)=>statPick(a, named, "presence"),
     stat:(a, named)=>statMean(a, named), matchups:(a, named)=>statMatchups(a, named), topPicks:(a, named)=>statTop(a, named),
     wpa:(a, named)=>statWpa(a, named), winprob:(a, named)=>statWinprob(a, named),
+    itemWpa:(a, named)=>statItemWpa(a, named), eventWpa:(a, named)=>statEventWpa(a, named), wpLost:(a, named)=>statWpLost(a, named),
     draftwp:(a, named)=>statDraftwp(a, named), pickwpa:(a, named)=>statPickwpa(a, named), laneDiff:(a, named)=>statLaneDiff(a, named), similar:(a, named)=>statSimilar(a, named),
     range:(a)=>{ if (a.length<2 || a.length>3 || a.some(x=>typeof x!=="number")) throw new Error("range(from, to) or range(from, to, step): numbers from “from” to “to”, both included, e.g. range(0, 1200, 50)");
       return {t:"list", items:rangeList(a[0], a[1], a.length>2 ? a[2] : (a[1]>=a[0] ? 1 : -1))}; },
