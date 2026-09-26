@@ -60,9 +60,24 @@ button,input,select,textarea{font:inherit;color:inherit}
 #status{font:12px/1.3 var(--sans);color:var(--muted);min-height:1em}
 #status.ok{color:var(--ok)}
 
+/* eval bar: P(blue wins) from the draft model, chess-style */
+.evalbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:6px 10px;width:100%;max-width:1184px;margin-inline:auto;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.eb-lab{font:600 12.5px/1 var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+.eb-lab small{font:600 10.5px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;margin-right:6px}
+.eb-lab.B{color:var(--side1)}.eb-lab.R{color:var(--side2)}.eb-lab.R small{margin:0 0 0 6px}
+.eb-track{position:relative;height:12px;border-radius:6px;overflow:hidden;background:var(--side2)}
+.eb-fill{position:absolute;inset:0 auto 0 0;width:50%;background:var(--side1);transition:width .5s cubic-bezier(.3,.7,.3,1)}
+.eb-track::after{content:"";position:absolute;left:50%;top:-1px;bottom:-1px;width:2px;margin-left:-1px;background:var(--surface);opacity:.9}
+.eb-meta{display:flex;align-items:center;gap:8px;min-width:0;font:11px/1.2 var(--sans);color:var(--muted);white-space:nowrap}
+.eb-delta{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface-2);font:500 11px/1 var(--mono);color:var(--ink-2)}
+.eb-delta i{width:7px;height:7px;border-radius:50%;background:var(--side1)}.eb-delta i.R{background:var(--side2)}
+.eb-delta b{font-weight:600}
+@media (prefers-reduced-motion:reduce){.eb-fill{transition:none}}
+@media (max-width:640px){.evalbar{grid-template-columns:auto minmax(0,1fr) auto;padding:6px 8px}.eb-meta{grid-column:1/-1;justify-content:center}}
+
 /* board */
 /* one shared height: pick columns and the champion viewport end on the same line */
-.board{--bh:clamp(540px,calc(100vh - 118px),860px);display:grid;grid-template-columns:minmax(180px,230px) minmax(0,700px) minmax(180px,230px);justify-content:center;grid-template-areas:"blue mid red";gap:12px;height:var(--bh)}
+.board{--bh:clamp(540px,calc(100vh - 160px),860px);display:grid;grid-template-columns:minmax(180px,230px) minmax(0,700px) minmax(180px,230px);justify-content:center;grid-template-areas:"blue mid red";gap:12px;height:var(--bh)}
 .team{grid-area:blue;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;border-top:3px solid var(--side1)}
 .team .theme{font:500 11.5px/1.3 var(--sans);color:var(--ink-2);min-height:2.6em}
 .team .theme b{font-weight:600}
@@ -82,7 +97,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 .picks{flex:1;min-height:0;display:grid;grid-template-rows:repeat(5,minmax(0,1fr));gap:6px}
 .pslot{position:relative;display:grid;grid-template-columns:30px 44px minmax(0,1fr);align-items:center;gap:8px;min-height:50px;padding:5px;border-radius:7px;border:1px dashed var(--line-strong);background:var(--surface-2);cursor:pointer;text-align:left;user-select:none;-webkit-user-select:none}
 .pslot.filled{cursor:grab;touch-action:none}
-.pslot.dragging{opacity:.5;cursor:grabbing}
+.pslot.dragging{opacity:.85;cursor:grabbing;pointer-events:none;z-index:5;box-shadow:var(--shadow);transition:none}
+.picks.sorting .pslot:not(.dragging){border-style:dashed;border-color:var(--line-strong)}
+.pslot.over{outline:2px solid var(--accent);outline-offset:1px;background:var(--accent-soft)!important}
+.pslot .grip{position:absolute;right:5px;top:50%;width:6px;height:14px;transform:translateY(-50%);opacity:.45;background:radial-gradient(circle,var(--muted) 1.1px,transparent 1.3px) 0 0/3px 3.5px}
+.pslot.filled:hover .grip,.pslot.filled:focus-visible .grip{opacity:.9}
+.pslot.filled .nm{padding-right:10px}
+.pslot.auto .rl{opacity:.45}
+.lanehint{margin:-2px 0 0;font:11px/1.3 var(--sans);color:var(--muted);text-align:center}
 .rl{display:grid;justify-items:center;gap:2px;font:600 9.5px/1 var(--sans);letter-spacing:.05em;color:var(--muted)}
 .rl svg{width:20px;height:20px;fill:currentColor}
 .seg .rolebtn{display:inline-grid;place-items:center;padding:4px 8px}
@@ -258,6 +280,13 @@ h3 small.wpnow{margin-left:8px}
   </header>
   <div id="status" role="status" aria-live="polite"></div>
 
+  <div class="evalbar" id="evalbar">
+    <span class="eb-lab B"><small>Blue</small><span id="eb-b">50.0%</span></span>
+    <div class="eb-track" id="eb-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-label="Blue win probability"><i class="eb-fill" id="eb-fill"></i></div>
+    <span class="eb-lab R"><span id="eb-r">50.0%</span><small>Red</small></span>
+    <span class="eb-meta"><span class="eb-delta" id="eb-delta" hidden></span><span id="eb-model"></span></span>
+  </div>
+
   <main class="board">
     <section class="team B" id="team-B" aria-label="Blue side"></section>
     <section class="mid">
@@ -334,9 +363,12 @@ const SIDE = {B: "Blue", R: "Red"};
 
 /* ---------- state ---------- */
 // S.fill[k]: champion index at draft step k (-1 = skipped ban). S.order[side][p]: the draft step shown in pick slot p.
-// Slot p IS the role (0 top … 4 support): picks fill the next free slot, the user reorders by dragging.
+// Slot p is lane p (0 top … 4 support). Picks fill the next free slot in pick order (B1 → first blue slot …), never sorted.
+// S.placed[side][p]: the user put the champion in slot p (drag, Alt + arrows, Sort by role), so its role is lane p; the
+// other picks' roles are inferred (best assignment over the lanes the placed picks leave open). See rolesOf().
 const pickSteps = (mode, side) => SEQS[mode].map((a, k) => k).filter(k => SEQS[mode][k].s === side && SEQS[mode][k].t === "pick");
-const fresh = mode => ({mode, fill: Array(20).fill(null), order: {B: pickSteps(mode, "B"), R: pickSteps(mode, "R")}, fearless: false, game: 1, locked: [], timer: false});
+const noPlaced = () => ({B: Array(5).fill(false), R: Array(5).fill(false)});
+const fresh = mode => ({mode, fill: Array(20).fill(null), order: {B: pickSteps(mode, "B"), R: pickSteps(mode, "R")}, placed: noPlaced(), fearless: false, game: 1, locked: [], timer: false});
 let S = fresh("pro"), target = null, turnStart = Date.now();
 const hist = [];
 // saved state is untrusted (older versions, hand edits): keep only known fields with valid values, else start fresh
@@ -346,7 +378,10 @@ function restore(s){
   if (!Array.isArray(s.fill) || s.fill.length !== 20 || !s.fill.every(c => c === null || c === -1 || champ(c))) return null;
   if (!s.order || !same(s.order.B, pickSteps(s.mode, "B")) || !same(s.order.R, pickSteps(s.mode, "R"))) return null;
   const locked = Array.isArray(s.locked) ? s.locked.filter(g => Array.isArray(g) && Number.isInteger(g[0]) && Array.isArray(g[1]) && g[1].every(champ)) : [];
-  return {mode: s.mode, fill: s.fill.slice(), order: {B: s.order.B.slice(), R: s.order.R.slice()}, fearless: s.fearless === true,
+  // placed flags; states saved before them used slot = role, so their filled slots count as placed
+  const pl = side => Array.isArray(s.placed && s.placed[side]) && s.placed[side].length === 5 && s.placed[side].every(x => typeof x === "boolean")
+    ? s.placed[side].slice() : s.order[side].map(k => s.fill[k] != null && s.fill[k] >= 0);
+  return {mode: s.mode, fill: s.fill.slice(), order: {B: s.order.B.slice(), R: s.order.R.slice()}, placed: {B: pl("B"), R: pl("R")}, fearless: s.fearless === true,
           game: Number.isInteger(s.game) && s.game >= 1 ? s.game : 1, locked, timer: s.timer === true};
 }
 try { const s = restore(JSON.parse(localStorage.getItem("riftlogic.mockdraft") || "null")); if (s) S = s; } catch (_) {}
@@ -364,7 +399,7 @@ function available(i){
   return k < 0 || k === target;
 }
 
-/* ---------- roles: slot order is the role order; "Sort by role" is the only automatic step ---------- */
+/* ---------- roles: picks sit in pick order; a placed pick plays its slot's lane, the rest are inferred ---------- */
 // position shares for the current mode: solo = ranked solo; pro = pro picks blended with solo (15 pseudo-picks)
 const shareOf = c => S.mode === "pro" ? c.shareP : c.share;
 const topRole = c => { const s = shareOf(c); return s.indexOf(Math.max(...s)); };
@@ -387,6 +422,13 @@ function assignRoles(cs, fixed = {}){
   return {m, score: best, bad};
 }
 const bestRoles = (cs, fixed = {}) => assignRoles(cs, fixed).m;
+// the roles the analysis, the draft model and the exported program use: {champion: role}. A placed pick plays its slot's
+// lane; the others get the best assignment over the lanes left open. skip: a draft step to leave out (the eval bar's delta).
+function fixedOf(side, skip = -1){
+  const f = {}; S.order[side].forEach((k, p) => { if (has(k) && k !== skip && S.placed[side][p]) f[S.fill[k]] = p; }); return f;
+}
+function rolesOf(side, skip = -1){ return assignRoles(S.order[side].filter(k => has(k) && k !== skip).map(k => S.fill[k]), fixedOf(side, skip)).m; }
+// one click: lay the picks out by their most likely roles (ignoring earlier placements) and mark them placed. Never automatic.
 function sortByRole(side){
   const cs = picksOf(side).map(k => S.fill[k]); if (!cs.length) return;
   snap();
@@ -394,21 +436,20 @@ function sortByRole(side){
   const out = Array(5).fill(null);
   for (const k of filled) out[r[S.fill[k]]] = k;
   for (let p = 0; p < 5; p++) if (out[p] == null) out[p] = empty.shift();
-  S.order[side] = out; commit();
+  S.order[side] = out; S.placed[side] = out.map(has); commit();
 }
+// move the pick in slot `from` to lane `to` (swap). The moved champion is placed there; the one it displaces is inferred again.
 function moveSlot(side, from, to){
-  if (from === to || from < 0 || to < 0 || from > 4 || to > 4) return;
-  snap(); const o = S.order[side]; [o[from], o[to]] = [o[to], o[from]]; commit();
+  if (from === to || from < 0 || to < 0 || from > 4 || to > 4 || !has(S.order[side][from])) return;
+  snap(); const o = S.order[side], P = S.placed[side]; [o[from], o[to]] = [o[to], o[from]];
+  P[to] = true; P[from] = false; commit();
 }
-// open roles for a side (slots without a champion), or, for suggestions, the roles its picks don't cover best
-function openRoles(side){
-  const cs = picksOf(side).map(k => S.fill[k]), r = bestRoles(cs), used = new Set(Object.values(r));
-  return [0, 1, 2, 3, 4].filter(x => !used.has(x));
-}
+// roles a side has not filled yet (by the roles its picks play)
+function openRoles(side){ const used = new Set(Object.values(rolesOf(side))); return [0, 1, 2, 3, 4].filter(x => !used.has(x)); }
 
 /* ---------- actions ---------- */
 function commit(){ save(); render(); }
-function choose(i, k = current(), roles = null){
+function choose(i, k = current()){
   if (k == null || !available(i) && S.fill[k] !== i) return;
   const dup = S.fill.indexOf(i);
   if (dup >= 0 && dup !== k) return;
@@ -416,16 +457,11 @@ function choose(i, k = current(), roles = null){
   const a = seq()[k], isNew = !has(k);
   S.fill[k] = i;
   if (a.t === "pick" && isNew && target == null){
-    const o = S.order[a.s], p = o.indexOf(k);
-    if (roles && roles[i] != null){                                 // a suggestion: lay the team out by the suggested roles
-      const out = Array(5).fill(null), rest = [];
-      for (const j of o) if (has(j)){ const r = roles[S.fill[j]]; if (r != null && out[r] == null) out[r] = j; else rest.push(j); }
-      for (const j of [...rest, ...o.filter(j => !has(j))]) out[out.indexOf(null)] = j;
-      S.order[a.s] = out;
-    } else {                                                        // a new pick fills the first free slot
-      const q = o.findIndex(j => j !== k && !has(j));
-      if (q >= 0 && q < p){ o[p] = o[q]; o[q] = k; }
-    }
+    // every new pick (grid, suggestion, keyboard, drop) fills the first free slot: pick order, never sorted by role;
+    // its role is inferred until the user drags it to a lane
+    const o = S.order[a.s], p = o.indexOf(k), q = o.findIndex(j => j !== k && !has(j));
+    if (q >= 0 && q < p){ o[p] = o[q]; o[q] = k; }
+    S.placed[a.s][o.indexOf(k)] = false;
   }
   target = null; turnStart = Date.now(); $("q").value = ""; commit();
 }
@@ -447,13 +483,13 @@ function swapSides(){
     for (let p = 0; p < 5; p++) if (o[p] == null) o[p] = steps[j++];
     order[side] = o;
   }
-  S.fill = fill; S.order = order; target = null; turnStart = Date.now(); commit();
+  S.fill = fill; S.order = order; S.placed = {B: S.placed.R.slice(), R: S.placed.B.slice()}; target = null; turnStart = Date.now(); commit();
 }
 function nextGame(){
   snap();
   const picks = S.fill.filter((c, k) => c != null && c >= 0 && seq()[k].t === "pick");
   S.locked.push([S.game, picks]); S.game++;
-  S.fill = Array(20).fill(null); S.order = fresh(S.mode).order; target = null; turnStart = Date.now(); commit();
+  S.fill = Array(20).fill(null); S.order = fresh(S.mode).order; S.placed = noPlaced(); target = null; turnStart = Date.now(); commit();
   status(`Game ${S.game}: ${picks.length} champions from earlier games are locked.`);
 }
 let stT = null;
@@ -650,22 +686,22 @@ function wpBlue(X, B, R){                                // P(blue wins); B, R: 
   z += wpTeam(X, B) - wpTeam(X, R);
   return 1 / (1 + Math.exp(-z));
 }
-const wpSlotsOf = side => { const T = [-1, -1, -1, -1, -1]; for (const x of team(side)) T[x.r] = x.c.wpi; return T; };   // slot p = role p
+const wpSlotsOf = (side, skip = -1) => wpSlotsM(rolesOf(side, skip));   // placed picks at their lane, the rest inferred
 const wpSlotsM = m => { const T = [-1, -1, -1, -1, -1]; for (const [ci, r] of Object.entries(m)) if (r != null) T[r] = C[ci].wpi; return T; };
 // P(side wins) with `mine` (side's slots) and `theirs`
 const wpFor = (X, side, mine, theirs) => side === "B" ? wpBlue(X, mine, theirs) : 1 - wpBlue(X, theirs, mine);
-function wpNow(side){ const X = wpModel(S.mode); if (!X) return null; const other = side === "B" ? "R" : "B"; return wpFor(X, side, wpSlotsOf(side), wpSlotsOf(other)); }
+function wpNow(side, skip = -1){ const X = wpModel(S.mode); if (!X) return null; const other = side === "B" ? "R" : "B"; return wpFor(X, side, wpSlotsOf(side, skip), wpSlotsOf(other, skip)); }
 const wpName = mode => mode === "pro" ? "pro draft model" : "solo-queue draft model";
 function context(side){
   const other = side === "B" ? "R" : "B", cs = picksOf(side).map(k => S.fill[k]), es = picksOf(other).map(k => S.fill[k]);
   const mine = cs.map(i => C[i]), enemy = es.map(i => C[i]);
-  const mr = assignRoles(cs), used = new Set(Object.values(mr.m)), open = [0, 1, 2, 3, 4].filter(r => !used.has(r));
-  const er = bestRoles(es), eAt = {};
+  const fixed = fixedOf(side), mr = assignRoles(cs, fixed), used = new Set(Object.values(mr.m)), open = [0, 1, 2, 3, 4].filter(r => !used.has(r));
+  const er = rolesOf(other), eAt = {};
   for (const i of es) eAt[er[i]] = C[i];
   const O = themeOf(side), E = themeOf(other);
   const norm = v => { const t = v.reduce((a, b) => a + b, 0); return t ? v.map(x => x / t) : v; };
   const colSum = COLS.map(([k]) => mine.reduce((a, c) => a + ((c.col && c.col[k]) || 0), 0));
-  return {side, other, cs, es, mine, enemy, open, base: mr, eAt, q0: compQ(mine, open), O, E, Ahat: norm(O.arch.slice()), Ehat: norm(E.arch.slice()),
+  return {side, other, cs, es, mine, enemy, open, base: mr, fixed, lanes: new Set(Object.values(fixed)), eAt, q0: compQ(mine, open), O, E, Ahat: norm(O.arch.slice()), Ehat: norm(E.arch.slice()),
     colHat: norm(colSum), nCol: mine.filter(c => c.col).length, eLeft: 5 - es.length, pro: S.mode === "pro",
     wpX: wpModel(S.mode), wpMine: wpSlotsOf(side), wpTheirs: wpSlotsOf(other), wp0: wpNow(side)};
 }
@@ -753,8 +789,8 @@ function evalRole(X, c, r, m, they){
 function evalPick(X, c, they){
   let best = null;
   for (let r = 0; r < 5; r++){
-    if (!playsRole(c, r)) continue;
-    const a = assignRoles(X.cs, {[c.i]: r});
+    if (!playsRole(c, r) || X.lanes.has(r)) continue;                  // placed picks keep their lanes
+    const a = assignRoles(X.cs, Object.assign({}, X.fixed, {[c.i]: r}));
     if (a.bad > X.base.bad || a.score === -Infinity) continue;
     const ev = evalRole(X, c, r, a.m, they);
     if (!best || ev.score > best.score) best = ev;
@@ -806,6 +842,7 @@ function slotPointer(el, side, p){
   el.addEventListener("pointerdown", e => {
     if (e.button || !has(S.order[side][p])) return;
     drag = {side, p, x: e.clientX, y: e.clientY, moved: false, el};
+    el.closest(".picks") && el.closest(".picks").classList.add("sorting");
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
   });
 }
@@ -817,19 +854,21 @@ window.addEventListener("pointermove", e => {
   if (!drag) return;
   if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
   drag.moved = true; drag.el.classList.add("dragging");
+  drag.el.style.transform = `translate(${e.clientX - drag.x}px, ${e.clientY - drag.y}px)`;   // the slot follows the pointer
   for (const s of document.querySelectorAll(".pslot.over")) s.classList.remove("over");
   const q = slotUnder(e.clientX, e.clientY, drag.side);
   if (q >= 0 && q !== drag.p) document.querySelector(`.pslot[data-side="${drag.side}"][data-p="${q}"]`).classList.add("over");
 });
 window.addEventListener("pointerup", e => {
   if (!drag) return;
-  const d = drag; drag = null; d.el.classList.remove("dragging");
+  const d = drag; drag = null; endDrag(d);
   for (const s of document.querySelectorAll(".pslot.over")) s.classList.remove("over");
   if (!d.moved){ const k = S.order[d.side][d.p]; target = target === k ? null : k; render(); return; }
   const q = slotUnder(e.clientX, e.clientY, d.side);
   if (q >= 0) moveSlot(d.side, d.p, q);
 });
-window.addEventListener("pointercancel", () => { if (drag){ drag.el.classList.remove("dragging"); drag = null; } });
+function endDrag(d){ d.el.classList.remove("dragging"); d.el.style.transform = ""; for (const s of document.querySelectorAll(".picks.sorting")) s.classList.remove("sorting"); }
+window.addEventListener("pointercancel", () => { if (drag){ endDrag(drag); for (const s of document.querySelectorAll(".pslot.over")) s.classList.remove("over"); drag = null; } });
 function renderTeam(side){
   const q = seq(), cur = current(), box = $("team-" + side);
   const bans = q.map((a, k) => k).filter(k => q[k].s === side && q[k].t === "ban");
@@ -842,26 +881,30 @@ function renderTeam(side){
     slotDrop(el, k); banEls.push(el);
     if (S.mode === "pro" && j === 2) banEls.push(h("span", {class: "gap"}));
   });
+  const R = rolesOf(side);
   const pickEls = S.order[side].map((k, p) => {
-    const c = S.fill[k], ch = c != null && c >= 0 ? C[c] : null, a = q[k];
-    const el = h("div", {class: `pslot side-${side}${ch ? " filled" : ""}${k === cur ? " active" : ""}${k === target ? " target" : ""}`, role: "button", tabindex: "0",
+    const c = S.fill[k], ch = c != null && c >= 0 ? C[c] : null, a = q[k], placed = ch && S.placed[side][p], r = ch ? R[c] : p;
+    const roleTxt = ch ? (placed ? `${pct(ch.share[p])} ${POS[p].toLowerCase()}` : r === p ? `${pct(ch.share[p])} ${POS[p].toLowerCase()} · auto` : `plays ${POS[r].toLowerCase()} (auto)`) : null;
+    const el = h("div", {class: `pslot side-${side}${ch ? " filled" : ""}${ch && !placed ? " auto" : ""}${k === cur ? " active" : ""}${k === target ? " target" : ""}`, role: "button", tabindex: "0",
       "data-side": side, "data-p": p,
-      "aria-label": `${SIDE[side]} ${POS[p]}${ch ? ": " + ch.name + ". Drag or Alt + arrow keys to move" : ""}`,
+      "aria-label": `${SIDE[side]} ${POS[p]} slot${ch ? `: ${ch.name}, ${placed ? "set to " + POS[p] : "role inferred: " + POS[r]}. Drag or Alt + arrow keys to move lanes` : ""}`,
       onkeydown: e => {
         if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")){ e.preventDefault(); const to = p + (e.key === "ArrowUp" ? -1 : 1); moveSlot(side, p, to); const n = document.querySelector(`.pslot[data-side="${side}"][data-p="${to}"]`); n && n.focus(); }
         else if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget){ e.preventDefault(); target = target === k ? null : k; render(); }
       }},
-      h("div", {class: "rl", title: POS[p], "aria-label": POS[p]}, roleIcon(p)),
+      h("div", {class: "rl", title: `${POS[p]} lane`, "aria-hidden": "true"}, roleIcon(p)),
       h("div", {class: "ph"}, ch ? portrait(ch) : ""),
       h("div", {class: "nm"}, ch ? h("b", {}, ch.name) : h("i", {}, k === cur ? "picking…" : `${a.s}${a.n}`),
-        ch ? h("small", {class: ch.share[p] < 0.1 ? "off" : null, title: "Share of this champion's solo-queue games in this role"}, `${pct(ch.share[p])} ${POS[p].toLowerCase()}`) : null));
+        ch ? h("small", {class: ch.share[r] < 0.1 ? "off" : null, title: placed ? "You set this lane. Share of the champion's solo-queue games in it." : `Role inferred (${POS[r]}): the most likely assignment of this team's picks. Drag the champion to a lane to set it.`}, roleTxt) : null),
+      ch ? h("span", {class: "grip", "aria-hidden": "true"}) : null);
     slotDrop(el, k); slotPointer(el, side, p); return el;
   });
   const done = picksOf(side).length, T = themeOf(side);
   box.replaceChildren(h("h2", {}, SIDE[side], h("small", {}, `${done}/5`)), h("div", {class: "bans"}, banEls),
     h("div", {class: "theme", title: CONF_TIP}, T.n ? [h("b", {}, themeName(T)), h("br"), h("small", {}, `confidence ${pct(T.conf)} (${T.n}/5)`)] : h("small", {}, "theme appears as picks lock in")),
     h("div", {class: "picks"}, pickEls),
-    h("button", {type: "button", class: "btn ghost sortbtn", disabled: done < 2 ? true : null, title: "Order the picks by their most likely roles (solo-queue position shares)", onclick: () => sortByRole(side)}, "Sort by role"));
+    h("button", {type: "button", class: "btn ghost sortbtn", disabled: done < 2 ? true : null, title: "One click: move each pick to its most likely lane (position shares) and set those lanes. Picks otherwise stay in pick order.", onclick: () => sortByRole(side)}, "Sort by role"),
+    S.placed[side].some((x, p) => !x && has(S.order[side][p])) ? h("p", {class: "lanehint"}, "Drag picks to their lanes (or Alt + ↑↓). Until then roles are inferred.") : null);
 }
 function renderTurn(){
   const k = current(), q = seq(), box = $("turn");
@@ -994,7 +1037,8 @@ function gamePlan(ms, open = []){
   return {key, name: PLAN[key][0], plan: fill(PLAN[key][1]), wants: fill(PLAN[key][2]), deny: fill(PLAN[key][3]), warn, arch: a0};
 }
 function openRolesOf(cs){ const used = new Set(Object.values(assignRoles(cs).m)); return [0, 1, 2, 3, 4].filter(r => !used.has(r)); }
-function team(side){ return S.order[side].map((k, p) => has(k) ? {k, c: C[S.fill[k]], r: p} : null).filter(Boolean); }
+// a side's picks in slot order: slot p, role r (lane p if placed, else inferred)
+function team(side){ const R = rolesOf(side); return S.order[side].map((k, p) => has(k) ? {k, p, c: C[S.fill[k]], r: R[S.fill[k]], placed: S.placed[side][p]} : null).filter(Boolean); }
 function analysis(side){
   const T = team(side), box = $("an-" + side);
   const head = h("h3", {}, `${SIDE[side]} comp`, h("small", {}, T.length ? `${T.length}/5 picked` : ""));
@@ -1090,7 +1134,7 @@ function suggest(){
     h("h3", {}, `${a.t === "pick" ? "Pick" : "Ban"} ideas for ${SIDE[side]}`,
       h("small", {title: CONF_TIP}, E.n ? `${SIDE[other]}: ${themeName(E)} · confidence ${pct(E.conf)} (${E.n}/5)` : S.mode === "pro" ? "pro + solo data" : "solo-queue data"),
       wpNow(side) != null ? h("small", {class: "wpnow", title: WP_TIP()}, `${SIDE[side]} win chance now ${pct(wpNow(side), 1)} (${wpName(S.mode)})`) : null),
-    rows.length ? h("div", {class: "sgrid"}, rows.map(x => h("button", {type: "button", class: "srow", onclick: () => choose(x.c.i, undefined, a.t === "pick" ? x.m : null),
+    rows.length ? h("div", {class: "sgrid"}, rows.map(x => h("button", {type: "button", class: "srow", onclick: () => choose(x.c.i),
       title: `${x.why}\nscore parts: ${Object.entries(x.parts).map(([p, v]) => `${p} ${pp(v, 2)}`).join(", ")} pp`},
       h("div", {class: "ph"}, portrait(x.c)),
       h("div", {}, h("b", {}, x.c.name, x.role != null ? h("span", {class: "why"}, ` · ${POS[x.role]}`) : null), h("small", {class: "rs"}, x.why)),
@@ -1102,7 +1146,7 @@ function suggest(){
 /* ---------- Rift Logic program ---------- */
 const LEVEL = [14, 13, 14, 13, 11];
 function body(side){
-  const T = team(side);
+  const T = team(side).sort((a, b) => a.r - b.r);            // listed in role order (the roles the model uses)
   return T.map((x, i) => {
     const r = x.r ?? 0, its = x.c.items;
     const code = `    ${x.c.id}(${LEVEL[r]})${its.length ? `.with(${its.join(", ")})` : ""}${i < T.length - 1 ? "," : ""}`;
@@ -1158,9 +1202,29 @@ function copyCode(forEditor){
   } catch (_) { fallback(); }
 }
 
+/* ---------- eval bar: P(blue wins) now, and how the last pick moved it ---------- */
+function lastPick(){ const q = seq(); for (let k = q.length - 1; k >= 0; k--) if (q[k].t === "pick" && has(k)) return k; return -1; }
+function renderEval(){
+  const bar = $("evalbar"), X = wpModel(S.mode);
+  if (!X){ bar.hidden = true; return; }
+  const pb = wpNow("B"), m = $("eb-meter"), b = pct(pb, 1), r = pct(1 - pb, 1), n = team("B").length + team("R").length;
+  $("eb-fill").style.width = (100 * pb).toFixed(2) + "%";
+  $("eb-b").textContent = b; $("eb-r").textContent = r;
+  m.setAttribute("aria-valuenow", (100 * pb).toFixed(1));
+  m.setAttribute("aria-valuetext", `Blue ${b}, Red ${r} (${wpName(S.mode)}${n ? "" : ", side prior before any pick"})`);
+  const V = X.M.valid, tip = `${wpName(S.mode)[0].toUpperCase() + wpName(S.mode).slice(1)} (${S.mode === "pro" ? "pro" : "solo queue"}; src/draftwp.py, the language's draftwp()): P(blue wins) from the picks and their roles (lanes you set, else inferred); open slots count as a typical pick, so no picks = the side prior.${S.mode === "pro" ? " Pro: team ratings held equal (the page has no teams; draftwp() in Rift Logic takes ratings)." : ""}\nValidation: held-out ${V.test}, accuracy ${pct(X.V.acc, 1)}, AUC ${X.V.auc.toFixed(3)} (side only ${pct(V.rows["side only"].acc, 1)}); draft effects are small.`;
+  bar.title = tip;
+  $("eb-model").textContent = `${wpName(S.mode)}${n ? "" : " · side prior"}`;
+  const k = lastPick(), chip = $("eb-delta");
+  if (k < 0){ chip.hidden = true; return; }
+  const a = seq()[k], d = 100 * (wpNow(a.s) - wpNow(a.s, k));
+  chip.hidden = false; chip.title = `How ${a.s}${a.n} ${C[S.fill[k]].name} moved ${SIDE[a.s]}'s win chance (with vs without the pick)`;
+  chip.replaceChildren(h("i", {class: a.s}), h("b", {class: d >= 0.05 ? "up" : d <= -0.05 ? "dn" : null}, `${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}%`), ` ${a.s}${a.n} ${C[S.fill[k]].name}`);
+}
+
 /* ---------- render ---------- */
 function render(){
-  renderTeam("B"); renderTeam("R"); renderTurn(); renderGrid(); analysis("B"); analysis("R"); suggest();
+  renderEval(); renderTeam("B"); renderTeam("R"); renderTurn(); renderGrid(); analysis("B"); analysis("R"); suggest();
   $("m-pro").setAttribute("aria-pressed", String(S.mode === "pro")); $("m-solo").setAttribute("aria-pressed", String(S.mode === "solo"));
   $("fearless").setAttribute("aria-pressed", String(S.fearless)); $("fearless").textContent = S.fearless ? `Fearless · G${S.game}` : "Fearless";
   $("nextgame").hidden = !S.fearless;
@@ -1189,7 +1253,7 @@ document.addEventListener("keydown", e => {
 $("foot").append(h("b", {}, "Data. "), `Portraits: Data Dragon. Positions, damage split, items, win rates: ${fmtN(D.games)} ranked solo games (patch ${Object.keys(D.versions).join(", ")}). Crowd control: the engine's calc.json (max-rank durations). Tools and ranges: kb.json ability tags and ranges (patch ${D.patch}). Colours: LS labels. Themes: LS colour weights plus the archetype mix from hand profiles (labels/draft_profiles.csv: class, frontline, engage, pick, peel, carry, archetype); theme win rates from ${fmtN(D.themeGames)} ranked solo games. Pro presence, bans, positions and phase-1 picks: ${fmtN(PROG)} pro games (Oracle's Elixir, patches ${D.pro.patches[0]}–${D.pro.patches[D.pro.patches.length - 1]}). Draft win probability: separate pro and solo-queue logistic models (src/draftwp.py, the same as the language's draftwp()), fitted on ${D.wp ? `pro games 2022–2026 with Elo team ratings held equal, and ${fmtN(D.wp.solo.games)} ranked solo games` : "(not built)"}. Tool grouping, profiles, scaling and the suggestion weights are heuristics.`);
 render();
 window.__draft = {get state(){ return S; }, gamePlan, openRolesOf, choose, undo, swapSides, nextGame, skipBan, moveSlot, sortByRole, pickScores, banScores, themeOf, themeName, program, reset, setMode, byId: id => C.findIndex(c => c.id === id),
-  champs: C, playsRole, shareOf, compQ, assignRoles, wpNow, wpModel, wpBlue, wpFor};
+  rolesOf, lastPick, champs: C, playsRole, shareOf, compQ, assignRoles, wpNow, wpModel, wpBlue, wpFor};
 })();
 </script>
 
