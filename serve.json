@@ -173,6 +173,15 @@
       ]
     },
     {
+      "source": "pro.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-tuOtWYo2woTB2C2/htS7dAwU0M4+DITxhuX/Gatp3uI='"
+        }
+      ]
+    },
+    {
       "source": "riftlogic.html",
       "headers": [
         {
