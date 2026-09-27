@@ -298,6 +298,41 @@ tr.sep td,tr.sep th{border-top:2px solid var(--line-strong)}
 .pick .rg.big{color:var(--no)}
 #dsform .cb{flex:1 1 220px}
 #dsform .cb input{padding-left:10px}
+/* schedule, series and official rosters (Leaguepedia) */
+.gc.sc{border-left-color:var(--line-strong)}.gc.sc.up{border-left-color:var(--accent)}
+.gc.sc .top .st{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.gc.sc .top time{white-space:nowrap;color:var(--ink-2)}
+.gc.sc .top .res{color:var(--muted)}
+.gc.sc .tm .sn{margin-left:auto;font:600 15px/1 var(--mono);color:var(--muted)}
+.gc.sc .tm.won .sn{color:var(--ink)}
+.gc.sc .ft.gls{flex-wrap:wrap;gap:5px}
+.tag.tbd{background:var(--inset);color:var(--muted)}
+.gl{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid var(--line-strong);border-radius:5px;color:var(--ink-2);text-decoration:none;font:500 11px/1 var(--mono);white-space:nowrap}
+.gl:hover{border-color:var(--accent);color:var(--ink)}
+.gl i{width:7px;height:7px;border-radius:2px;background:hsl(var(--th) var(--tagS) var(--tagL))}
+.stream{font-size:12px;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.day{display:grid;gap:8px;margin-bottom:12px}
+.day h3{margin:0;display:flex;align-items:baseline;gap:8px;font:600 13.5px/1.2 var(--sans);color:var(--ink)}
+.day h3 small{font-weight:400;color:var(--muted);font-size:12px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.nextm{margin-left:auto;display:grid;gap:4px;min-width:220px;max-width:320px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.nextm h3{margin:0;font:600 11px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.nextm .vs{display:flex;align-items:center;gap:7px;font-size:14px}
+.pc .bio1{font-size:12px;color:var(--ink-2);min-height:1.4em}
+.pc .subs.diff{color:var(--warn)}
+.plist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.plist li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:13px}
+.plist li b a{color:var(--ink);text-decoration:none}.plist li b a:hover{color:var(--accent)}
+dl.bio{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;font-size:13px}
+dl.bio dt{color:var(--muted)}dl.bio dd{margin:0}
+svg.scol,svg.form,svg.tl{display:block;max-width:100%;height:auto}
+svg.scol text,svg.tl text{fill:var(--muted);font:10.5px var(--sans)}
+svg.tl text:not(.ax){fill:var(--ink-2);font-size:12px}
+svg.scol line,svg.form line,svg.tl line{stroke:var(--line-strong);stroke-width:1}
+svg.scol .b0{fill:var(--accent)}svg.scol .b1{fill:var(--faint)}
+svg.form .w{fill:var(--ok)}svg.form .l{fill:var(--no)}
+svg.tl rect{fill:hsl(var(--th) var(--tagS) var(--tagL));opacity:.75}svg.tl rect.cur{opacity:1}
+.lpfoot{border-top:0;padding-top:0;margin-top:-8px}.lpfoot a{color:var(--ink-2)}
 @media (max-width:1000px){.cards6{grid-template-columns:repeat(2,minmax(0,1fr))}.mults{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){
   .bar{position:static}
@@ -314,6 +349,8 @@ tr.sep td,tr.sep th{border-top:2px solid var(--line-strong)}
   .hs-row{grid-auto-columns:minmax(232px,78vw)}
   .rtabs button span{display:none}
   .hb{--lw:96px}
+  .nextm{margin-left:0;max-width:none;width:100%}
+  .sgrid{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:600px){.cards6,.mults{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){.loading i{animation:none}.hs::before,.hs::after,.chart .sr0{transition:none}}
@@ -365,6 +402,7 @@ tr.sep td,tr.sep th{border-top:2px solid var(--line-strong)}
   <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
   <main id="main" tabindex="-1"><div class="loading"><i></i>Loading pro match data…</div></main>
   <p class="foot" id="foot"></p>
+  <p class="foot lpfoot" id="lpfoot">Schedule and rosters: <a href="https://lol.fandom.com" rel="noopener">Leaguepedia</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/" rel="license noopener">CC BY-SA 3.0</a>)<span id="lpupd"></span></p>
 </div>
 <div id="tip" role="tooltip" hidden></div>
 <script>
@@ -844,12 +882,12 @@ function drawChrome(r, c, L, D){
   const lg = $("lg"); lg.textContent = "";
   const Ls = Object.keys(IX.years[c.year]);
   const keepSplit = (L2) => c.split === "all" || c.split === "latest" || (IX.years[c.year][L2] && IX.years[c.year][L2].splits.includes(c.split)) ? c.split : "all";
-  const dv = r.view === "drafts", sv = r.view === "draft-search", allOn = r.view === "home" || ((dv || sv) && !L);
+  const dv = r.view === "drafts", sv = r.view === "draft-search", sch = r.view === "schedule", allOn = r.view === "home" || sch || ((dv || sv) && !L);
   lg.append(h("button", {type: "button", "aria-pressed": String(allOn), onclick: () => { const c2 = base({...c, split: c.split === "latest" ? "latest" : "all"});
-    location.hash = dv ? link("drafts", ["all", ...r.args.slice(1)], {...r.q, ...c2}) : sv ? link("draft-search", [], {...r.q, lg: null, ...c2}) : link("home", [], c2); }}, "All"));
+    location.hash = dv ? link("drafts", ["all", ...r.args.slice(1)], {...r.q, ...c2}) : sv ? link("draft-search", [], {...r.q, lg: null, ...c2}) : r.view === "schedule" || (r.view === "league" && r.args[1] === "schedule") ? link("schedule", [], c2) : link("home", [], c2); }}, "All"));
   for (const L2 of Ls) lg.append(h("button", {type: "button", "aria-pressed": String(L === L2), title: IX.years[c.year][L2].label + ` · ${IX.years[c.year][L2].games} games`,
     onclick: () => { const c2 = {...c, split: keepSplit(L2)};
-      location.hash = dv ? link("drafts", [L2, ...r.args.slice(1)], {...r.q, ...base(c2), team: null}) : sv ? link("draft-search", [], {...r.q, ...base(c2), lg: L2, team: null}) : leagueLink(c2, L2, r.view === "league" ? r.args[1] : null); }}, L2));
+      location.hash = dv ? link("drafts", [L2, ...r.args.slice(1)], {...r.q, ...base(c2), team: null}) : sv ? link("draft-search", [], {...r.q, ...base(c2), lg: L2, team: null}) : leagueLink(c2, L2, r.view === "league" ? r.args[1] : sch ? "schedule" : null); }}, L2));
   const y = $("year"); y.textContent = "";
   for (const k of Object.keys(IX.years).sort().reverse()) y.append(h("option", {value: k, selected: k === c.year ? true : null}, "Season " + k));
   y.onchange = () => { const q = {...r.q, year: y.value === IX.defaultYear ? null : y.value}; if (q.split && q.split !== "latest") q.split = null; location.hash = link(r.view, r.args, q); };
@@ -866,6 +904,7 @@ function drawChrome(r, c, L, D){
   const items = [["Pro", r.view === "home" ? null : link("home", [], base(c))]];
   if (L) items.push([IX.years[c.year][L] ? IX.years[c.year][L].label : L, r.view === "league" ? null : leagueLink(c, L)]);
   if (r.view === "drafts") items.push(["Drafts", null]);
+  if (r.view === "schedule") items.push(["Schedule", null]);
   if (r.view === "draft-search") items.push(["Drafts", link("drafts", [L || "all"], base(c))], ["Search", null]);
   if (r.view === "team") items.push([r.args[0], null]);
   if (r.view === "player"){ const e = playerEntry(c.year, r.args[0], r.q.lg); if (e) items.push([e[2], teamLink(c, e[2])]); items.push([r.args[0], null]); }
@@ -920,6 +959,168 @@ function combo({label, placeholder, value, items, onPick, hint}){
 }
 document.addEventListener("keydown", e => { if (e.key === "/" && !/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "")){ const i = document.querySelector("#cb-slot input"); if (i){ e.preventDefault(); i.focus(); } } });
 
+/* ---------- Leaguepedia: schedule and official rosters (pro-schedule.json, pro-rosters.json by src/leaguepedia.py; CC BY-SA 3.0) ---------- */
+let LPP = null;
+function loadLP(){
+  if (!LPP){
+    const get = f => PAGE.inline ? Promise.resolve(null) : fetch(f).then(r => r.ok ? r.json() : null).catch(() => null);
+    LPP = Promise.all([get("pro-schedule.json"), get("pro-rosters.json")]).then(([S, R]) => prepLP(S, R));
+  }
+  return LPP;
+}
+function prepLP(S, R){
+  const lp = {S, R, year: null, all: [], lpOf: new Map(), byOE: new Map(), pOE: new Map(), linked: new Map()};
+  if (S && S.leagues){
+    lp.year = (S.events && S.events.length ? S.events[0].start : S.lastUpdated || "").slice(0, 4) || null;
+    for (const [L, v] of Object.entries(S.leagues)) for (const k of ["upcoming", "recent", "noResult"]) for (const m of v[k] || []){
+      m.L = L; m.t0 = tms(m.dt); m.E = (S.events || [])[m.ev] || null; m.up = k === "upcoming"; m.done = k === "recent"; lp.all.push(m); }
+    lp.all.sort((a, b) => a.t0 - b.t0 || a.id.localeCompare(b.id));
+    for (const [n, t] of Object.entries(S.teams || {})) if (t.oe){ if (!lp.lpOf.has(t.oe)) lp.lpOf.set(t.oe, new Set()); lp.lpOf.get(t.oe).add(n); }
+  }
+  if (R && R.teams){
+    for (const [n, t] of Object.entries(R.teams)){
+      t.lp = n;
+      if (t.oe && (!lp.byOE.has(t.oe) || lp.byOE.get(t.oe).league === "INTL")) lp.byOE.set(t.oe, t);
+      for (const p of t.players) if (p.oe){ if (!lp.pOE.has(p.oe)) lp.pOE.set(p.oe, []); lp.pOE.get(p.oe).push({p, t}); }
+    }
+  }
+  return lp;
+}
+const lpOE = (lp, n) => n && lp.S.teams[n] ? lp.S.teams[n].oe || null : null;
+const lpName = (lp, n) => n ? (lp.S.teams[n] && lp.S.teams[n].name) || n : "TBD";
+const teamMatches = (lp, oe) => lp.all.filter(m => lpOE(lp, m.t1) === oe || lpOE(lp, m.t2) === oe);
+/* local time: the viewer's zone; UTC in the tooltip */
+const pad2 = n => String(n).padStart(2, "0");
+const ldayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+const lday = t => new Date(t).toLocaleDateString(undefined, {weekday: "short", month: "short", day: "numeric"});
+const ltime = t => new Date(t).toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit"});
+const utcTxt = dt => `${dt.slice(0, 10)} ${dt.slice(11, 16)} UTC`;
+const streamTxt = u => String(u).replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+/* the OE games of each played series: same two teams, within a day of the scheduled date (late series cross midnight UTC),
+   the game closest to the scheduled time and the games within 8 h of it, each game used once */
+function linkGames(lp, L){
+  if (!lp.S || !lp.year || !IX.years[lp.year] || !IX.years[lp.year][L]) return Promise.resolve();
+  if (!lp.linked.has(L)) lp.linked.set(L, loadLeague(lp.year, L).then(D => {
+    const idx = new Map(), key = (a, b) => [a, b].sort().join("\u0001");
+    for (const g of D.games){ const k = key(D.teams[g.t[0]], D.teams[g.t[1]]); if (!idx.has(k)) idx.set(k, []); idx.get(k).push(g); }
+    const used = new Set();
+    for (const m of lp.all.filter(x => x.L === L && x.done).sort((a, b) => a.t0 - b.t0)){
+      const o1 = lpOE(lp, m.t1), o2 = lpOE(lp, m.t2); if (!o1 || !o2) continue;
+      const day = Date.parse(m.dt.slice(0, 10)), cands = (idx.get(key(o1, o2)) || []).filter(g => !used.has(g) && Math.abs(Date.parse(g.dt.slice(0, 10)) - day) <= 864e5);
+      if (!cands.length) continue;
+      const c0 = cands.reduce((a, b) => Math.abs(b.t0 - m.t0) < Math.abs(a.t0 - m.t0) ? b : a);
+      const gs = cands.filter(g => Math.abs(g.t0 - c0.t0) <= 8 * 36e5).sort((a, b) => a.t0 - b.t0 || (a.gn || 0) - (b.gn || 0)).slice(0, m.bo || 5);
+      gs.forEach(g => used.add(g)); m.D = D; m.games = gs; m.gOK = gs.length === (m.s1 || 0) + (m.s2 || 0);
+    }
+  }).catch(() => {}));
+  return lp.linked.get(L);
+}
+const linkAll = lp => Promise.all(Object.keys((lp.S && lp.S.leagues) || {}).map(L => linkGames(lp, L)));
+function lpBadge(lp, cy, n){
+  const oe = lpOE(lp, n);
+  if (oe && teamEntry(lp.year, oe)) return tagBadge(oe, null, teamLink(cy, oe));
+  const t = n && lp.S.teams[n];
+  return h("span", {class: "tag" + (n ? "" : " tbd"), style: `--th:${n ? hue(n) : 0}`, title: n ? lpName(lp, n) : "To be decided", "aria-hidden": "true"}, n ? (t && t.short) || lpName(lp, n).slice(0, 3).toUpperCase() : "TBD");
+}
+const lpCtx = (lp, c) => c.year === lp.year ? c : {...c, year: lp.year, split: "all"};
+/* a series card: both teams, the score, stage and best-of; played: a link per game; upcoming: the stream */
+function seriesCard(lp, c, m, {persp, day} = {}){
+  const cy = lpCtx(lp, c), T = [m.t1, m.t2], o = T.map(n => lpOE(lp, n)), sc = [m.s1, m.s2];
+  const won = m.done && persp && m.w ? o[m.w - 1] === persp : null;
+  const tm = k => h("div", {class: "tm" + (m.w === k + 1 ? " won" : ""), "data-team": o[k] || T[k] || "TBD"}, lpBadge(lp, cy, T[k]), h("b", {}, lpName(lp, T[k])),
+    m.done ? h("span", {class: "sn"}, sc[k] == null ? "–" : String(sc[k])) : null);
+  const ev = m.L === "INTL" ? (m.E ? m.E.name : "International") : m.L;
+  const gl = (m.games || []).map((g, k) => { const wn = m.D.teams[g.t[g.w]];
+    return h("a", {class: "gl", href: gameLink(cy, g, m.D), "data-game": g.id, style: `--th:${hue(wn)}`, title: `Game ${k + 1}: ${wn} won in ${mmss(g.len)}`}, h("i", {"aria-hidden": "true"}), `G${k + 1} ${IX.tags[wn] || wn}`); });
+  return h("div", {class: "gc sc" + (won === true ? " w" : won === false ? " l" : m.up ? " up" : ""), "data-match": m.id, "data-l": m.L},
+    h("div", {class: "top"}, h("time", {datetime: m.dt, title: utcTxt(m.dt)}, day ? `${lday(m.t0)} · ${ltime(m.t0)}` : ltime(m.t0)),
+      h("span", {class: "st"}, `${ev} · ${m.stage || m.E && m.E.name || ""}`), h("span", {class: "res"}, won === true ? "WIN" : won === false ? "LOSS" : "Bo" + (m.bo || 1))),
+    tm(0), tm(1),
+    gl.length ? h("div", {class: "ft gls"}, gl) : m.up && m.stream ? h("div", {class: "ft"}, h("a", {class: "stream", href: m.stream, target: "_blank", rel: "noopener noreferrer"}, streamTxt(m.stream))) : null);
+}
+/* matches grouped by local day */
+function byDay(lp, c, ms, opts){
+  const days = new Map();
+  for (const m of ms){ const k = ldayKey(m.t0); if (!days.has(k)) days.set(k, []); days.get(k).push(m); }
+  return [...days].map(([k, xs]) => h("div", {class: "day", "data-day": k}, h("h3", {}, h("time", {datetime: k}, lday(xs[0].t0)), h("small", {}, `${xs.length} ${xs.length === 1 ? "match" : "matches"}`)),
+    h("div", {class: "sgrid"}, xs.map(m => seriesCard(lp, c, m, opts)))));
+}
+/* small inline-SVG column chart: items {label, v, v2 (stacked, muted), tip} */
+function svgCols(items, {w = chartW(0.5), hh = 150, cls = ""} = {}){
+  const n = items.length || 1, max = Math.max(1, ...items.map(x => (x.v || 0) + (x.v2 || 0))), bw = (w - 28) / n, Y = v => (hh - 20) * v / max;
+  const every = Math.max(1, Math.ceil(n / Math.max(4, Math.floor(w / 60))));
+  const bars2 = items.map((x, k) => { const x0 = 24 + k * bw, a = Y(x.v || 0), b = Y(x.v2 || 0);
+    return `<g data-tip="${esc(x.tip || "")}"><rect class="b0" x="${x0.toFixed(1)}" y="${(hh - 18 - a).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${a.toFixed(1)}"/>` +
+      (b ? `<rect class="b1" x="${x0.toFixed(1)}" y="${(hh - 18 - a - b).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${b.toFixed(1)}"/>` : "") +
+      `<rect x="${x0.toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${hh - 18}" fill="transparent"/>` + (k % every ? "" : `<text x="${(x0 + bw / 2).toFixed(1)}" y="${hh - 4}" text-anchor="middle">${esc(x.label)}</text>`) + "</g>"; }).join("");
+  return svgNode(`<svg class="scol ${cls}" viewBox="0 0 ${w} ${hh}" width="${w}" height="${hh}" role="img" aria-label="${esc(items.map(x => `${x.label}: ${(x.v || 0) + (x.v2 || 0)}`).join("; "))}"><text x="2" y="10">${max}</text><line x1="22" x2="${w}" y1="${hh - 18}" y2="${hh - 18}"/>${bars2}</svg>`);
+}
+/* series form: one column per series, up = won, height = map difference */
+function formStrip(ms, oe, {w = chartW(0.5), hh = 90} = {}){
+  const xs = ms.slice(-30), n = xs.length || 1, bw = Math.min(26, (w - 8) / n), mid = hh / 2, U = (hh / 2 - 6) / 3;
+  const body = xs.map((m, k) => { const i = m._me, d = (i === 0 ? m.s1 - m.s2 : m.s2 - m.s1) || 0, hgt = Math.max(3, Math.min(3, Math.abs(d)) * U), x0 = 4 + k * bw;
+    return `<rect class="${d > 0 ? "w" : "l"}" x="${x0.toFixed(1)}" y="${(d > 0 ? mid - hgt : mid).toFixed(1)}" width="${Math.max(2, bw - 3).toFixed(1)}" height="${hgt.toFixed(1)}" data-tip="${esc(`${m.dt.slice(0, 10)}: ${d > 0 ? "won" : "lost"} ${Math.max(m.s1, m.s2)}–${Math.min(m.s1, m.s2)} vs ${m._opp} (${m.L === "INTL" && m.E ? m.E.name : m.L}, ${m.stage})`)}"/>`; }).join("");
+  return svgNode(`<svg class="form" viewBox="0 0 ${w} ${hh}" width="${w}" height="${hh}" role="img" aria-label="${esc(`${oe}: last ${xs.length} series, ${xs.filter(m => m._won).length} won`)}"><line x1="0" x2="${w}" y1="${mid}" y2="${mid}"/>${body}</svg>`);
+}
+/* team history from the tenures: one bar per stint, years on the axis */
+function tenureChart(hist, {w = chartW(0.5)} = {}){
+  const now = new Date().getFullYear(), rows = hist.map(([t, a, b]) => ({t, a: +a || now, b: b ? +b : now, cur: !b})).filter(x => x.t);
+  if (!rows.length) return null;
+  const y0 = Math.min(...rows.map(x => x.a)), y1 = Math.max(now, ...rows.map(x => x.b)) + 1, lw = Math.min(170, w * 0.4), X = y => lw + (w - lw - 8) * (y - y0) / Math.max(1, y1 - y0), rh = 22, hh = rows.length * rh + 18;
+  const ticks = []; for (let y = y0; y <= y1; y += Math.max(1, Math.ceil((y1 - y0) / 6))) ticks.push(y);
+  return svgNode(`<svg class="tl" viewBox="0 0 ${w} ${hh}" width="${w}" height="${hh}" role="img" aria-label="${esc(rows.map(x => `${x.t} ${x.a}–${x.cur ? "now" : x.b}`).join("; "))}">` +
+    ticks.map(y => `<line x1="${X(y).toFixed(1)}" x2="${X(y).toFixed(1)}" y1="0" y2="${hh - 16}"/><text class="ax" x="${X(y).toFixed(1)}" y="${hh - 3}" text-anchor="middle">${y}</text>`).join("") +
+    rows.map((x, k) => { const cur = x.cur, xa = X(x.a), xb = Math.max(xa + 4, X(x.b + (cur ? 0.5 : 0.999)));
+      return `<g data-tip="${esc(`${x.t}: ${x.a}–${cur ? "now" : x.b}`)}"><text x="0" y="${k * rh + 15}">${esc(x.t.length > 24 ? x.t.slice(0, 23) + "…" : x.t)}</text><rect class="${cur ? "cur" : ""}" style="--th:${hue(x.t)}" x="${xa.toFixed(1)}" y="${k * rh + 4}" width="${(xb - xa).toFixed(1)}" height="${rh - 8}" rx="3"/></g>`; }).join("") + "</svg>");
+}
+const bioLine = p => [p.name && p.name !== p.id ? p.name : null, p.country, p.age != null ? `${p.age}` : null].filter(Boolean).join(" · ");
+/* the schedule body for a set of matches: six cards, charts, upcoming by day, (international events), recent results by day */
+async function scheduleBody(lp, c, ms, {intl, label}){
+  await Promise.all([...new Set(ms.filter(m => m.done).map(m => m.L))].map(L => linkGames(lp, L)));
+  const up = ms.filter(m => m.up), done = ms.filter(m => m.done).slice().reverse(), nx = up[0];
+  const linkable = done.filter(m => lpOE(lp, m.t1) && lpOE(lp, m.t2) && IX.years[lp.year] && IX.years[lp.year][m.L]), linked = linkable.filter(m => m.gOK);
+  const sweeps = done.filter(m => m.bo > 1 && Math.min(m.s1, m.s2) === 0).length, multi = done.filter(m => m.bo > 1).length;
+  const nextEv = (lp.S.events || []).filter(e => e.league === "INTL" && e.start >= new Date().toISOString().slice(0, 10)).sort((a, b) => a.start.localeCompare(b.start))[0];
+  const out = [h("div", {class: "cards6", id: "cards"},
+    card("Next match", nx ? `${nx.t1 ? (lp.S.teams[nx.t1] || {}).short || lpName(lp, nx.t1) : "TBD"} vs ${nx.t2 ? (lp.S.teams[nx.t2] || {}).short || lpName(lp, nx.t2) : "TBD"}` : "–", nx ? h("time", {datetime: nx.dt, title: utcTxt(nx.dt)}, `${lday(nx.t0)} · ${ltime(nx.t0)} · Bo${nx.bo}`) : "none scheduled"),
+    card("Upcoming", String(up.length), up.length ? `${new Set(up.map(m => ldayKey(m.t0))).size} match days · to ${lday(up[up.length - 1].t0)}` : ""),
+    card("Played", String(done.length), `${grp(done.reduce((s, m) => s + (m.s1 || 0) + (m.s2 || 0), 0))} games`),
+    card("Sweeps", pct(multi ? sweeps / multi : null), `${sweeps} of ${multi} best-of-3 and best-of-5 series`),
+    card("Games linked", linkable.length ? pct(linked.length / linkable.length) : "–", `${linked.length} of ${linkable.length} series with every game`),
+    intl ? card("Next international", nextEv ? nextEv.name : "–", nextEv ? `${nextEv.start} to ${nextEv.end}` : "") : card("Updated", h("time", {datetime: lp.S.lastUpdated, title: utcTxt(lp.S.lastUpdated)}, lday(tms(lp.S.lastUpdated))), ltime(tms(lp.S.lastUpdated))))];
+  // charts: series per week (played, upcoming stacked), and the score lines
+  const wk = t => Math.floor((t - 4 * 864e5) / (7 * 864e5)), weeks = new Map();
+  for (const m of ms){ const k = wk(m.t0); if (!weeks.has(k)) weeks.set(k, {v: 0, v2: 0}); weeks.get(k)[m.done ? "v" : "v2"]++; }
+  const wks = [...weeks.keys()].sort((a, b) => a - b), wItems = [];
+  if (wks.length) for (let k = wks[0]; k <= wks[wks.length - 1]; k++){ const x = weeks.get(k) || {v: 0, v2: 0}, t = (k * 7 + 4) * 864e5, d = new Date(t);
+    wItems.push({label: MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(), v: x.v, v2: x.v2, tip: `Week of ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}: ${x.v} played${x.v2 ? `, ${x.v2} upcoming` : ""}`}); }
+  const lines = new Map(); for (const m of done) if (m.s1 != null){ const k = `${Math.max(m.s1, m.s2)}–${Math.min(m.s1, m.s2)}`; lines.set(k, (lines.get(k) || 0) + 1); }
+  const ln = [...lines].sort((a, b) => a[0].localeCompare(b[0]));
+  out.push(h("div", {class: "two", id: "schart"}, panel("Series per week", svgCols(wItems)),
+    panel("Series scores", bars(ln.map(([k, n]) => ({label: k, v: n / Math.max(1, done.length), txt: pct(n / Math.max(1, done.length)), sub: `${n}`, tip: `${k}: ${n} of ${done.length} series`})), {max: 1, lw: 60}))));
+  out.push(h("section", {class: "sec", id: "upcoming"}, h("h2", {}, "Upcoming", h("small", {}, label)), up.length ? byDay(lp, c, up) : h("p", {class: "note"}, "No matches scheduled.")));
+  if (intl){
+    const evs = (lp.S.events || []).map((e, i) => ({e, ms: ms.filter(m => m.ev === i)})).filter(x => x.e.league === "INTL" && x.ms.length).sort((a, b) => b.e.start.localeCompare(a.e.start));
+    out.push(h("section", {class: "sec", id: "intl"}, h("h2", {}, "International events"), evs.map(({e, ms: xs}) => {
+      const fin = xs.filter(m => m.done).sort((a, b) => b.t0 - a.t0)[0], upn = xs.filter(m => m.up).length, champ = !upn && fin && fin.w ? lpName(lp, fin.w === 1 ? fin.t1 : fin.t2) : null;
+      const cr = carousel(e.name, [...xs.filter(m => m.up), ...xs.filter(m => m.done).reverse()].map(m => seriesCard(lp, c, m, {day: true})));
+      return h("div", {class: "sec", "data-event": e.page}, h("h2", {}, e.name, h("small", {}, `${e.start} to ${e.end} · ${xs.length} matches${upn ? ` · ${upn} to play` : ""}${champ ? ` · won by ${champ}` : ""}`), cr.nav), cr.wrap);
+    })));
+  }
+  const days = byDay(lp, c, done);
+  out.push(h("section", {class: "sec", id: "results"}, h("h2", {}, "Recent results", h("small", {}, `${done.length} series`)), days.slice(0, 7),
+    days.length > 7 ? h("details", {class: "lowg"}, h("summary", {}, `Earlier: ${days.length - 7} more match days`), days.slice(7)) : null));
+  return out;
+}
+async function viewSchedule(r, c){
+  const lp = await loadLP();
+  drawChrome(r, c, null, null);
+  const out = [h("div", {class: "head"}, h("div", {}, h("h1", {}, "Schedule"), lp.S ? h("div", {class: "sub"}, "Updated ", h("time", {datetime: lp.S.lastUpdated, title: utcTxt(lp.S.lastUpdated)}, `${lday(tms(lp.S.lastUpdated))} ${ltime(tms(lp.S.lastUpdated))}`)) : null))];
+  if (!lp.S){ out.push(notice("No schedule", "The schedule (pro-schedule.json) could not be loaded.", link("home", [], base(c)), "All leagues")); return out; }
+  out.push(...await scheduleBody(lp, c, lp.all, {intl: true, label: "all leagues and international events"}));
+  return out;
+}
+
 /* ---------- views ---------- */
 const splitLabel = (D, c) => c.split === "all" ? `Season ${c.year}` : c.split === "latest" ? `${splitName(D, D.latestSp)} ${c.year}` : `${c.split} ${c.year}`;
 function notice(title, body, href, btn){ return h("div", {class: "notice"}, h("b", {}, title), h("p", {class: "note"}, body), href ? h("a", {class: "btn", href}, btn) : null); }
@@ -927,9 +1128,14 @@ function notice(title, body, href, btn){ return h("div", {class: "notice"}, h("b
 /* home: the four leagues, each with its standings row and recent games */
 async function viewHome(r, c){
   const Ls = Object.keys(IX.years[c.year]);
-  const Ds = await Promise.all(Ls.map(L => loadLeague(c.year, L)));
+  const [Ds, lp] = await Promise.all([Promise.all(Ls.map(L => loadLeague(c.year, L))), loadLP().then(lp => linkAll(lp).then(() => lp))]);
   drawChrome(r, c, null, null);
-  const out = [h("div", {class: "head"}, h("h1", {}, `Pro leagues · ${c.year}`), h("a", {class: "btn", href: link("drafts", ["all"], base(c)), id: "drafts-link"}, "Drafts"), h("a", {class: "btn", href: link("draft-search", [], base(c))}, "Draft search"))];
+  const out = [h("div", {class: "head"}, h("h1", {}, `Pro leagues · ${c.year}`), h("a", {class: "btn", href: link("schedule", [], base(c)), id: "sched-link"}, "Schedule"), h("a", {class: "btn", href: link("drafts", ["all"], base(c)), id: "drafts-link"}, "Drafts"), h("a", {class: "btn", href: link("draft-search", [], base(c))}, "Draft search"))];
+  if (lp.S){
+    const up = lp.all.filter(m => m.up).slice(0, 12), done = lp.all.filter(m => m.done).slice(-12).reverse();
+    if (up.length) out.push(Object.assign(rowSec(h("a", {href: link("schedule", [], base(c))}, "Upcoming"), "Upcoming matches, soonest first", up.map(m => seriesCard(lp, c, m, {day: true}))), {id: "home-up"}));
+    out.push(Object.assign(rowSec(h("a", {href: link("schedule", [], base(c))}, "Recent results"), "Recent series, newest first", done.map(m => seriesCard(lp, c, m, {day: true}))), {id: "home-recent"}));
+  }
   Ds.forEach((D, k) => {
     const games = gamesSel(D, c), st = rankStandings(standings(D, games));
     const s = h("section", {class: "sec", "data-league": D.L},
@@ -946,11 +1152,15 @@ async function viewHome(r, c){
 async function viewLeague(r, c){
   const L = r.args[0] && IX.years[c.year][r.args[0].toUpperCase()] ? r.args[0].toUpperCase() : null;
   if (!L){ drawChrome(r, c, null, null); return [notice("No such league this season", `${r.args[0] || ""} isn't one of the tier-1 leagues in ${c.year}.`, link("home", [], base(c)), "All leagues")]; }
-  const D = await loadLeague(c.year, L), games = gamesSel(D, c), tab = r.args[1] === "players" ? "players" : "overview";
+  const D = await loadLeague(c.year, L), games = gamesSel(D, c), tab = r.args[1] === "players" ? "players" : r.args[1] === "schedule" ? "schedule" : "overview";
   if (r.args[1] === "drafts") return viewDrafts({...r, view: "drafts", args: [L, ...r.args.slice(2)]}, c);
   drawChrome(r, c, L, D);
   const out = [h("div", {class: "head"}, h("div", {}, h("h1", {}, `${D.label} · ${splitLabel(D, c)}`), h("div", {class: "sub"}, `${games.length} games · ${games.length ? games[0].dt.slice(0, 10) + " to " + games[games.length - 1].dt.slice(0, 10) : ""}`))),
-    h("nav", {class: "tabs", "aria-label": "League sections"}, [["overview", "Overview"], ["players", "Players"], ["drafts", "Drafts"]].map(([k, t]) => h("a", {href: k === "drafts" ? link("drafts", [L], base(c)) : leagueLink(c, L, k === "overview" ? null : k), "aria-selected": String(tab === k)}, t)))];
+    h("nav", {class: "tabs", "aria-label": "League sections"}, [["overview", "Overview"], ["players", "Players"], ["schedule", "Schedule"], ["drafts", "Drafts"]].map(([k, t]) => h("a", {"data-tab": k, href: k === "drafts" ? link("drafts", [L], base(c)) : leagueLink(c, L, k === "overview" ? null : k), "aria-selected": String(tab === k)}, t)))];
+  if (tab === "schedule"){ const lp = await loadLP();
+    if (!lp.S) out.push(notice("No schedule", "The schedule (pro-schedule.json) could not be loaded.", leagueLink(c, L), "Overview"));
+    else out.push(...await scheduleBody(lp, c, lp.all.filter(m => m.L === L), {intl: false, label: D.label}));
+    return out; }
   if (!games.length){ out.push(notice("No games", "No games in this split.", leagueLink({...c, split: "all"}, L), "Whole season")); return out; }
   if (tab === "players"){ out.push(...leaguePlayers(r, c, D, games)); return out; }
   const st = rankStandings(standings(D, games));
@@ -1032,13 +1242,20 @@ async function viewTeam(r, c){
   const e = teamEntry(c.year, r.args[0] || "");
   if (!e){ drawChrome(r, c, null, null); const other = Object.keys(IX.years).find(y => teamEntry(y, r.args[0] || ""));
     return [notice("Team not found", `${r.args[0]} has no tier-1 games in ${c.year}.`, other ? teamLink({...c, year: other, split: "all"}, r.args[0]) : link("home", [], base(c)), other ? `See ${other}` : "All leagues")]; }
-  const [name, L] = e, D = await loadLeague(c.year, L), t = D.ti[name], games = gamesSel(D, c);
+  const [name, L] = e, [D, lp] = await Promise.all([loadLeague(c.year, L), loadLP()]), t = D.ti[name], games = gamesSel(D, c);
+  const cur = !!(lp.S && c.year === lp.year);
+  if (cur) await linkGames(lp, L);
   drawChrome(r, c, L, D);
   const rows = teamGames(games, t);
+  const tms2 = cur ? teamMatches(lp, name).map(m => { const me = lpOE(lp, m.t1) === name ? 0 : 1; return Object.assign(m, {_me: me, _opp: lpName(lp, me ? m.t1 : m.t2), _won: m.done && m.w === me + 1}); }) : [];
+  const nx = tms2.find(m => m.up), nxOpp = nx ? (nx._me ? nx.t1 : nx.t2) : null;
+  const nextCard = cur ? h("div", {class: "nextm", id: "nextm"}, h("h3", {}, "Next match"), nx ? [h("div", {class: "vs"}, h("span", {class: "note"}, "vs"), lpBadge(lp, c, nxOpp), h("b", {}, lpName(lp, nxOpp))),
+    h("time", {datetime: nx.dt, title: utcTxt(nx.dt)}, `${lday(nx.t0)} · ${ltime(nx.t0)}`), h("span", {class: "note"}, `${nx.L === "INTL" && nx.E ? nx.E.name : nx.L} · ${nx.stage} · Bo${nx.bo}`),
+    nx.stream ? h("a", {class: "stream", href: nx.stream, target: "_blank", rel: "noopener noreferrer"}, streamTxt(nx.stream)) : null] : h("b", {}, "None scheduled")) : null;
   const st = standings(D, games), me = st.find(x => x.t === t), rk = rankStandings(st), place = me ? rk.find(x => x.t === t).rank : null;
   const out = [h("div", {class: "head", id: "thead"}, tagBadge(name, "lg"), h("div", {}, h("h1", {}, name),
     h("div", {class: "chips"}, h("a", {class: "chip", href: leagueLink(c, L)}, D.label), h("span", {class: "chip"}, splitLabel(D, c)),
-      me ? h("span", {class: "chip", id: "rec"}, `${me.w}–${me.l} · #${place} of ${st.length}`) : null, me && me.elo != null ? h("span", {class: "chip"}, `Elo ${Math.round(me.elo)}`) : null)))];
+      me ? h("span", {class: "chip", id: "rec"}, `${me.w}–${me.l} · #${place} of ${st.length}`) : null, me && me.elo != null ? h("span", {class: "chip"}, `Elo ${Math.round(me.elo)}`) : null)), nextCard)];
   const ttab = r.args[1] === "draft" ? "draft" : "overview";
   out.push(h("nav", {class: "tabs", id: "ttabs", "aria-label": "Team sections"}, [["overview", "Overview"], ["draft", "Draft"]].map(([k, t]) => h("a", {href: link("team", k === "draft" ? [name, "draft"] : [name], base(c)), "aria-selected": String(ttab === k)}, t))));
   if (!rows.length){ out.push(notice("No games", "No games for this team in this split.", teamLink({...c, split: "all"}, name), "Whole season")); return out; }
@@ -1070,20 +1287,49 @@ async function viewTeam(r, c){
   const last = rows.slice(-5).reverse(), all = allPlayers(D, games);
   const roster = ROLES.map((_, ro) => { const ps = []; for (const {g, s} of last){ const p = g.pl[s][ro]; if (p != null && !ps.includes(p)) ps.push(p); } return ps; });
   const pOf = p => { const rs = rows.filter(({g, s}) => g.pl[s].includes(p)).map(({g, s}) => ({g, s, ro: g.pl[s].indexOf(p)})); return pAgg(rs); };
-  out.push(h("section", {class: "sec", id: "roster"}, h("h2", {}, "Current roster", h("small", {}, "from the last 5 games")), h("div", {class: "pgrid"}, roster.map((ps, ro) => {
-    if (!ps.length) return h("div", {class: "pc"}, roleIcon(ro), h("span", {class: "note"}, "–"));
-    const p0 = ps[0], A = pOf(p0);
-    return h("div", {class: "pc", "data-role": ROLES[ro], "data-player": D.players[p0]}, h("div", {class: "nm"}, roleIcon(ro), h("a", {href: playerLink(c, D.players[p0], L)}, D.players[p0])),
-      h("dl", {}, h("dt", {}, "Games"), h("dd", {}, String(A.n)), h("dt", {}, "KDA"), h("dd", {}, f1(A.kda)), h("dt", {}, "K/D/A"), h("dd", {}, `${f1(A.k / A.n)}/${f1(A.d / A.n)}/${f1(A.a / A.n)}`),
-        h("dt", {}, "GD@15"), h("dd", {}, sgn(A.mm.gd15)), h("dt", {}, "WPA / game"), h("dd", {class: A.mm.wpa > 0 ? "up" : A.mm.wpa < 0 ? "dn" : ""}, pp(A.mm.wpa))),
-      ps.length > 1 ? h("div", {class: "subs"}, "Also played: ", ps.slice(1).map((p, k) => [k ? ", " : "", h("a", {href: playerLink(c, D.players[p], L)}, D.players[p]), ` (${pOf(p).n} g, sub)`])) : null);
-  }))));
-  out.push(rowSec("Game history", `${name} games, newest first`, rows.slice().reverse().map(({g, s}) => gameCard(c, D, g, s))));
+  const stats = (A, extra) => h("dl", {}, extra, h("dt", {}, "Games"), h("dd", {}, String(A.n)), h("dt", {}, "KDA"), h("dd", {}, A.n ? f1(A.kda) : "–"), h("dt", {}, "K/D/A"), h("dd", {}, A.n ? `${f1(A.k / A.n)}/${f1(A.d / A.n)}/${f1(A.a / A.n)}` : "–"),
+    h("dt", {}, "GD@15"), h("dd", {}, sgn(A.mm.gd15)), h("dt", {}, "WPA / game"), h("dd", {class: A.mm.wpa > 0 ? "up" : A.mm.wpa < 0 ? "dn" : ""}, pp(A.mm.wpa)));
+  const pname = (nm, oe) => oe && D.pi[oe] != null ? h("a", {href: playerLink(c, oe, L)}, nm) : h("span", {}, nm);
+  const OR = cur ? lp.byOE.get(name) : null;
+  if (OR){
+    // the official roster (Leaguepedia): starters by role, subs, staff; the OE lineups of the last 5 games as a note where they differ
+    const RO = {Top: 0, Jungle: 1, Mid: 2, Bot: 3, Support: 4}, st = OR.players.filter(p => p.status === "starter"), subs = OR.players.filter(p => p.status === "sub"), staff = OR.players.filter(p => p.status === "coach" || !(p.role in RO) && p.status !== "sub");
+    out.push(h("section", {class: "sec", id: "roster", "data-lp": OR.lp}, h("h2", {}, "Roster", h("small", {}, OR.event ? `official · ${(lp.S.events.find(x => x.page === OR.event) || {name: OR.event}).name}` : "official")), h("div", {class: "pgrid"}, ROLES.map((_, ro) => {
+      const P = st.find(p => RO[p.role] === ro), ps = roster[ro], oe = P && P.oe;
+      if (!P) return h("div", {class: "pc", "data-role": ROLES[ro]}, roleIcon(ro), h("span", {class: "note"}, "–"));
+      const pi = oe != null ? D.pi[oe] : null, A = pi != null ? pOf(pi) : pAgg([]);
+      const recent = ps.filter(q => q !== pi);
+      return h("div", {class: "pc", "data-role": ROLES[ro], "data-player": oe || P.id, "data-recent": ps.length ? D.players[ps[0]] : null}, h("div", {class: "nm"}, roleIcon(ro), pname(P.id, oe)),
+        h("div", {class: "bio1"}, bioLine(P)), stats(A),
+        recent.length ? h("div", {class: "subs" + (ps[0] !== pi ? " diff" : "")}, ps[0] !== pi ? "Played recently: " : "Also played: ", recent.map((q, k) => [k ? ", " : "", h("a", {href: playerLink(c, D.players[q], L)}, D.players[q]), ` (${pOf(q).n} g)`])) : null);
+    }))));
+    const li = (p, withRole) => h("li", {"data-id": p.id}, withRole && p.role in RO ? roleIcon(RO[p.role]) : null, h("b", {}, pname(p.id, p.oe)), h("span", {class: "note"}, [withRole ? null : p.role, bioLine(p)].filter(Boolean).join(" · ")), p.now && p.now !== OR.oe && p.now !== OR.name ? h("span", {class: "chip"}, "now " + p.now) : null);
+    out.push(h("div", {class: "two", id: "staff"}, panel("Substitutes", subs.length ? h("ul", {class: "plist", id: "subs"}, subs.map(p => li(p, true))) : h("p", {class: "note"}, "None listed.")),
+      panel("Coaches and staff", staff.length ? h("ul", {class: "plist", id: "coaches"}, staff.map(p => li(p, false))) : h("p", {class: "note"}, "None listed."))));
+  } else {
+    out.push(h("section", {class: "sec", id: "roster"}, h("h2", {}, "Current roster", h("small", {}, "from the last 5 games")), h("div", {class: "pgrid"}, roster.map((ps, ro) => {
+      if (!ps.length) return h("div", {class: "pc"}, roleIcon(ro), h("span", {class: "note"}, "–"));
+      const p0 = ps[0], A = pOf(p0);
+      return h("div", {class: "pc", "data-role": ROLES[ro], "data-player": D.players[p0]}, h("div", {class: "nm"}, roleIcon(ro), h("a", {href: playerLink(c, D.players[p0], L)}, D.players[p0])),
+        stats(A), ps.length > 1 ? h("div", {class: "subs"}, "Also played: ", ps.slice(1).map((p, k) => [k ? ", " : "", h("a", {href: playerLink(c, D.players[p], L)}, D.players[p]), ` (${pOf(p).n} g, sub)`])) : null);
+    }))));
+  }
+  if (cur && tms2.length){
+    // series: upcoming, results (with a link per game), form and record by best-of
+    const up = tms2.filter(m => m.up), done = tms2.filter(m => m.done);
+    if (up.length) out.push(Object.assign(rowSec("Upcoming series", `${name} upcoming series`, up.map(m => seriesCard(lp, c, m, {day: true}))), {id: "tup"}));
+    if (done.length){
+      out.push(Object.assign(rowSec("Series results", `${name} series, newest first`, done.slice().reverse().map(m => seriesCard(lp, c, m, {persp: name, day: true}))), {id: "tseries"}));
+      const bo = [1, 3, 5].map(b => { const xs = done.filter(m => m.bo === b), w = xs.filter(m => m._won).length; return xs.length ? {label: "Best of " + b, v: w / xs.length, txt: `${w}–${xs.length - w}`, sub: pct(w / xs.length), tip: `Best of ${b}: ${w}–${xs.length - w}`} : null; }).filter(Boolean);
+      out.push(h("div", {class: "two", id: "tform"}, panel(h("span", {}, "Series form ", h("small", {}, `last ${Math.min(30, done.length)}`)), formStrip(done, name)), panel("Series record", bars(bo, {max: 1, ref: 0.5, lw: 90}))));
+    }
+  }
+  out.push(Object.assign(rowSec("Game history", `${name} games, newest first`, rows.slice().reverse().map(({g, s}) => gameCard(c, D, g, s))), {id: "thist"}));
   // Elo and gold curves
-  const lp = leagueEloPath(D, games);
+  const lpath = leagueEloPath(D, games);
   const others = st.filter(x => x.t !== t).map(x => ({key: x.name, label: x.name, cls: "mut", endLabel: false, pts: teamAgg(D, teamGames(games, x.t)).gdm.map((v, j) => v == null ? null : {x: [10, 15, 20, 25][j], y: v, tip: `${x.name}: ${sgn(v)} gold at ${[10, 15, 20, 25][j]} min`}).filter(Boolean)}));
   out.push(h("div", {class: "two"},
-    panel("Elo over time", lineChart({title: `${name} Elo over time`, w: chartW(0.5), series: [{key: "league", label: "League average", short: "avg", cls: "dash", pts: lp.map(p => ({x: p.x, y: p.y}))},
+    panel("Elo over time", lineChart({title: `${name} Elo over time`, w: chartW(0.5), series: [{key: "league", label: "League average", short: "avg", cls: "dash", pts: lpath.map(p => ({x: p.x, y: p.y}))},
       {key: name, label: name, short: IX.tags[name] || name, emph: true, th: hue(name), dots: 2.5, pts: me.path.map(p => ({x: p.x, y: p.y, tip: `${p.g.dt.slice(0, 10)}: Elo ${Math.round(p.y)} (${p.g.w === p.s ? "won" : "lost"} vs ${D.teams[p.g.t[1 - p.s]]})`, cls: p.g.w === p.s ? "w" : "l"}))}], x: {date: true}})),
     panel("Gold difference by minute", lineChart({title: `${name} average gold difference at 10, 15, 20 and 25 minutes vs every other team`, w: chartW(0.5), y: {ref: 0, fmt: v => sgn(v)},
       x: {ticks: [10, 15, 20, 25], fmt: v => v + " min", min: 10, max: 25}, series: [...others, {key: name, label: name, short: IX.tags[name] || name, emph: true, th: hue(name), dots: 3,
@@ -1131,13 +1377,21 @@ async function viewPlayer(r, c){
   const e = playerEntry(c.year, r.args[0] || "", r.q.lg);
   if (!e){ drawChrome(r, c, null, null); const other = Object.keys(IX.years).find(y => playerEntry(y, r.args[0] || ""));
     return [notice("Player not found", `${r.args[0]} has no tier-1 games in ${c.year}.`, other ? playerLink({...c, year: other, split: "all"}, r.args[0]) : link("home", [], base(c)), other ? `See ${other}` : "All leagues")]; }
-  const [name, L] = e, D = await loadLeague(c.year, L), p = D.pi[name], games = gamesSel(D, c);
+  const [name, L] = e, [D, lp] = await Promise.all([loadLeague(c.year, L), loadLP()]), p = D.pi[name], games = gamesSel(D, c);
   drawChrome(r, c, L, D);
   const rows = playerRows(games, p);
   const team = rows.length ? D.teams[rows[rows.length - 1].g.t[rows[rows.length - 1].s]] : e[2];
   const A = pAgg(rows), ro = rows.length ? A.mainRole : e[3];
   const out = [h("div", {class: "head", id: "phead"}, tagBadge(team, "lg", teamLink(c, team)), h("div", {}, h("h1", {}, name),
     h("div", {class: "chips"}, h("span", {class: "chip"}, roleSvg(ro), ROLE_L[ro]), h("a", {class: "chip", href: teamLink(c, team)}, team), h("a", {class: "chip", href: leagueLink(c, L)}, D.label), h("span", {class: "chip"}, splitLabel(D, c)))))];
+  // bio (Leaguepedia): the official roster entry, preferring the player's OE team
+  const bios = lp.R && c.year === lp.year ? lp.pOE.get(name) || [] : [], B = bios.find(x => x.t.oe === team) || bios[0];
+  if (B){ const P = B.p, cy = c, tOE = B.t.oe && teamEntry(c.year, B.t.oe) ? B.t.oe : null;
+    const row = (k, v) => v == null || v === "" ? null : [h("dt", {}, k), h("dd", {}, v)];
+    out.push(h("div", {class: "two", id: "bio", "data-id": P.id}, panel("Bio", h("dl", {class: "bio"},
+      row("Name", P.name ? P.name + (P.native && P.native !== P.name ? ` (${P.native})` : "") : null), row("Country", P.country), row("Age", P.age != null ? `${P.age}${P.birthdate ? ` · born ${P.birthdate}` : ""}` : null),
+      row("Team", h("span", {}, tOE ? h("a", {href: teamLink(cy, tOE)}, B.t.name) : B.t.name, ` · ${P.role}${P.status === "sub" ? " (sub)" : ""}`)), row("Now", P.now && P.now !== B.t.oe && P.now !== B.t.name ? P.now : null), row("Contract", P.contractEnd ? "until " + P.contractEnd : null))),
+      panel("Team history", tenureChart(P.history || []) || h("p", {class: "note"}, "–")))); }
   if (!rows.length){ out.push(notice("No games", "No games for this player in this split.", playerLink({...c, split: "all"}, name, L), "Whole season")); return out; }
   const peers = allPlayers(D, games).filter(x => x.agg.mainRole === ro);
   const pmin = minGames(peers), pe = peers.filter(x => x.agg.n >= pmin || x.p === p);
@@ -1697,13 +1951,13 @@ function render(){
   if (!IX) return IDLE;
   const tok = ++RTOK, r = parseHash(), c = ctx(r.q);
   CTX = c;
-  const V = {home: viewHome, league: viewLeague, team: viewTeam, player: viewPlayer, game: viewGame, drafts: viewDrafts, "draft-search": viewSearch}[r.view] || viewHome;
+  const V = {home: viewHome, league: viewLeague, team: viewTeam, player: viewPlayer, game: viewGame, drafts: viewDrafts, "draft-search": viewSearch, schedule: viewSchedule}[r.view] || viewHome;
   const main = $("main");
   if (!main.firstElementChild || !main.querySelector(".loading")){ /* keep the old view until the new one is ready */ }
   IDLE = Promise.resolve().then(() => V(r, c)).then(nodes => {
     if (tok !== RTOK) return;
     main.textContent = ""; main.append(...nodes);
-    document.title = ({home: "Pro leagues", league: (r.args[0] || "").toUpperCase(), team: r.args[0], player: r.args[0], game: "Game", drafts: "Drafts " + (r.args[0] || "").toUpperCase(), "draft-search": "Draft search"}[r.view] || "Pro leagues") + " · Rift Logic Pro";
+    document.title = ({home: "Pro leagues", league: (r.args[0] || "").toUpperCase(), team: r.args[0], player: r.args[0], game: "Game", drafts: "Drafts " + (r.args[0] || "").toUpperCase(), "draft-search": "Draft search", schedule: "Schedule"}[r.view] || "Pro leagues") + " · Rift Logic Pro";
   }).catch(e => { if (tok !== RTOK) return; main.textContent = ""; main.append(h("div", {class: "notice err"}, `Something went wrong: ${e.message}`)); console.error(e); });
   return IDLE;
 }
@@ -1712,13 +1966,15 @@ function start(d){
   IX = d; CH = IX.champs; IX.defaultYear = String(Math.max(...Object.keys(IX.years).map(Number)));
   TSI = Object.fromEntries(IX.ts.map((k, i) => [k, i])); PSI = Object.fromEntries(IX.ps.map((k, i) => [k, i]));
   loadIcons(); render();
+  loadLP().then(lp => { const u = $("lpupd"), ts2 = [lp.S && lp.S.lastUpdated, lp.R && lp.R.lastUpdated].filter(Boolean).sort().pop();
+    if (u && ts2) u.replaceChildren(" · updated ", h("time", {datetime: ts2, title: utcTxt(ts2)}, `${lday(tms(ts2))} ${ltime(tms(ts2))}`)); });
   window.addEventListener("hashchange", () => { render().then(() => { $("main").focus({preventScroll: true}); window.scrollTo(0, 0); }); });
   lastW = window.innerWidth;
   window.addEventListener("resize", () => { clearTimeout(start.t); start.t = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 120){ lastW = window.innerWidth; render(); } }, 250); });
 }
 const ready = PAGE.inline ? Promise.resolve(PAGE.inline.index) : fetch("pro.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 window.__pro = {ready: ready.then(d => { start(d); return IDLE.then(() => true); }, e => { $("main").textContent = ""; $("main").append(h("div", {class: "notice err"}, `The pro data (pro.json) could not be loaded: ${e.message}. Reload to try again.`)); throw e; }),
-  idle: () => IDLE, render, league: (y, L) => loadLeague(y, L), standings, teamAgg, teamGames, pAgg, playerRows, gamesSel, ctx: () => CTX};
+  idle: () => IDLE, render, league: (y, L) => loadLeague(y, L), lp: () => loadLP().then(lp => linkAll(lp).then(() => lp)), standings, teamAgg, teamGames, pAgg, playerRows, gamesSel, ctx: () => CTX};
 })();
 </script>
 
