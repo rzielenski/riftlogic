@@ -131,6 +131,35 @@ hx-r>hx-d{position:absolute;display:block;width:12px;height:12px;margin:-6px 0 0
 .hx-wipe{animation:hx-wipe .7s cubic-bezier(.7,0,.2,1) backwards}
 @view-transition{navigation:auto}
 }
+@media (prefers-reduced-motion:no-preference){
+html[data-hx=code] .pane-ed{animation:hx-from-l .75s var(--spring) backwards}
+html[data-hx=code] .pane-out{animation:hx-from-r .75s var(--spring) .12s backwards}
+html[data-hx=docs] main{animation:hx-focus .8s var(--ease) backwards}
+html[data-hx=draft] .team.B{animation:hx-from-l .7s var(--spring) backwards}
+html[data-hx=draft] .team.R{animation:hx-from-r .7s var(--spring) backwards}
+html[data-hx=draft] .pool{animation:hx-pop .65s var(--spring) .15s backwards}
+html[data-hx=draft] .turn,html[data-hx=draft] .lanes{animation:hx-drop .6s var(--spring) .28s backwards}
+html[data-hx=champions] .hx-cascade .tile{animation-name:hx-flip;animation-duration:.6s;transform-origin:50% 0}
+html[data-hx=champions] .band .bh{animation:hx-from-l .6s var(--spring) backwards}
+html[data-hx=pro] .hx-cascade .tile{animation-name:hx-zoom;animation-duration:.5s}
+html[data-hx=pro] .cards6>.card{animation:hx-rise .6s var(--spring) backwards}
+html[data-hx=pro] .cards6>.card:nth-child(2){animation-delay:.06s}html[data-hx=pro] .cards6>.card:nth-child(3){animation-delay:.12s}
+html[data-hx=pro] .cards6>.card:nth-child(4){animation-delay:.18s}html[data-hx=pro] .cards6>.card:nth-child(5){animation-delay:.24s}
+html[data-hx=pro] .cards6>.card:nth-child(6){animation-delay:.3s}
+html[data-hx=pro] .hx-wipe{animation-name:hx-wipe-v}
+html[data-hx=champions] .hx-wipe{animation-name:hx-wipe-c}
+}
+@keyframes hx-from-l{from{opacity:0;transform:translateX(-36px)}}
+@keyframes hx-from-r{from{opacity:0;transform:translateX(36px)}}
+@keyframes hx-pop{from{opacity:0;transform:scale(.92)}}
+@keyframes hx-drop{from{opacity:0;transform:translateY(-14px)}}
+@keyframes hx-rise{from{opacity:0;transform:translateY(22px)}}
+@keyframes hx-flip{from{opacity:0;transform:perspective(700px) rotateX(-70deg)}}
+@keyframes hx-zoom{from{opacity:0;transform:scale(.78);filter:blur(4px)}}
+@keyframes hx-focus{from{opacity:0;filter:blur(6px);transform:scale(.99)}}
+@keyframes hx-wipe-v{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes hx-wipe-c{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}}
+#hx-veil.rev{transform:scaleX(-1)}
 @keyframes hx-rip{from{transform:scale(0);opacity:.9}to{transform:scale(22);opacity:0}}
 @keyframes hx-tile{from{opacity:0;transform:translateY(10px) scale(.94)}}
 @keyframes hx-zap{from{color:var(--gold-hi);text-shadow:0 0 18px var(--glow-gold),0 0 4px var(--glow)}}
@@ -191,6 +220,7 @@ hx-r>hx-d{position:absolute;display:block;width:12px;height:12px;margin:-6px 0 0
 <script>(() => {
 "use strict";
 const C = {"page": "docs", "sec": 0, "panels": "", "count": null, "wipe": null, "wipeOn": null, "eval": null, "hash": false, "tiers": false}, D = document, R = D.documentElement, W = window;
+R.setAttribute("data-hx", C.page || "");
 const mq = q => W.matchMedia ? W.matchMedia(q) : null;
 const RMQ = mq("(prefers-reduced-motion: reduce)");
 const live = !!RMQ;
@@ -565,6 +595,8 @@ const c = curTab(); if (c) ss("riftlogic.navfrom", c.id);
 if (reduced || !veil) return;
 e.preventDefault();
 if (a.classList.contains("rlnav-tab")) placePill(a);
+const tl = tabs ? [...tabs.querySelectorAll(".rlnav-tab")] : [], ia = tl.indexOf(a), ic = tl.indexOf(c);
+veil.classList.toggle("rev", ia >= 0 && ic >= 0 && ia < ic);   // leftward tab: the sweep runs right to left
 veil.classList.remove("go"); void veil.offsetWidth; veil.classList.add("go");
 setTimeout(() => { W.location.href = a.href; }, 400);
 });
@@ -653,7 +685,7 @@ function wipe(el) {
 if (!el || reduced) return;
 el.classList.remove("hx-wipe"); void el.offsetWidth; el.classList.add("hx-wipe");
 setTimeout(() => el.classList.remove("hx-wipe"), 760);
-if (!beam) return;
+if (!beam || C.page === "pro" || C.page === "champions") return;   // those tabs wipe vertically / from the centre
 raf(() => {
 const r = el.getBoundingClientRect(), t = Math.max(0, r.top), b = Math.min(W.innerHeight, r.bottom);
 if (b - t < 8) return;
