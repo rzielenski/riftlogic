@@ -207,7 +207,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-3AFSsfIltLu6LaAz7lnC1Yqm68I/JnG+3F9WLf6fKsc=' 'sha256-V0H+rRE//HgKsNKy4gWr6SF0dUPokHGvv7ehTZwaE8o=' 'sha256-oeBH5KY4aRgFc3yOwjDNXbVFMDVrD2P+VpCttKeocgw='"
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-3AFSsfIltLu6LaAz7lnC1Yqm68I/JnG+3F9WLf6fKsc=' 'sha256-mfFPdg/hEHmh43vTdfaocoAcjwTC3UnXMUb7sAk7Xww=' 'sha256-w5tUO6395DCroyeb7WBB4KdT0FTwxi9eMiUFbFk4CJA='"
         }
       ]
     },

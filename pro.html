@@ -370,7 +370,44 @@ svg.stk5{display:block;max-width:100%;height:auto;margin:6px 0 8px}svg.stk5 rect
 svg.stk5 text{font:600 11.5px/1 var(--sans);fill:var(--bg)}svg.stk5 .z{stroke:var(--ink-2);stroke-width:1.5;opacity:.6}
 .isum{display:flex;align-items:baseline;gap:10px}.isum b{font:600 26px/1.1 var(--sans)}
 .chips.i5 .chip svg{width:14px;height:14px;fill:currentColor;vertical-align:-2px;margin-right:4px}
-.selrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.selrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+/* player page: jump bar, profile tiles, strengths / weaknesses, dot strips, laning rows, champion table */
+.jump{position:sticky;top:var(--barh,0px);z-index:25;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:var(--bg);border-bottom:1px solid var(--line);margin-top:-4px}
+.jump::-webkit-scrollbar{display:none}
+.jump button{flex:none;border:0;background:none;padding:10px 12px;font:500 13px/1 var(--sans);color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.jump button:hover{color:var(--ink)}.jump button[aria-current]{color:var(--accent);border-bottom-color:var(--accent)}
+.jsec{scroll-margin-top:calc(var(--barh,0px) + 52px)}
+#overview{gap:14px}
+.dims{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dim{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:4px 10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--pc);border-radius:10px;padding:11px 14px;cursor:pointer;min-width:0}
+.dim:hover{border-color:var(--line-strong);border-left-color:var(--pc)}.dim.on{border-color:var(--accent);border-left-color:var(--pc);background:var(--surface-2)}
+.dim .nm{font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dim b{grid-row:span 2;font:600 30px/1 var(--sans);color:var(--pc);align-self:center}
+.dim .g,.gq .g{display:block;height:6px;border-radius:3px;background:var(--inset);overflow:hidden}.dim .g i,.gq .g i{display:block;height:100%;background:var(--pc);border-radius:3px}
+.dim small{grid-column:1 / -1;font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swc{margin:0}.chip.sw{border-color:color-mix(in srgb,var(--pc) 55%,transparent);color:var(--ink-2)}.chip.sw b{color:var(--pc);font-weight:600}
+#pdet h3{display:flex;align-items:center;gap:10px}
+.seg.lt button{height:26px;padding:0 9px;font-size:12px;letter-spacing:0;text-transform:none}
+.sec > h2 .seg.lt{margin-left:auto}
+.chart.dots .dl{font:500 12px var(--sans);fill:var(--ink-2)}.chart.dots .dv{font:600 12px var(--mono)}
+.chart.dots .ax{stroke:var(--line-strong);stroke-width:1}.chart.dots .avg{stroke:var(--ink-2);stroke-width:2;opacity:.5}
+.chart.dots .pd{fill:var(--faint);opacity:.6}.chart.dots .pd:hover{opacity:1;fill:var(--ink-2)}.chart.dots .me{stroke:var(--surface);stroke-width:2}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(60px,110px) minmax(60px,110px);align-items:center;gap:10px;font-size:12.5px}
+.lrow .ll{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lrow b{font:600 13px/1 var(--mono);text-align:right}
+.lrow.lh small{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+.gq{display:grid;grid-template-columns:minmax(0,1fr) 22px;align-items:center;gap:6px}.gq small{font:500 11px/1 var(--mono);color:var(--pc);text-align:right}.gq.na{color:var(--faint)}
+.chart.lanec a.lg{cursor:pointer}
+h3.sub{margin:0;display:flex;align-items:center;gap:10px;font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+#h2h,#phist{display:grid;gap:8px;min-width:0}
+.tile.h2h small.up{color:var(--ok)}.tile.h2h small.dn{color:var(--no)}
+.tscroll{overflow-x:auto;scrollbar-width:none;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.tscroll::-webkit-scrollbar{display:none}
+.ctab th{padding:0}.ctab th .sb,.ctab th > span{display:block;width:100%;border:0;background:none;padding:7px 10px;font:inherit;color:inherit;text-align:inherit;cursor:pointer}
+.ctab th[aria-sort] .sb{color:var(--accent)}.ctab th[aria-sort=descending] .sb::after{content:" ↓"}.ctab th[aria-sort=ascending] .sb::after{content:" ↑"}
+.ctab td .hl{display:inline-flex;align-items:center;gap:6px}.ctab tr.sig td:first-child{box-shadow:inset 3px 0 0 var(--gold)}.sigb{color:var(--gold);font-size:12px}
+.ctab tbody tr:hover{background:var(--surface-2)}
+.cpool{align-items:start}.ctab th .sb{padding:7px 7px}.ctab td{padding:5px 7px}.ctab{font-size:12.5px}
+#pview{max-width:100%;min-width:0;flex:0 1 auto;overflow-x:auto;scrollbar-width:none}#pview::-webkit-scrollbar{display:none}#pview button{flex:none}
+@media (max-width:760px){.dims{grid-template-columns:repeat(2,minmax(0,1fr))}.dim b{font-size:24px}.lrow{grid-template-columns:minmax(0,1fr) 56px 64px 64px;gap:6px}.jsec{scroll-margin-top:52px}}
 @media (max-width:1000px){.cards6{grid-template-columns:repeat(2,minmax(0,1fr))}.mults{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){
   .bar{position:static}
@@ -456,6 +493,9 @@ html[data-hx=pro] .cards6>.card:nth-child(4){animation-delay:.18s}html[data-hx=p
 html[data-hx=pro] .cards6>.card:nth-child(6){animation-delay:.3s}
 html[data-hx=pro] .hx-wipe{animation-name:hx-wipe-v}
 html[data-hx=champions] .hx-wipe{animation-name:hx-wipe-c}
+html[data-hx=play] .pl-card{animation:hx-deal .7s var(--spring) backwards}
+html[data-hx=play] .pl-card+.pl-card{animation-delay:.14s}
+html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
 }
 @keyframes hx-from-l{from{opacity:0;transform:translateX(-36px)}}
 @keyframes hx-from-r{from{opacity:0;transform:translateX(36px)}}
@@ -466,6 +506,8 @@ html[data-hx=champions] .hx-wipe{animation-name:hx-wipe-c}
 @keyframes hx-zoom{from{opacity:0;transform:scale(.78);filter:blur(4px)}}
 @keyframes hx-focus{from{opacity:0;filter:blur(6px);transform:scale(.99)}}
 @keyframes hx-wipe-v{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes hx-deal{from{opacity:0;transform:perspective(900px) translateY(-26px) rotateX(24deg) rotate(-2.5deg) scale(.94)}}
+@keyframes hx-pulse{from{opacity:0;transform:scale(.7);box-shadow:0 0 0 0 var(--glow-gold)}60%{opacity:1;transform:scale(1.04);box-shadow:0 0 0 14px transparent}}
 @keyframes hx-wipe-c{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}}
 #hx-veil.rev{transform:scaleX(-1)}
 @keyframes hx-rip{from{transform:scale(0);opacity:.9}to{transform:scale(22);opacity:0}}
@@ -516,13 +558,18 @@ html[data-hx=champions] .hx-wipe{animation-name:hx-wipe-c}
   .rlnav-tab{gap:4px;padding:0 4px;font-size:12.5px}
   .rlnav-tab svg{width:16px;height:16px}
 }
-@media (max-width:420px){
+@media (max-width:760px){
   .rlnav-tab .l{display:none}
   .rlnav-tab .s{display:inline}
   .rlnav-docs span{display:none}
 }
+@media (max-width:470px){
+  .rlnav-tab:not([aria-current="page"]) .s{display:none}
+  .rlnav-tab:not([aria-current="page"]){flex:0 0 auto;padding:0 9px}
+  .rlnav-tab[aria-current="page"]{flex:1 1 auto}
+}
 @media (prefers-reduced-motion:reduce){.rlnav-tab,.rlnav-pill{transition:none}}</style>
-<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a></div><div class="rlnav-side"><div class="rlset"><button type="button" class="rlnav-set" id="rlset" aria-expanded="false" aria-controls="rlset-pop" title="Settings" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg></button><div class="rlset-pop" id="rlset-pop" role="dialog" aria-label="Settings" hidden><div class="rlset-row"><span>Background</span><div class="seg" role="group" aria-label="Background"><button type="button" data-bg="anim" aria-pressed="true">Animated</button><button type="button" data-bg="still" aria-pressed="false">Still</button><button type="button" data-bg="off" aria-pressed="false">Off</button></div></div></div></div><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
+<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a><a class="rlnav-tab" id="playlink" href="play.html" title="Quiz: kill or no kill, cooldowns and damage"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.6 6.2h6.8a4 4 0 0 1 3.9 4.9l-.8 3.5a1.9 1.9 0 0 1-3.3.9L11.7 14H8.3l-1.5 1.5a1.9 1.9 0 0 1-3.3-.9l-.8-3.5a4 4 0 0 1 3.9-4.9Z"/><path d="M6.6 8.9v2.8M5.2 10.3H8"/><circle cx="13.1" cy="9.5" r=".55" fill="currentColor"/><circle cx="14.7" cy="11.1" r=".55" fill="currentColor"/></svg><span class="l">Play</span><span class="s" aria-hidden="true">Play</span></a></div><div class="rlnav-side"><div class="rlset"><button type="button" class="rlnav-set" id="rlset" aria-expanded="false" aria-controls="rlset-pop" title="Settings" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg></button><div class="rlset-pop" id="rlset-pop" role="dialog" aria-label="Settings" hidden><div class="rlset-row"><span>Background</span><div class="seg" role="group" aria-label="Background"><button type="button" data-bg="anim" aria-pressed="true">Animated</button><button type="button" data-bg="still" aria-pressed="false">Still</button><button type="button" data-bg="off" aria-pressed="false">Off</button></div></div></div></div><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
 <div id="hx-veil" aria-hidden="true"></div><div id="hx-beam" aria-hidden="true"><i></i></div>
 <script>(() => {
 "use strict";
@@ -689,7 +736,7 @@ TOWERS.forEach(t => dot(t.p, .012, t.side ? P.red : P.blue, t.side ? .45 : .9));
 dot([-.36, -.12], .014, P.blue, 1);
 CAMPS.forEach(c => dot(c.p, .01, P.gold, c.side ? .25 : .6));
 }
-const FRAME = [[0, 0], [-.1, -.08], [.07, -.06], [-.06, .08]];
+const FRAME = [[0, 0], [-.1, -.08], [.07, -.06], [-.06, .08], [.08, .07]];
 function create(gl, host) {
 const sh = (type, src) => {
 const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
@@ -772,7 +819,7 @@ if (!st.off) initGL(); else st.reason = "off";
 const fb2 = () => { if (!live || !SCENE.fallback) return; try { SCENE.fallback(isLight()); st.fallback2d = true; } catch (_) {} };
 const nofx = () => { R.classList.add("nofx"); fb2(); };
 if (!st.gl && !st.off) nofx();
-const canRun = () => st.gl && !st.paused && !st.hidden && !st.reduced && !st.typing;
+const canRun = () => st.gl && !st.paused && !st.hidden && !st.reduced && !st.typing && !st.held;
 function size() {
 if (!st.gl) return;
 ratio = Math.min(1, Math.sqrt(BUDGET / Math.max(1, W.innerWidth * W.innerHeight))) * st.q / .55;
@@ -869,6 +916,7 @@ size(); sync(); kick();
 return {
 state: () => Object.assign({}, st, {raf: !!rq}),
 pause, paused: () => st.paused, canRun, setMode, mode: () => mode,
+hold(v) { st.held = !!v; kick(); },
 set(o) { if (o && "evalP" in o) { const v = +o.evalP; evT = o.evalP == null || !isFinite(v) ? -1 : Math.max(0, Math.min(1, v)); if (!st.running) still(); } }
 };
 })();
@@ -1552,7 +1600,7 @@ function playerRows(games, p){ const out = []; for (const g of games) for (const
 function pAgg(rows){
   const a = {n: rows.length, w: 0, k: 0, d: 0, a: 0, dmg: 0, gold: 0, cs: 0, vs: 0, wrd: 0, cw: 0, min: 0, tk: 0, td: 0, tdmg: 0, tgold: 0,
     fbI: 0, fbV: 0, fbN: 0, m: {}, ahead10: [0, 0], ahead15: [0, 0], roles: [0, 0, 0, 0, 0], champs: new Map(), blind: [0, 0], counter: [0, 0]};
-  const M = ["gd10", "gd15", "xpd10", "xpd15", "csd10", "csd15", "d15", "k15", "a15", "wpa", "wpaL", "wpaT", "wpaD"];
+  const M = ["gd10", "gd15", "xpd10", "xpd15", "csd10", "csd15", "d15", "k15", "a15", "wpa", "wpaL", "wpaT", "wpaD", "mg", "ls"];
   M.forEach(k => { a.m[k] = []; });
   for (const {g, s, ro} of rows){
     const won = g.w === s, r = g.ps[s][ro]; if (!r) continue;
@@ -1567,7 +1615,8 @@ function pAgg(rows){
     if (v("gd10") != null){ a.ahead10[0]++; if (v("gd10") > 0) a.ahead10[1]++; }
     if (v("gd15") != null){ a.ahead15[0]++; if (v("gd15") > 0) a.ahead15[1]++; }
     const c = g.ch[s][ro];
-    if (c != null){ const e = a.champs.get(c) || {c, n: 0, w: 0, k: 0, d: 0, a: 0, wpa: [], roles: new Set()}; e.n++; if (won) e.w++; e.k += v("k") || 0; e.d += v("d") || 0; e.a += v("a") || 0; if (v("wpa") != null) e.wpa.push(v("wpa")); e.roles.add(ro); a.champs.set(c, e); }
+    if (c != null){ const e = a.champs.get(c) || {c, n: 0, w: 0, k: 0, d: 0, a: 0, wpa: [], gd: [], mg: [], dmg: 0, tdmg: 0, gold: 0, tgold: 0, roles: new Set()}; e.n++; if (won) e.w++; e.k += v("k") || 0; e.d += v("d") || 0; e.a += v("a") || 0; if (v("wpa") != null) e.wpa.push(v("wpa")); e.roles.add(ro);
+      if (v("gd15") != null) e.gd.push(v("gd15")); if (v("mg") != null) e.mg.push(v("mg")); e.dmg += v("dmg") || 0; e.gold += v("gold") || 0; e.tdmg += ts(g, s, "dmg") || 0; e.tgold += ts(g, s, "gold") || 0; a.champs.set(c, e); }
     const me = g.seq[s][ro], op = g.seq[1 - s][ro];
     if (me != null && op != null){ const b = me < op ? a.blind : a.counter; b[0]++; if (won) b[1]++; }
   }
@@ -1985,15 +2034,40 @@ async function viewLeague(r, c){
   return out;
 }
 /* player rankings: views Impact (default; fixed cut-offs), WAR, roster changes, WPA; a role filter; tier bands best first */
-const PVIEWS = [["impact", "Impact"], ["war", "WAR"], ["roster", "Roster changes"], ["wpa", "WPA"]];
+const PVIEWS = [["impact", "Impact"], ["war", "WAR"], ["mgd", "Lane vs matchup"], ["dpg", "Damage / gold"], ["kp", "KP"], ["dth", "Deaths"], ["roster", "Roster changes"], ["wpa", "WPA"]];
+/* stat leaderboards on the players tab (the league's games in the selection): value(agg), format, higher is better, tooltip */
+const SVIEWS = {
+  mgd: {lab: "GD@15 vs matchup", f: a => a.mm.mg, fm: v => sgn(v), hi: 1, tip: "GD@15 vs matchup: the gold difference at 15 minus what the champion matchup (both champions and the other eight picks) usually gives in pro play; mean per game", sub: a => `GD@15 ${sgn(a.mm.gd15)}`},
+  dpg: {lab: "Damage per gold", f: a => a.dmgPerGold, fm: v => v.toFixed(2), hi: 1, tip: "Damage to champions per gold earned, over the selection", sub: a => `${pct(a.dmgShare)} dmg · ${pct(a.goldShare)} gold`},
+  kp: {lab: "Kill participation", f: a => a.kp, fm: v => pct(v, 1), hi: 1, tip: "Kills + assists over the team's kills", sub: a => `KDA ${f1(a.kda)}`},
+  dth: {lab: "Deaths per game", f: a => a.n ? a.d / a.n : null, fm: v => v.toFixed(2), hi: 0, tip: "Deaths per game; fewest first", sub: a => `${pct(a.deathShare)} of team deaths`}};
+function playersStat(r, c, D, games, role, pv){
+  const S = SVIEWS[pv], all = allPlayers(D, games).filter(x => role == null || x.agg.mainRole === role);
+  const MIN = c.split === "all" ? 20 : Math.min(20, minGames(all));
+  const val = x => { const v = S.f(x.agg); return v == null || !isFinite(v) ? null : v; };
+  const ok = all.filter(x => x.agg.n >= MIN && val(x) != null), small = all.filter(x => !ok.includes(x)).sort((a, b) => b.agg.n - a.agg.n);
+  const rk = assignTiers(ok, x => S.hi ? val(x) : -val(x), x => x.agg.n);
+  const tile = x => h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: playerLink(c, x.name, D.L), "data-player": x.name, "data-v": val(x) == null ? "" : String(val(x)),
+    title: `${x.name} (${x.team}, ${ROLE_L[x.agg.mainRole]}): ${S.lab} ${val(x) == null ? "–" : S.fm(val(x))}, ${x.agg.n} games`},
+    x.tier ? h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank) : null, roleIcon(x.agg.mainRole), tagBadge(x.team, "md"), h("b", {}, x.name),
+    h("span", {class: "wr"}, val(x) == null ? "–" : S.fm(val(x))), h("small", {}, `${S.sub(x.agg)} · ${x.agg.n} g`));
+  // every role as a dot strip: each qualifying player a dot, better to the right
+  const strip = [0, 1, 2, 3, 4].filter(k => role == null || k === role).map(k => { const xs = ok.filter(x => x.agg.mainRole === k), vs = xs.map(val);
+    const best = xs.slice().sort((a, b) => (S.hi ? val(b) - val(a) : val(a) - val(b)))[0];
+    return {k: ROLES[k], label: ROLE_L[k], v: best ? val(best) : null, q: best ? 1 : null, me: best ? best.name + " (best)" : "", hi: S.hi, fm: S.fm, avg: mean(vs), vals: xs.map(x => ({name: `${x.name} (${IX.tags[x.team] || x.team})`, v: val(x)}))}; }).filter(x => x.vals.length);
+  return [h("section", {class: "sec", id: "prank", "data-view": pv}, h("h2", {}, h("span", {"data-tip": S.tip}, S.lab), h("small", {}, `${splitLabel(D, c)} · ${MIN}+ games`)),
+    tierBands(rk, small, tile, {unit: ["player", "players"], by: S.lab + (S.hi ? "" : " (fewest first)"), smallText: `Fewer than ${MIN} games: ${small.length}`})),
+    strip.length ? h("div", {class: "panel", id: "pstrip2"}, h("h3", {}, `${S.lab} by role`), dotStrip(strip, {title: `${D.label}: ${S.lab.toLowerCase()} by role`})) : null];
+}
 async function leaguePlayers(r, c, D, games){
   const role = r.q.role != null && ROLES.includes(r.q.role) ? ROLES.indexOf(r.q.role) : null;
   const pv = PVIEWS.some(([k]) => k === r.q.view) ? r.q.view : "impact", q = (k, v) => ({...base(c), role: role == null ? null : ROLES[role], view: pv === "impact" ? null : pv, [k]: v});
-  const rt = h("div", {class: "selrow"}, h("div", {class: "rtabs", role: "group", "aria-label": "Ranking", id: "pview"}, PVIEWS.map(([k, t]) => h("button", {type: "button", "aria-pressed": String(pv === k), "data-view": k,
-      onclick: () => { location.hash = link("league", [D.L, "players"], q("view", k === "impact" ? null : k)); }}, t))),
+  const rt = h("div", {class: "selrow"}, dragScroll(h("div", {class: "rtabs", role: "group", "aria-label": "Ranking", id: "pview"}, PVIEWS.map(([k, t]) => h("button", {type: "button", "aria-pressed": String(pv === k), "data-view": k,
+      onclick: () => { location.hash = link("league", [D.L, "players"], q("view", k === "impact" ? null : k)); }}, t)))),
     pv === "roster" ? null : h("div", {class: "rtabs", role: "group", "aria-label": "Role", id: "prole"}, [null, 0, 1, 2, 3, 4].map(k => h("button", {type: "button", "aria-pressed": String(role === k), "aria-label": k == null ? "All roles" : ROLE_L[k],
       onclick: () => { location.hash = link("league", [D.L, "players"], q("role", k == null ? null : ROLES[k])); }}, roleSvg(k), h("span", {}, k == null ? "All" : ROLE_L[k])))));
   if (pv === "wpa") return [rt, ...playersWpa(r, c, D, games, role)];
+  if (SVIEWS[pv]) return [rt, ...playersStat(r, c, D, games, role, pv)];
   const I = IMP = await loadImpact();
   if (!I) return [rt, notice("No Impact data", "pro-impact.json could not be loaded.", link("league", [D.L, "players"], {...base(c), view: "wpa"}), "WPA rankings")];
   if (pv === "roster") return [rt, ...await rosterChanges(c, D, I)];
@@ -2237,17 +2311,153 @@ function teamImpact(c, D, games, t, name, five, I){
       panel(h("span", {}, "Late ", h("small", {}, "15 minutes to the end")), bars(xs.map(e => row(e, "late")), {min: -lim, max: lim, lw: 120}))))];
 }
 
-/* player page */
-const PM = [   // percentile metrics: key, label, value(agg), format, higher is better
-  ["kda", "KDA", a => a.kda, f1, 1], ["kp", "Kill participation", a => a.kp, v => pct(v), 1], ["dpm", "Damage per minute", a => a.dpm, v => grp(v), 1],
-  ["dmgShare", "Damage share", a => a.dmgShare, v => pct(v, 1), 1], ["goldShare", "Gold share", a => a.goldShare, v => pct(v, 1), 1], ["cspm", "CS per minute", a => a.cspm, v => v.toFixed(2), 1],
-  ["gd10", "Gold diff at 10", a => a.mm.gd10, v => sgn(v), 1], ["gd15", "Gold diff at 15", a => a.mm.gd15, v => sgn(v), 1], ["xpd10", "XP diff at 10", a => a.mm.xpd10, v => sgn(v), 1],
-  ["xpd15", "XP diff at 15", a => a.mm.xpd15, v => sgn(v), 1], ["csd10", "CS diff at 10", a => a.mm.csd10, v => sgn(v, 1), 1], ["csd15", "CS diff at 15", a => a.mm.csd15, v => sgn(v, 1), 1],
-  ["vspm", "Vision score per minute", a => a.vspm, v => v.toFixed(2), 1], ["wpm", "Wards per minute", a => a.wpm, v => v.toFixed(2), 1], ["cwpg", "Control wards per game", a => a.cwpg, f1, 1],
-  ["fb", "First blood involvement", a => a.fbRate, v => pct(v), 1], ["fbv", "First blood victim", a => a.fbVict, v => pct(v), 0], ["d15", "Deaths before 15", a => a.mm.d15, v => v.toFixed(2), 0],
-  ["ds", "Share of team deaths", a => a.deathShare, v => pct(v), 0], ["dpg", "Damage per gold", a => a.dmgPerGold, v => v.toFixed(2), 1],
-  ["wpaL", "WPA lane (pp / game)", a => a.mm.wpaL, v => sgn(v, 2), 1], ["wpaT", "WPA team (pp / game)", a => a.mm.wpaT, v => sgn(v, 2), 1], ["wpa", "WPA total (pp / game)", a => a.mm.wpa, v => sgn(v, 2), 1]];
+/* player page: summary first (cards, strengths and weaknesses, a six-dimension profile), detail on demand (a dimension opens its
+   stats as dot strips: every player of the role in the league a dot), then laning vs the direct opponent, form, champions, draft */
 function percentile(vals, v, hi){ const xs = vals.filter(x => x != null && isFinite(x)); if (!xs.length || v == null) return null; let below = 0, eq = 0; for (const x of xs){ if (x < v) below++; else if (x === v) eq++; } const p = (below + eq / 2) / xs.length; return hi ? p : 1 - p; }
+/* one colour scale for every percentile on the page: bad (red) through neutral grey to good (green) */
+const pcol = q => q == null ? "var(--faint)" : q < 0.5 ? `color-mix(in oklab, var(--no) ${Math.round(200 * (0.5 - q))}%, var(--muted))` : `color-mix(in oklab, var(--ok) ${Math.round(200 * (q - 0.5))}%, var(--muted))`;
+const ordn = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+const pN = q => q == null ? "–" : ordn(Math.round(100 * q)) + " pct";
+/* a percentile from stored quantiles (index "t1": every 5%), by linear interpolation */
+function qpct(Q, v, hi){
+  if (!Q || v == null || !isFinite(v)) return null;
+  const n = Q.length - 1; let p;
+  if (v <= Q[0]) p = 0; else if (v >= Q[n]) p = 1;
+  else { let i = 0; while (Q[i + 1] < v) i++; const a = Q[i], b = Q[i + 1]; p = (i + (b > a ? (v - a) / (b - a) : 0.5)) / n; }
+  return hi ? p : 1 - p;
+}
+/* the laning snapshot shown: "10" or "15" minutes, or "mg" (GD@15 vs the matchup; the diff rows use 15) — shared by the profile's
+   Laning dimension and the laning section, kept while the page is open */
+const LT = {m: "15"};
+const ltT = () => LT.m === "10" ? 10 : 15;
+const MG_TIP = "GD@15 vs matchup: the gold difference at 15 minus what the champion matchup (both champions and the other eight picks) usually gives in pro play";
+/* profile stats: key, label (t = snapshot minute), short name, value(agg, t), format, higher is better, dimension */
+const PSTATS = [
+  {k: "gd", lab: t => `Gold diff @${t}`, sh: "Gold", f: (a, t) => a.mm["gd" + t], fm: v => sgn(v), hi: 1, dim: "lane"},
+  {k: "xpd", lab: t => `XP diff @${t}`, sh: "XP", f: (a, t) => a.mm["xpd" + t], fm: v => sgn(v), hi: 1, dim: "lane"},
+  {k: "csd", lab: t => `CS diff @${t}`, sh: "CS", f: (a, t) => a.mm["csd" + t], fm: v => sgn(v, 1), hi: 1, dim: "lane"},
+  {k: "mg", lab: () => "GD@15 vs matchup", sh: "vs matchup", f: a => a.mm.mg, fm: v => sgn(v), hi: 1, dim: "lane", tip: MG_TIP},
+  {k: "dpm", lab: () => "Damage / min", sh: "DPM", f: a => a.dpm, fm: v => grp(v), hi: 1, dim: "dmg"},
+  {k: "dmgShare", lab: () => "Damage share", sh: "share", f: a => a.dmgShare, fm: v => pct(v, 1), hi: 1, dim: "dmg"},
+  {k: "dpg", lab: () => "Damage / gold", sh: "per gold", f: a => a.dmgPerGold, fm: v => v.toFixed(2), hi: 1, dim: "dmg"},
+  {k: "goldShare", lab: () => "Gold share", sh: "Gold share", f: a => a.goldShare, fm: v => pct(v, 1), hi: 1, dim: "eco"},
+  {k: "cspm", lab: () => "CS / min", sh: "CS/min", f: a => a.cspm, fm: v => v.toFixed(2), hi: 1, dim: "eco"},
+  {k: "vspm", lab: () => "Vision / min", sh: "Vision", f: a => a.vspm, fm: v => v.toFixed(2), hi: 1, dim: "vis"},
+  {k: "wpm", lab: () => "Wards / min", sh: "Wards", f: a => a.wpm, fm: v => v.toFixed(2), hi: 1, dim: "vis"},
+  {k: "cwpg", lab: () => "Control wards / game", sh: "Control", f: a => a.cwpg, fm: f1, hi: 1, dim: "vis"},
+  {k: "kp", lab: () => "Kill participation", sh: "KP", f: a => a.kp, fm: v => pct(v), hi: 1, dim: "fight"},
+  {k: "kda", lab: () => "KDA", sh: "KDA", f: a => a.kda, fm: f1, hi: 1, dim: "fight"},
+  {k: "fb", lab: () => "First blood involvement", sh: "First blood", f: a => a.fbRate, fm: v => pct(v), hi: 1, dim: "fight"},
+  {k: "wpa", lab: () => "WPA / game", sh: "WPA", f: a => a.mm.wpa, fm: v => sgn(v, 2), hi: 1, dim: "fight", ex: a => `lane ${pp(a.mm.wpaL)}, team ${pp(a.mm.wpaT)}, draft ${pp(a.mm.wpaD)} per game`},
+  {k: "dpg2", lab: () => "Deaths / game", sh: "Deaths", f: a => a.n ? a.d / a.n : null, fm: v => v.toFixed(1), hi: 0, dim: "surv"},
+  {k: "d15", lab: () => "Deaths before 15", sh: "Early deaths", f: a => a.mm.d15, fm: v => v.toFixed(2), hi: 0, dim: "surv"},
+  {k: "ds", lab: () => "Share of team deaths", sh: "Death share", f: a => a.deathShare, fm: v => pct(v), hi: 0, dim: "surv"},
+  {k: "fbv", lab: () => "First blood victim", sh: "FB victim", f: a => a.fbVict, fm: v => pct(v), hi: 0, dim: "surv"}];
+const DIMS = [["lane", "Laning"], ["dmg", "Damage"], ["eco", "Economy"], ["vis", "Vision"], ["fight", "Fighting"], ["surv", "Survival"]];
+/* each stat: the player's value, his percentile in the role (the league's players with enough games), every peer's value */
+function profileData(A, pe, t){
+  return PSTATS.map(s => {
+    const vals = pe.map(x => ({name: x.name, p: x.p, v: s.f(x.agg, t)})).filter(x => x.v != null && isFinite(x.v)), v = s.f(A, t);
+    return {...s, label: s.lab(t), v: v != null && isFinite(v) ? v : null, q: percentile(vals.map(x => x.v), v, s.hi), vals, avg: mean(vals.map(x => x.v))};
+  });
+}
+const dimQ = (st, d) => mean(st.filter(s => s.dim === d).map(s => s.q));
+/* strengths and weaknesses: the top and bottom three stats with real separation (80th percentile or better, 20th or worse) */
+function swChips(st){
+  const r = x => +x.toFixed(6), band = q => q >= 0.8 ? `Top ${Math.max(10, 10 * Math.ceil(r((1 - q) * 10)))}%` : `Bottom ${Math.max(10, 10 * Math.ceil(r(q * 10)))}%`;
+  const ok = st.filter(s => s.q != null), top = ok.filter(s => s.q >= 0.8).sort((a, b) => b.q - a.q).slice(0, 3), bot = ok.filter(s => s.q <= 0.2).sort((a, b) => a.q - b.q).slice(0, 3);
+  const chip = (s, kind) => h("span", {class: "chip sw " + kind, style: `--pc:${pcol(s.q)}`, "data-stat": s.k, "data-q": s.q.toFixed(3), "data-tip": `${s.label}: ${s.fm(s.v)} · ${pN(s.q)} · role average ${s.avg == null ? "–" : s.fm(s.avg)}${s.tip ? "\n" + s.tip : ""}`},
+    h("b", {}, band(s.q)), " · ", s.label);
+  return h("div", {class: "chips swc", id: "sw"}, top.map(s => chip(s, "st")), bot.map(s => chip(s, "wk")));
+}
+/* dot strips: one row per stat, every peer a dot, the player the large coloured one, the role average a tick; better to the right */
+function dotStrip(rows, {w = chartW(1), title = "Stats vs the role"} = {}){
+  const narrow = w < 520, LW = narrow ? 112 : 176, VW = narrow ? 58 : 74, RH = 34, T = 8, hh = T + rows.length * RH + 4;
+  const x0 = LW + 10, x1 = w - VW - 10;
+  let g = "";
+  rows.forEach((r, k) => {
+    const y = T + k * RH + RH / 2, vs = r.vals.map(z => z.v).concat(r.v != null ? [r.v] : []);
+    if (!vs.length) return;
+    let lo = Math.min(...vs), hi = Math.max(...vs); if (hi - lo < 1e-9){ lo -= 1; hi += 1; }
+    const X = v => { const u = (v - lo) / (hi - lo); return x0 + (x1 - x0) * (r.hi ? u : 1 - u); };
+    const all = r.vals.map(z => z.v);
+    g += `<g class="ds" data-stat="${esc(r.k)}"><text class="dl" x="${LW}" y="${(y + 4).toFixed(1)}" text-anchor="end">${esc(r.label)}</text><line class="ax" x1="${x0}" x2="${x1}" y1="${y}" y2="${y}"/>`;
+    if (r.avg != null) g += `<line class="avg" x1="${X(r.avg).toFixed(1)}" x2="${X(r.avg).toFixed(1)}" y1="${y - 9}" y2="${y + 9}" data-tip="${esc(`Role average: ${r.fm(r.avg)}`)}"/>`;
+    for (const z of r.vals){ if (z.me) continue; g += `<circle class="pd" r="4.5" cx="${X(z.v).toFixed(1)}" cy="${y}" data-tip="${esc(`${z.name}: ${r.fm(z.v)} · ${pN(percentile(all, z.v, r.hi))}`)}"/>`; }
+    if (r.v != null) g += `<circle class="me" r="7" cx="${X(r.v).toFixed(1)}" cy="${y}" style="fill:${pcol(r.q)}" data-tip="${esc(`${r.me}: ${r.fm(r.v)} · ${pN(r.q)}${r.ex ? " · " + r.ex : ""}${r.tip ? "\n" + r.tip : ""}`)}"/>`;
+    g += `<text class="dv" x="${w - 4}" y="${(y + 4).toFixed(1)}" text-anchor="end" style="fill:${pcol(r.q)}">${esc(r.v == null ? "–" : r.fm(r.v))}</text></g>`;
+  });
+  const svg = svgNode(`<svg class="chart dots" viewBox="0 0 ${w} ${hh}" role="img" aria-label="${esc(title)}"><title>${esc(title)}</title><desc>${esc(`Dot strips: one row per stat; each dot is a player of the role, the large dot is ${rows[0] ? rows[0].me : "the player"}, better to the right; hover a dot for its value.`)}</desc>${g}</svg>`);
+  return h("div", {class: "fig"}, svg, srTable(title, ["Stat", "Value", "Percentile", "Role average"], rows.map(r => [r.label, r.v == null ? "–" : r.fm(r.v), pN(r.q), r.avg == null ? "–" : r.fm(r.avg)])));
+}
+/* the snapshot toggle (@10 / @15 / vs matchup) */
+function ltSeg(onChange, withMg){
+  return h("span", {class: "seg lt", role: "group", "aria-label": "Laning snapshot"}, [["10", "@10"], ["15", "@15"], ...(withMg ? [["mg", "vs matchup"]] : [])].map(([k, t]) =>
+    h("button", {type: "button", "aria-pressed": String(LT.m === k || (!withMg && LT.m === "mg" && k === "15")), "data-lt": k, onclick: () => { if (LT.m !== k){ LT.m = k; onChange(); } }}, t)));
+}
+/* the profile: six dimension tiles (3 x 2), each the mean of its stats' percentiles; a tile opens its stats as dot strips */
+function profileSec(A, pe, name, ro, D){
+  const st0 = () => profileData(A, pe, ltT()).map(s => ({...s, me: name, vals: s.vals.map(z => ({...z, me: z.name === name}))}));
+  let open = null;
+  const sec0 = h("section", {class: "sec", id: "profile"});
+  const draw = () => {
+    const st = st0();
+    const tiles = DIMS.map(([d, lab]) => { const xs = st.filter(s => s.dim === d), q = dimQ(st, d);
+      return h("button", {type: "button", class: "dim" + (open === d ? " on" : ""), "data-dim": d, "data-q": q == null ? "" : q.toFixed(4), "aria-expanded": String(open === d), "aria-controls": "pdet", style: `--pc:${pcol(q)}`,
+        "data-tip": xs.map(s => `${s.label}: ${s.v == null ? "–" : s.fm(s.v)} · ${pN(s.q)}`).join("\n"), onclick: () => { open = open === d ? null : d; draw(); }},
+        h("span", {class: "nm"}, lab), h("b", {}, q == null ? "–" : String(Math.round(100 * q))), h("span", {class: "g", "aria-hidden": "true"}, h("i", {style: `width:${q == null ? 0 : Math.round(100 * q)}%`})),
+        h("small", {}, xs.map(s => s.sh).join(" · "))); });
+    const det = open ? h("div", {class: "panel", id: "pdet", "data-dim": open}, h("h3", {}, DIMS.find(x => x[0] === open)[1], open === "lane" ? ltSeg(() => { draw(); redrawLane(); }) : null),
+      dotStrip(st.filter(s => s.dim === open), {title: `${name}: ${DIMS.find(x => x[0] === open)[1].toLowerCase()} vs every ${ROLE_L[ro]} in the ${D.label}`})) : null;
+    sec0.replaceChildren(h("h2", {}, "Profile", h("small", {}, `percentile vs every ${ROLE_L[ro]} in the ${D.label} · ${pe.length} players`)), swChips(st), h("div", {class: "dims", role: "group", "aria-label": "Profile dimensions"}, tiles), ...(det ? [det] : []));
+  };
+  let redrawLane = () => {};
+  draw();
+  return {el: sec0, draw, onLane: f => { redrawLane = f; }};
+}
+/* per-game lane chart: a dot per game (won / lost), the 5-game rolling average; a dot opens the game */
+function laneChart(pts, {title, fm, w = chartW(1), hh = 230}){
+  if (!pts.length) return h("p", {class: "note"}, "No 15-minute snapshots in this selection.");
+  const L = 48, R = 14, T = 10, B = 24, n = pts.length;
+  let y0 = Math.min(0, ...pts.map(p => p.y)), y1 = Math.max(0, ...pts.map(p => p.y)); const pad = (y1 - y0) * 0.06 || 1; y0 -= pad; y1 += pad;
+  const X = i => L + (w - L - R) * (n === 1 ? 0.5 : i / (n - 1)), Y = v => T + (hh - T - B) * (1 - (v - y0) / (y1 - y0));
+  let g = "";
+  for (const t of niceTicks(y0, y1, 4)) g += `<line class="gl" x1="${L}" x2="${w - R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text x="${L - 6}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end">${esc(fm(t))}</text>`;
+  g += `<line class="ref" x1="${L}" x2="${w - R}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/>`;
+  let lastM = "", lx = -1e9;
+  pts.forEach((p, i) => { const m = p.dt.slice(0, 7); if (m !== lastM && X(i) - lx > 48){ g += `<text x="${X(i).toFixed(1)}" y="${hh - 7}" text-anchor="middle">${esc(fmtDate(p.dt))}</text>`; lx = X(i); } lastM = m; });
+  const K = 5, roll = pts.map((p, i) => mean(pts.slice(Math.max(0, i - K + 1), i + 1).map(z => z.y)));
+  g += `<path class="ln acc" d="${roll.map((v, i) => (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1)).join("")}"/>`;
+  for (let i = 0; i < n; i++){ const p = pts[i];
+    g += `<a href="${esc(p.href)}" class="lg" data-game="${esc(p.id)}"><circle class="pt ${p.won ? "w" : "l"}" r="4.5" cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}"/><circle class="hit" r="8" cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" data-tip="${esc(p.tip + `\nlast ${K}: ${fm(roll[i])}`)}"/></a>`; }
+  const svg = svgNode(`<svg class="chart lanec" viewBox="0 0 ${w} ${hh}" role="img" aria-label="${esc(title)}"><title>${esc(title)}</title><desc>${esc(`One dot per game in date order (green won, red lost) and the ${K}-game rolling average; hover a dot for the opponent, champions and date, click to open the game.`)}</desc>${g}</svg>`);
+  return h("div", {class: "fig"}, svg, srTable(title, ["Date", "Value", "Result"], pts.map(p => [p.dt.slice(0, 10), fm(p.y), p.won ? "win" : "loss"])));
+}
+/* sortable table (the champion table): cols {k, lab, v(row), txt(row), l (left-aligned), tip}; rows get cls(row) */
+function sortTable({id, caption, cols, rows, sort, cls, rowTip}){
+  let key = sort, dir = -1;
+  const tb = h("tbody", {});
+  const ths = cols.map(c => h("th", {class: c.l ? "l" : null, scope: "col", "aria-sort": c.k === key ? "descending" : null, "data-tip": c.tip || null},
+    c.nosort ? c.lab : h("button", {type: "button", class: "sb", "data-sort": c.k, onclick: () => { if (key === c.k) dir = -dir; else { key = c.k; dir = c.l ? 1 : -1; } fill(); }}, c.lab)));
+  const fill = () => {
+    const c = cols.find(x => x.k === key), val = r => { const v = c.v(r); return v == null || (typeof v === "number" && !isFinite(v)) ? null : v; };
+    const rs = rows.slice().sort((a, b) => { const x = val(a), y = val(b); if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (typeof x === "string" ? x.localeCompare(y) : x - y) * dir; });
+    ths.forEach((th, i) => { if (cols[i].k === key) th.setAttribute("aria-sort", dir < 0 ? "descending" : "ascending"); else th.removeAttribute("aria-sort"); });
+    tb.replaceChildren(...rs.map(r => h("tr", {class: cls ? cls(r) : null, "data-tip": rowTip ? rowTip(r) : null, "data-key": r.key}, cols.map(c => h("td", {class: c.l ? "l" : null}, c.txt(r))))));
+  };
+  fill();
+  return dragScroll(h("div", {class: "tscroll", id, tabindex: "0", role: "region", "aria-label": caption + " (scrolls sideways on small screens)"}, h("table", {class: "ctab"}, h("caption", {class: "sr"}, caption), h("thead", {}, h("tr", {}, ths)), tb)));
+}
+const JUMP = [["overview", "Overview"], ["lane", "Laning"], ["form", "Form"], ["champs", "Champions"], ["pdraft", "Draft"]];
+function jumpBar(){
+  const nav = h("nav", {class: "jump", id: "pjump", "aria-label": "Page sections"}, JUMP.map(([id, t]) => h("button", {type: "button", "data-jump": id,
+    onclick: () => { const el = $(id); if (el) el.scrollIntoView({behavior: reduced() ? "auto" : "smooth", block: "start"}); }}, t)));
+  // the jump bar sits under the sticky selector bar (static on phones)
+  setTimeout(() => { const b = document.querySelector(".bar"); if (b && window.getComputedStyle) document.documentElement.style.setProperty("--barh", (getComputedStyle(b).position === "sticky" ? b.offsetHeight : 0) + "px");
+    if (window.IntersectionObserver){ const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting){ nav.querySelectorAll("button").forEach(x => x.toggleAttribute("aria-current", x.getAttribute("data-jump") === e.target.id)); } }, {rootMargin: "-30% 0px -60% 0px"});
+      JUMP.forEach(([id]) => { const el = $(id); if (el) io.observe(el); }); } }, 0);
+  return nav;
+}
 async function viewPlayer(r, c){
   const e = playerEntry(c.year, r.args[0] || "", r.q.lg);
   if (!e){ drawChrome(r, c, null, null); const other = Object.keys(IX.years).find(y => playerEntry(y, r.args[0] || ""));
@@ -2260,83 +2470,143 @@ async function viewPlayer(r, c){
   const A = pAgg(rows), ro = rows.length ? A.mainRole : e[3];
   const out = [h("div", {class: "head", id: "phead"}, tagBadge(team, "lg", teamLink(c, team)), h("div", {}, h("h1", {}, name),
     h("div", {class: "chips"}, h("span", {class: "chip"}, roleSvg(ro), ROLE_L[ro]), h("a", {class: "chip", href: teamLink(c, team)}, team), h("a", {class: "chip", href: leagueLink(c, L)}, D.label), h("span", {class: "chip"}, splitLabel(D, c)))))];
-  // bio (Leaguepedia): the official roster entry, preferring the player's OE team
+  // bio (Leaguepedia): the official roster entry, preferring the player's OE team; shown last
   const bios = lp.R && c.year === lp.year ? lp.pOE.get(name) || [] : [], B = bios.find(x => x.t.oe === team) || bios[0];
+  let bio = null;
   if (B){ const P = B.p, cy = c, tOE = B.t.oe && teamEntry(c.year, B.t.oe) ? B.t.oe : null;
     const row = (k, v) => v == null || v === "" ? null : [h("dt", {}, k), h("dd", {}, v)];
-    out.push(h("div", {class: "two", id: "bio", "data-id": P.id}, panel("Bio", h("dl", {class: "bio"},
+    bio = h("div", {class: "two", id: "bio", "data-id": P.id}, panel("Bio", h("dl", {class: "bio"},
       row("Name", P.name ? P.name + (P.native && P.native !== P.name ? ` (${P.native})` : "") : null), row("Country", P.country), row("Age", P.age != null ? `${P.age}${P.birthdate ? ` · born ${P.birthdate}` : ""}` : null),
       row("Team", h("span", {}, tOE ? h("a", {href: teamLink(cy, tOE)}, B.t.name) : B.t.name, ` · ${P.role}${P.status === "sub" ? " (sub)" : ""}`)), row("Now", P.now && P.now !== B.t.oe && P.now !== B.t.name ? P.now : null), row("Contract", P.contractEnd ? "until " + P.contractEnd : null))),
-      panel("Team history", tenureChart(P.history || []) || h("p", {class: "note"}, "–")))); }
-  if (!rows.length){ out.push(notice("No games", "No games for this player in this split.", playerLink({...c, split: "all"}, name, L), "Whole season")); return out; }
+      panel("Team history", tenureChart(P.history || []) || h("p", {class: "note"}, "–"))); }
+  if (!rows.length){ out.push(notice("No games", "No games for this player in this split.", playerLink({...c, split: "all"}, name, L), "Whole season")); if (bio) out.push(bio); return out; }
+  out.push(jumpBar());
   const peers = allPlayers(D, games).filter(x => x.agg.mainRole === ro);
   const pmin = minGames(peers), pe = peers.filter(x => x.agg.n >= pmin || x.p === p);
-  // Impact (season, centred) replaces the gold-at-15 card (it stays in the percentile bars and the lane-phase chart); WAR replaces
-  // the raw WPA card (raw WPA is in the Impact card, its lane / team / draft parts in the percentile bars)
+
+  /* ---- overview: six cards, strengths and weaknesses, the profile ---- */
   const X = impOf(I, D, p), wars = I ? D.players.map((_, q) => impOf(I, D, q)).filter(z => z && z.war != null && z.role === (X ? X.role : ro) && z.n >= z.min) : [];
   const warRank = X && X.war != null && X.n >= X.min ? [wars.filter(z => z.war > X.war).length + 1, wars.length, `${ROLE_L[X.role]} in the ${D.label}`] : null;
-  out.push(h("div", {class: "cards6", id: "cards"},
+  const prof = profileSec(A, pe, name, ro, D);
+  out.push(h("section", {class: "sec jsec", id: "overview"}, h("div", {class: "cards6", id: "cards"},
     card("Games", String(A.n), `${A.w}–${A.l} · ${pct(A.wr)} win rate`),
     card("KDA", f1(A.kda), `${f1(A.k / A.n)} / ${f1(A.d / A.n)} / ${f1(A.a / A.n)} per game`),
     impactCard(X, name),
     card("Damage per minute", A.dpm != null ? grp(A.dpm) : "–", `${pct(A.dmgShare, 1)} of the team's damage · ${pct(A.goldShare, 1)} of its gold`),
     card("Kill participation", pct(A.kp), `${pct(A.deathShare)} of the team's deaths · first blood ${pct(A.fbRate)}`),
-    warCard(X, warRank)));
-  out.push(rowSec("Game history", `${name} games, newest first`, rows.slice().reverse().map(x => playerGameCard(c, D, x))));
-  // vs the role in the league: percentile bars
-  const prow = PM.map(([k, lab, f, fm, hi]) => { const v = f(A); const vals = pe.map(x => f(x.agg)); const q = percentile(vals, v, hi); const avg = mean(vals);
-    return {label: lab, v: q, txt: v == null ? "–" : fm(v), sub: q == null ? "" : `p${Math.round(100 * q)}`, tip: `${lab}: ${v == null ? "no data" : fm(v)}; ${ROLE_L[ro]} average in the ${D.label} ${avg == null ? "–" : fm(avg)} (${pe.length} players with ${pmin}+ games)${q == null ? "" : `; better than ${Math.round(100 * q)}%`}`,
-      c: q == null ? null : q >= 0.7 ? "var(--ok)" : q < 0.3 ? "var(--no)" : null}; });
-  out.push(sec(`Compared with every ${ROLE_L[ro]} in the ${D.label}`, h("div", {class: "panel", id: "pctl"}, bars(prow, {max: 1, ref: 0.5, lw: 190}))));
-  // champion pool as tier bands by games
-  // tiers are a quality scale, so rank by performance: WPA per game shrunk toward 0 by 3 phantom games; under 3 games in a fold
+    warCard(X, warRank)), prof.el));
+
+  /* ---- laning vs the direct opponent ---- */
+  const T1 = IX.t1 && IX.t1[D.y], t1n = T1 && T1.n ? T1.n[ro] : 0;
+  const laneSec = h("section", {class: "sec jsec", id: "lane"});
+  const lanePts = key => rows.map(x => { const v = ps(x.g, x.s, x.ro, key); if (v == null) return null;
+    const o = x.g.pl[1 - x.s][x.ro], won = x.g.w === x.s, val = k => ps(x.g, x.s, x.ro, k);
+    return {y: v, won, dt: x.g.dt, id: x.g.id, href: gameLink(c, x.g, D), tip: `${fmtDate(x.g.dt)} ${x.g.dt.slice(0, 4)} · ${won ? "win" : "loss"} vs ${D.teams[x.g.t[1 - x.s]]}\n${nameOf(CH[x.g.ch[x.s][x.ro]] || "?")} vs ${nameOf(CH[x.g.ch[1 - x.s][x.ro]] || "?")} (${o != null ? D.players[o] : "?"})\nGD@10 ${sgn(val("gd10"))} · GD@15 ${sgn(val("gd15"))} · vs matchup ${sgn(val("mg"))}\nXP@15 ${sgn(val("xpd15"))} · CS@15 ${sgn(val("csd15"), 0)}`}; }).filter(Boolean);
+  const drawLane = () => {
+    const t = ltT(), km = LT.m === "mg" ? "mg" : "gd" + t;
+    const LROWS = [["gd" + t, `Gold diff @${t}`, v => sgn(v), a => a.mm["gd" + t]], ["xpd" + t, `XP diff @${t}`, v => sgn(v), a => a.mm["xpd" + t]], ["csd" + t, `CS diff @${t}`, v => sgn(v, 1), a => a.mm["csd" + t]],
+      ["mg", "GD@15 vs matchup", v => sgn(v), a => a.mm.mg], ["lead" + t, `Ahead in gold @${t}`, v => pct(v), a => t === 10 ? a.lead10 : a.lead15]];
+    const gauge = (q, tip) => h("span", {class: "gq", "data-tip": tip, style: `--pc:${pcol(q)}`}, h("span", {class: "g"}, h("i", {style: `width:${q == null ? 0 : Math.round(100 * q)}%`})), h("small", {}, q == null ? "–" : String(Math.round(100 * q))));
+    const lrows = LROWS.map(([k, lab, fm, f]) => { const v = f(A), vals = pe.map(x => f(x.agg)), q = percentile(vals, v, 1), qt = T1 && T1[k] ? qpct(T1[k][ro], v, 1) : null;
+      return h("div", {class: "lrow", "data-k": k, "data-q": q == null ? "" : q.toFixed(4), "data-qt": qt == null ? "" : qt.toFixed(4)}, h("span", {class: "ll", "data-tip": k === "mg" ? MG_TIP : null}, lab), h("b", {style: `color:${pcol(q)}`}, v == null ? "–" : fm(v)),
+        gauge(q, `${lab}: ${v == null ? "–" : fm(v)} · ${pN(q)} of ${pe.length} ${ROLE_L[ro]}s in the ${D.label} (average ${fm(mean(vals)) || "–"})`),
+        T1 && T1[k] ? gauge(qt, `${pN(qt)} of ${t1n} tier-1 ${ROLE_L[ro]}s with 10+ games, season ${D.y} (median ${fm(T1[k][ro][10])})`) : h("span", {class: "gq na"}, "–")); });
+    // the gold-at-15 distribution vs the role (grey)
+    const edges = [-3000, -2000, -1000, -500, 0, 500, 1000, 2000, 3000], binOf = v => { let k = 0; while (k < edges.length && v >= edges[k]) k++; return k; };
+    const labs = ["<−3k", "−3k", "−2k", "−1k", "−500", "0", "+500", "+1k", "+2k", "3k+"], mine = new Array(10).fill(0), peer = new Array(10).fill(0);
+    const km2 = LT.m === "mg" ? "mg" : "gd" + t, dist = A.m[km2] || [];
+    dist.forEach(v => mine[binOf(v)]++);
+    let pn = 0; pe.forEach(x => (x.agg.m[km2] || []).forEach(v => { peer[binOf(v)]++; pn++; }));
+    const mn = dist.length || 1, klab = LT.m === "mg" ? "GD@15 vs matchup" : `Gold diff @${t}`;
+    // head to head: each opponent laner
+    const opp = new Map();
+    for (const x of rows){ const o = x.g.pl[1 - x.s][x.ro]; if (o == null) continue;
+      const q = opp.get(o) || {p: o, name: D.players[o], team: D.teams[x.g.t[1 - x.s]], n: 0, w: 0, mg: [], gd: [], gs: []};
+      q.n++; if (x.g.w === x.s) q.w++; q.team = D.teams[x.g.t[1 - x.s]];
+      const m = ps(x.g, x.s, x.ro, "mg"), gd = ps(x.g, x.s, x.ro, "gd15"); if (m != null) q.mg.push(m); if (gd != null) q.gd.push(gd);
+      q.gs.push(`${fmtDate(x.g.dt)} ${x.g.w === x.s ? "W" : "L"} ${nameOf(CH[x.g.ch[x.s][x.ro]] || "?")} vs ${nameOf(CH[x.g.ch[1 - x.s][x.ro]] || "?")} GD@15 ${sgn(gd)}`); opp.set(o, q); }
+    const h2h = [...opp.values()].sort((a, b) => b.n - a.n || (mean(b.mg) || 0) - (mean(a.mg) || 0));
+    const h2hTile = q => { const m = mean(q.mg);
+      return h("a", {class: "tile h2h", href: playerLink(c, q.name, D.L), "data-opp": q.name, "data-n": String(q.n), "data-w": String(q.w), "data-mg": m == null ? "" : m.toFixed(1), style: `--tc:${m == null ? "var(--line-strong)" : m > 0 ? "var(--ok)" : "var(--no)"}`,
+        "data-tip": `${name} vs ${q.name} (${q.team}): ${q.n} games, ${q.w}–${q.n - q.w} · GD@15 ${sgn(mean(q.gd))} · vs matchup ${sgn(m)}\n${q.gs.join("\n")}`},
+        tagBadge(q.team, "md"), h("b", {}, q.name), h("span", {class: "wr"}, `${q.w}–${q.n - q.w}`), h("small", {class: m == null ? "" : m > 0 ? "up" : "dn"}, m == null ? `${q.n} g` : `${sgn(m)} · ${q.n} g`)); };
+    const cr = carousel(`${name} head to head vs each opponent laner`, h2h.map(h2hTile), "tiles");
+    laneSec.replaceChildren(h("h2", {}, "Laning vs the direct opponent", ltSeg(() => { drawLane(); prof.draw(); }, true)),
+      h("div", {class: "two"},
+        h("div", {class: "panel", id: "lrows"}, h("div", {class: "lrow lh", "aria-hidden": "true"}, h("span", {}), h("span", {}), h("small", {}, `${D.label} ${ROLE_L[ro]}`), h("small", {}, `Tier-1 ${ROLE_L[ro]}`)), lrows),
+        panel(h("span", {}, klab, " ", h("small", {}, `${dist.length} games`)), columns(labs.map((lab, k) => ({label: lab, v: mine[k] / mn, pe: pn ? peer[k] / pn : null,
+          tip: `${klab} ${lab}: ${mine[k]} of ${name}'s games (${pct(mine[k] / mn)}); every ${ROLE_L[ro]} in the ${D.label}: ${pct(pn ? peer[k] / pn : 0)}`}))))),
+      h("div", {class: "panel", id: "lanechart"}, h("h3", {}, klab, " ", h("small", {}, "per game · 5-game average")), laneChart(lanePts(km), {title: `${name}: ${klab} per game`, fm: v => sgn(v)})),
+      h("div", {class: "h2hw", id: "h2h"}, h("h3", {class: "sub"}, "Head to head", cr.nav), cr.wrap));
+  };
+  prof.onLane(drawLane);
+  drawLane();
+  out.push(laneSec);
+
+  /* ---- form: Impact per split, rolling lane signal and WPA, the game history ---- */
+  const K = 10, roll = key => rows.map((x, k) => { const win = rows.slice(Math.max(0, k - K + 1), k + 1).map(y => ps(y.g, y.s, y.ro, key)); return {x: k + 1, y: win.filter(v => v != null).length >= Math.min(3, k + 1) ? mean(win) : null, g: x.g, won: x.g.w === x.s, v: ps(x.g, x.s, x.ro, key)}; }).filter(z => z.y != null);
+  const ls = roll("ls"), wf = roll("wpa");
+  const id0 = I ? impId(I, D, p, impKey(D)) || impId(I, D, p) : null, P0 = id0 ? I.J.players[id0] : null;
+  const spl = P0 ? Object.keys(P0.s).filter(k => k.includes("|") && I.J.periods[k] && I.J.periods[k].kind === "split").sort((a, b) => String(I.J.periods[a].window[0]).localeCompare(String(I.J.periods[b].window[0]))) : [];
+  const sp = spl.map(k => impSeason(I, id0, k));
+  const cur = impKey(D);
+  const lim = Math.max(6, ...sp.map(x => Math.abs(x.v) + 1));
+  const form = h("section", {class: "sec jsec", id: "form"}, h("h2", {}, "Form"),
+    h("div", {class: "two"},
+      h("div", {class: "panel", id: "fimp"}, h("h3", {}, impLab("Impact per split"), " ", h("small", {}, "pp / game")), sp.length ? bars(sp.map(x => ({label: x.lab.replace(/^(\d{4}) /, "$1 "), v: x.v, txt: x.unc ? s1(x.v) + "?" : s1(x.v), sub: `${x.n} g`, me: x.y === cur,
+        c: x.v >= 0 ? "var(--ok)" : "var(--no)", tip: `${x.lab}: Impact ${s1(x.v)} ± ${x.se.toFixed(1)} pp per game (lane ${s1(x.lane)}, late ${s1(x.late)}), ${x.n} games${x.unc ? " (uncertain: few games)" : ""}`})), {min: -lim, max: lim, lw: 150}) : h("p", {class: "note"}, "No Impact rating by split.")),
+      h("div", {class: "panel", id: "fline"}, h("h3", {}, "Trend ", h("small", {}, `${K}-game rolling, pp / game`)), lineChart({title: `${name}: rolling lane signal and WPA`, w: chartW(0.5), y: {ref: 0, fmt: v => sgn(v, 0)}, x: {fmt: v => "G" + v},
+        series: [{key: "ls", label: "Lane signal (10-game)", short: "Lane", cls: "acc", emph: true, pts: ls.map(f => ({x: f.x, y: f.y, tip: `Game ${f.x}, ${f.g.dt.slice(0, 10)} (${f.won ? "win" : "loss"}): lane signal this game ${sgn(f.v, 1)}, last ${K}: ${sgn(f.y, 1)} pp (the matchup-adjusted lane differences at 15, as win probability)`}))},
+          {key: "wpa", label: "WPA (10-game)", short: "WPA", cls: "mut", pts: wf.map(f => ({x: f.x, y: f.y, tip: `Game ${f.x}, ${f.g.dt.slice(0, 10)} (${f.won ? "win" : "loss"}): WPA this game ${pp(f.v)}, last ${K}: ${pp(f.y)}`}))}]}))),
+    (() => { const cr = carousel(`${name} games, newest first`, rows.slice().reverse().map(x => playerGameCard(c, D, x))); return h("div", {id: "phist"}, h("h3", {class: "sub"}, "Game history", cr.nav), cr.wrap); })());
+  out.push(form);
+
+  /* ---- champions: pool tier bands, then the full table ---- */
   const pool = [...A.champs.values()], POOL_MIN = 3, shr = x => x.wpa.reduce((a, v) => a + (v || 0), 0) / (x.n + 3);
   const rk = assignTiers(pool.filter(x => x.n >= POOL_MIN), shr, x => x.n), fewC = pool.filter(x => x.n < POOL_MIN).sort((a, b) => b.n - a.n || shr(b) - shr(a));
-  const cs = champStats(games), csm = new Map(cs.map(x => [x.c, x]));
-  out.push(h("section", {class: "sec", id: "pool"}, h("h2", {}, "Champion pool", h("small", {}, `${pool.length} champions · by WPA per game · ${POOL_MIN}+ games`)),
-    tierBands(rk, fewC, x => h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: "stats.html#/champ/" + encodeURIComponent(CH[x.c]) + "?mode=pro", "data-champ": CH[x.c], title: `${nameOf(CH[x.c])}: ${x.n} games, ${x.w}–${x.n - x.w}, KDA ${f1((x.k + x.a) / Math.max(1, x.d))}, WPA ${pp(mean(x.wpa))} per game`},
+  // the league's GD@15 on each champion in this role, the player's own games excluded
+  const lgc = new Map();
+  for (const g of games) for (const s of [0, 1]) g.ch[s].forEach((ci, r2) => { if (ci == null || r2 !== ro || g.pl[s][r2] === p) return; const v = ps(g, s, r2, "gd15"); if (v == null) return; const e2 = lgc.get(ci) || []; e2.push(v); lgc.set(ci, e2); });
+  const SIG_K = 4, SIG_MIN = 400;
+  const crow = pool.map(x => { const gd = mean(x.gd), lg = lgc.get(x.c), lgm = lg && lg.length >= 3 ? mean(lg) : null, sh = gd != null && lgm != null ? (gd - lgm) * x.gd.length / (x.gd.length + SIG_K) : null;
+    return {...x, key: CH[x.c], nm: nameOf(CH[x.c]), kda: (x.k + x.a) / Math.max(1, x.d), gdm: gd, mgm: mean(x.mg), ds: x.tdmg ? x.dmg / x.tdmg : null, gs: x.tgold ? x.gold / x.tgold : null, wp: mean(x.wpa), lgm, lgn: lg ? lg.length : 0, sh, sig: sh != null && x.n >= 3 && sh >= SIG_MIN}; });
+  const ctab = sortTable({id: "ctable", caption: `${name}'s champions`, sort: "n", rows: crow, cls: x => x.sig ? "sig" : null,
+    rowTip: x => `${x.nm}: ${x.n} games, ${x.w}–${x.n - x.w}; GD@15 ${sgn(x.gdm)} vs the ${D.label} ${ROLE_L[ro]} average on it ${x.lgm == null ? "– (under 3 other games)" : sgn(x.lgm) + ` (${x.lgn} games)`}${x.sh != null ? `; ${sgn(x.sh)} after shrinking for ${x.gd.length} games` : ""}${x.sig ? " · signature" : ""}`,
+    cols: [{k: "nm", lab: "Champion", l: 1, v: x => x.nm, txt: x => h("span", {class: "hl"}, portrait(x.c, "xs"), x.nm, x.sig ? h("span", {class: "sigb", "data-tip": `Signature: GD@15 beats the ${D.label} ${ROLE_L[ro]} average on ${x.nm} by ${sgn(x.sh)} after shrinking for sample size`}, "★") : null)},
+      {k: "n", lab: "G", v: x => x.n, txt: x => String(x.n)}, {k: "wr", lab: "W–L", v: x => x.w / x.n + x.n * 1e-6, txt: x => `${x.w}–${x.n - x.w}`},
+      {k: "kda", lab: "KDA", v: x => x.kda, txt: x => f1(x.kda)}, {k: "gdm", lab: "GD@15", v: x => x.gdm, txt: x => sgn(x.gdm)},
+      {k: "mgm", lab: "vs MU", tip: MG_TIP, v: x => x.mgm, txt: x => h("span", {class: x.mgm == null ? "" : x.mgm > 0 ? "up" : "dn"}, sgn(x.mgm))},
+      {k: "ds", lab: "Dmg%", v: x => x.ds, txt: x => pct(x.ds, 1)}, {k: "gs", lab: "Gold%", v: x => x.gs, txt: x => pct(x.gs, 1)},
+      {k: "wp", lab: "WPA", tip: "Win probability added per game, pp", v: x => x.wp, txt: x => sgn(x.wp, 2)}]});
+  out.push(h("section", {class: "sec jsec", id: "champs"}, h("h2", {}, "Champions", h("small", {}, `${pool.length} champions`)),
+    h("div", {class: "two cpool"}, h("div", {id: "pool"}, tierBands(rk, fewC, x => h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: "stats.html#/champ/" + encodeURIComponent(CH[x.c]) + "?mode=pro", "data-champ": CH[x.c], title: `${nameOf(CH[x.c])}: ${x.n} games, ${x.w}–${x.n - x.w}, KDA ${f1((x.k + x.a) / Math.max(1, x.d))}, WPA ${pp(mean(x.wpa))} per game`},
       x.rank && x.tier ? h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank) : null, portrait(x.c), h("b", {}, nameOf(CH[x.c])), h("span", {class: "wr"}, `${x.w}–${x.n - x.w}`), h("small", {}, `KDA ${f1((x.k + x.a) / Math.max(1, x.d))} · ${pp(mean(x.wpa)).replace(" pp", "")}`)),
-      {unit: ["champion", "champions"], by: "WPA per game (shrunk toward 0 for small samples)", smallText: `Fewer than ${POOL_MIN} games: ${fewC.length}`, gridCls: "ch"})));
-  // tendencies
+      {unit: ["champion", "champions"], by: "WPA per game (shrunk toward 0 for small samples)", smallText: `Fewer than ${POOL_MIN} games: ${fewC.length}`, gridCls: "ch"})),
+    ctab)));
+
+  /* ---- draft and style: comfort vs meta, blind / counter, side and patch, damage vs gold ---- */
+  const cs = champStats(games), csm = new Map(cs.map(x => [x.c, x]));
   const flex = pool.filter(x => { const e2 = csm.get(x.c); return e2 && e2.roles.filter(n => n >= 2).length >= 2; });
   const byN = pool.slice().sort((x, y) => y.n - x.n || y.w - x.w), top3 = byN.slice(0, 3).reduce((s, x) => s + x.n, 0);
   const metaRank = new Map(cs.slice().sort((x, y) => y.pres - x.pres).map((x, k) => [x.c, k + 1]));
   const offMeta = pool.filter(x => (metaRank.get(x.c) || 999) > 20).reduce((s, x) => s + x.n, 0);
-  out.push(h("section", {class: "sec", id: "tend"}, h("h2", {}, "Tendencies"), h("div", {class: "two"},
+  const side = [0, 1].map(s => { const xs = rows.filter(x => x.s === s), w = xs.filter(x => x.g.w === s).length; return {label: s ? "Red side" : "Blue side", v: xs.length ? w / xs.length : null, txt: xs.length ? pct(w / xs.length) : "–", sub: `${xs.length} g`, c: s ? "var(--side2)" : "var(--side1)", tip: `${s ? "Red" : "Blue"}: ${w}–${xs.length - w}, KDA ${f1(pAgg(xs).kda)}`}; });
+  const patches = [...new Set(rows.map(x => x.g.pt))].map(pt => { const xs = rows.filter(x => x.g.pt === pt), w = xs.filter(x => x.g.w === x.s).length; return {label: "Patch " + pt, v: w / xs.length, txt: pct(w / xs.length), sub: `${xs.length} g`, tip: `Patch ${pt}: ${w}–${xs.length - w}, KDA ${f1(pAgg(xs).kda)}, WPA ${pp(pAgg(xs).mm.wpa)}`}; });
+  out.push(h("section", {class: "sec jsec", id: "pdraft"}, h("h2", {}, "Draft and style"), h("div", {class: "two", id: "tend"},
     panel("Comfort vs meta", scatter({title: `${name}'s champions: games played vs league presence`, pts: pool.map(x => ({x: (csm.get(x.c) || {pres: 0}).pres, y: x.n, r: 3 + Math.min(6, x.n / 2), name: nameOf(CH[x.c]), label: x.n >= Math.max(3, byN[0].n * 0.5) ? nameOf(CH[x.c]) : null,
       tip: `${nameOf(CH[x.c])}: ${x.n} games by ${name}; presence ${pct((csm.get(x.c) || {pres: 0}).pres)} in the ${D.label} (#${metaRank.get(x.c) || "–"})`})), x: {label: "league presence", fmt: v => pct(v), min: 0}, y: {label: "games", fmt: v => String(Math.round(v)), min: 0}}),
       bars([{label: "Top 3 champions", v: top3 / A.n, txt: pct(top3 / A.n), tip: `${top3} of ${A.n} games on the three most played champions`},
         {label: "Outside the top 20", v: offMeta / A.n, txt: pct(offMeta / A.n), tip: `${offMeta} of ${A.n} games on champions outside the league's 20 most present`}], {max: 1, lw: 140}),
-      flex.length ? h("div", {class: "chips", id: "flex"}, h("span", {class: "note"}, "Flex picks:"), flex.map(x => h("span", {class: "chip", title: `${nameOf(CH[x.c])} is played in ${csm.get(x.c).roles.map((n, k) => n ? `${ROLE_L[k]} ${n}` : null).filter(Boolean).join(", ")} in the ${D.label}`}, portrait(x.c, "xs"), nameOf(CH[x.c])))) : null),
-    panel("Blind and counter picks", bars([{label: "Blind (picked first)", v: A.blind[0] ? A.blind[1] / A.blind[0] : null, txt: A.blind[0] ? pct(A.blind[1] / A.blind[0]) : "–", sub: `${A.blind[0]} g`, tip: `Picked before the lane opponent: ${A.blind[0]} games, ${A.blind[1]}–${A.blind[0] - A.blind[1]}`},
-      {label: "Counter (picked after)", v: A.counter[0] ? A.counter[1] / A.counter[0] : null, txt: A.counter[0] ? pct(A.counter[1] / A.counter[0]) : "–", sub: `${A.counter[0]} g`, tip: `Picked after the lane opponent: ${A.counter[0]} games, ${A.counter[1]}–${A.counter[0] - A.counter[1]}`}], {max: 1, ref: 0.5, lw: 160}),
-      h("h3", {}, "Early game"),
-      bars([{label: "Ahead in gold at 10", v: A.lead10, txt: pct(A.lead10), tip: `Ahead of the lane opponent at 10 minutes in ${pct(A.lead10)} of ${A.ahead10[0]} games`, ref: mean(pe.map(x => x.agg.lead10))},
-        {label: "Ahead in gold at 15", v: A.lead15, txt: pct(A.lead15), tip: `Ahead at 15 minutes in ${pct(A.lead15)} of ${A.ahead15[0]} games`, ref: mean(pe.map(x => x.agg.lead15))},
-        {label: "First blood involvement", v: A.fbRate, txt: pct(A.fbRate), tip: `Got or assisted first blood in ${pct(A.fbRate)} of games`, ref: mean(pe.map(x => x.agg.fbRate))},
-        {label: "First blood victim", v: A.fbVict, txt: pct(A.fbVict), c: "var(--no)", tip: `Died for first blood in ${pct(A.fbVict)} of games`, ref: mean(pe.map(x => x.agg.fbVict))}], {max: 1, lw: 160})))));
-  // lane phase distribution and playstyle
-  const edges = [-3000, -2000, -1000, -500, 0, 500, 1000, 2000, 3000];
-  const binOf = v => { let k = 0; while (k < edges.length && v >= edges[k]) k++; return k; };
-  const labs = ["<−3k", "−3k", "−2k", "−1k", "−500", "0", "+500", "+1k", "+2k", "3k+"];
-  const mine = new Array(10).fill(0), peer = new Array(10).fill(0);
-  A.m.gd15.forEach(v => mine[binOf(v)]++);
-  let pn = 0; pe.forEach(x => x.agg.m.gd15.forEach(v => { peer[binOf(v)]++; pn++; }));
-  const mn = A.m.gd15.length || 1;
-  out.push(h("div", {class: "two"},
-    panel(h("span", {}, "Lane phase: gold difference at 15 ", h("small", {}, `${A.m.gd15.length} games`)), columns(labs.map((lab, k) => ({label: lab, v: mine[k] / mn, pe: pn ? peer[k] / pn : null,
-      tip: `${lab}: ${mine[k]} of ${name}'s games (${pct(mine[k] / mn)}); every ${ROLE_L[ro]} in the league: ${pct(pn ? peer[k] / pn : 0)} (grey)`})))),
-    panel("Damage and gold", scatter({title: `Damage share vs gold share, every ${ROLE_L[ro]} in the ${D.label}`, pts: pe.map(x => ({x: x.agg.goldShare, y: x.agg.dmgShare, me: x.p === p, label: x.p === p ? name : null, name: x.name,
+      flex.length ? h("div", {class: "chips", id: "flex"}, flex.map(x => h("span", {class: "chip", "data-tip": `Flex pick: ${nameOf(CH[x.c])} is played in ${csm.get(x.c).roles.map((n, k) => n ? `${ROLE_L[k]} ${n}` : null).filter(Boolean).join(", ")} in the ${D.label}`}, portrait(x.c, "xs"), nameOf(CH[x.c])))) : null),
+    panel("Blind, counter, side and patch", bars([{label: "Blind (picked first)", v: A.blind[0] ? A.blind[1] / A.blind[0] : null, txt: A.blind[0] ? pct(A.blind[1] / A.blind[0]) : "–", sub: `${A.blind[0]} g`, tip: `Picked before the lane opponent: ${A.blind[0]} games, ${A.blind[1]}–${A.blind[0] - A.blind[1]}`},
+      {label: "Counter (picked after)", v: A.counter[0] ? A.counter[1] / A.counter[0] : null, txt: A.counter[0] ? pct(A.counter[1] / A.counter[0]) : "–", sub: `${A.counter[0]} g`, tip: `Picked after the lane opponent: ${A.counter[0]} games, ${A.counter[1]}–${A.counter[0] - A.counter[1]}`},
+      ...side, ...patches.slice(-6)], {max: 1, ref: 0.5, lw: 150}))),
+    h("div", {class: "two"}, panel("Damage and gold", scatter({title: `Damage share vs gold share, every ${ROLE_L[ro]} in the ${D.label}`, pts: pe.map(x => ({x: x.agg.goldShare, y: x.agg.dmgShare, me: x.p === p, label: x.p === p ? name : null, name: x.name,
       tip: `${x.name}: damage share ${pct(x.agg.dmgShare, 1)}, gold share ${pct(x.agg.goldShare, 1)}, damage per gold ${x.agg.dmgPerGold != null ? x.agg.dmgPerGold.toFixed(2) : "–"}`})),
-      x: {label: "gold share", fmt: v => pct(v)}, y: {label: "damage share", fmt: v => pct(v)}}))));
-  // form over time: rolling WPA, and splits by side and patch
-  const K = 5, form = rows.map((x, k) => { const win = rows.slice(Math.max(0, k - K + 1), k + 1).map(y => y.g.ps[y.s][y.ro] ? y.g.ps[y.s][y.ro][PSI.wpa] : null); return {x: k + 1, y: mean(win), g: x.g, won: x.g.w === x.s, v: x.g.ps[x.s][x.ro] ? x.g.ps[x.s][x.ro][PSI.wpa] : null}; }).filter(x => x.y != null);
-  const side = [0, 1].map(s => { const xs = rows.filter(x => x.s === s), w = xs.filter(x => x.g.w === s).length; return {label: s ? "Red side" : "Blue side", v: xs.length ? w / xs.length : null, txt: xs.length ? pct(w / xs.length) : "–", sub: `${xs.length} g`, c: s ? "var(--side2)" : "var(--side1)", tip: `${s ? "Red" : "Blue"}: ${w}–${xs.length - w}, KDA ${f1(pAgg(xs).kda)}`}; });
-  const patches = [...new Set(rows.map(x => x.g.pt))].map(pt => { const xs = rows.filter(x => x.g.pt === pt), w = xs.filter(x => x.g.w === x.s).length; return {label: "Patch " + pt, v: w / xs.length, txt: pct(w / xs.length), sub: `${xs.length} g`, tip: `Patch ${pt}: ${w}–${xs.length - w}, KDA ${f1(pAgg(xs).kda)}, WPA ${pp(pAgg(xs).mm.wpa)}`}; });
-  out.push(h("div", {class: "two"},
-    panel(h("span", {}, "Form ", h("small", {}, `WPA per game, ${K}-game rolling average`)), lineChart({title: `${name} form: rolling WPA per game`, w: chartW(0.5), y: {ref: 0, fmt: v => sgn(v, 0)}, x: {fmt: v => "G" + v},
-      series: [{key: "form", label: "Rolling WPA", short: "WPA", cls: "acc", emph: true, dots: 2.5, pts: form.map(f => ({x: f.x, y: f.y, cls: f.won ? "w" : "l", tip: `Game ${f.x}, ${f.g.dt.slice(0, 10)} (${f.won ? "win" : "loss"}): this game ${pp(f.v)}, last ${K}: ${pp(f.y)}`}))}]})),
-    panel("Side and patch", bars([...side, ...patches.slice(-8)], {max: 1, ref: 0.5, lw: 110}))));
+      x: {label: "gold share", fmt: v => pct(v)}, y: {label: "damage share", fmt: v => pct(v)}})),
+      panel("Kill participation and deaths", scatter({title: `Kill participation vs deaths per game, every ${ROLE_L[ro]} in the ${D.label}`, pts: pe.map(x => ({x: x.agg.n ? x.agg.d / x.agg.n : 0, y: x.agg.kp || 0, me: x.p === p, label: x.p === p ? name : null, name: x.name,
+        tip: `${x.name}: KP ${pct(x.agg.kp)}, ${f1(x.agg.n ? x.agg.d / x.agg.n : null)} deaths per game`})), x: {label: "deaths per game", fmt: v => v.toFixed(1)}, y: {label: "kill participation", fmt: v => pct(v)}})))));
+  if (bio) out.push(bio);
   return out;
 }
 
