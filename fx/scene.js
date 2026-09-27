@@ -4,7 +4,7 @@
  *
  * Contract: this file is one JS expression evaluating to  {create(gl, host), fallback(light)}.
  *   create  called once with a WebGL1 context on <canvas id="fx"> (alpha:false, no depth/stencil/antialias, low-power) and
- *           host = {section: "code"|"docs"|"draft"|"champions"|"pro", sec: 0-3 (docs = 0), FRAG: the fragment shader};
+ *           host = {section: "code"|"docs"|"draft"|"champions"|"pro"|"play", sec: 0-4 (docs = 0), FRAG: the fragment shader};
  *           returns {render(s)} (optionally resize(W, H), dispose()); throw to fall back.
  *   render  s = {t, dt, W, H, ratio, light, mx, my, ms, sec, section, evalP}: t, dt in s (dt 0 = a still frame); W, H canvas
  *           px; light 0-1 (eased); mx/my/ms pointer (always 0: no mouse effects); evalP the draft eval bar's blue win
@@ -181,7 +181,7 @@
 
   // per-page camera framing (map units, added to the slow pan): code/docs centre, draft toward the blue base,
   // champions toward the bot side / dragon, pro toward baron
-  const FRAME = [[0, 0], [-.1, -.08], [.07, -.06], [-.06, .08]];
+  const FRAME = [[0, 0], [-.1, -.08], [.07, -.06], [-.06, .08], [.08, .07]];
   function create(gl, host) {
     const sh = (type, src) => {
       const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);

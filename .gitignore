@@ -1,3 +1,5 @@
 node_modules/
 reasoning
 *.template.html
+.play/
+.reports/

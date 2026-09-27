@@ -96,6 +96,26 @@
       "source": "/fx/**",
       "destination": "/__not_found__",
       "type": 302
+    },
+    {
+      "source": "/play-pool.json",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/play-pool",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/play-api.js",
+      "destination": "/__not_found__",
+      "type": 302
+    },
+    {
+      "source": "/play-api",
+      "destination": "/__not_found__",
+      "type": 302
     }
   ],
   "headers": [
@@ -215,6 +235,15 @@
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' 'sha256-CTtj0BFZlrwJFa3r9faPA6BknBLLzlWJh6s/W+mGIdQ=' 'sha256-MbO4eAY4xRLpO188Ywf2YiPHpCtE/KmFFoiJhl0+jGw=' 'sha256-PsG02r0OrUF2So8SypTJOxto3G+kZ3ZGob2gRBlF24M='"
+        }
+      ]
+    },
+    {
+      "source": "play.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-RH5rc/AgYnN0mMrO3hJu4Ljns074W9iHrC4qVoxeAYg=' 'sha256-hq+U1MZCE3EIeUZBSm6rB1yQMEb+TdjOcEqg74PrkW8=' 'sha256-u78ap2Bx8J3Md4E83HstDnXWe0jslz6RRrq6lxAmcHI='"
         }
       ]
     }

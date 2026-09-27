@@ -2,7 +2,10 @@
 //   POST /api/report            → stores one report (JSON) under REPORT_DIR; size-capped and rate-limited
 //   GET  /api/reports?since=ID  → list of reports newer than ID      (Authorization: Bearer REPORT_TOKEN)
 //   GET  /api/reports/ID        → one report                        (Authorization: Bearer REPORT_TOKEN)
-// Env: PORT, REPORT_DIR (a Railway volume, e.g. /data/reports), REPORT_TOKEN (≥ 24 chars; reading is off without it).
+//   /api/play/…                 → the Play quiz's runs and leaderboard (play-api.js; scores under PLAY_DIR)
+// Env: PORT, REPORT_DIR (a Railway volume, e.g. /data/reports), REPORT_TOKEN (≥ 24 chars; reading is off without it),
+//      PLAY_DIR (default: "play" next to REPORT_DIR when that is set, so it shares its volume; else .play here, hidden),
+//      PLAY_SALT (optional: the salt for hashed IPs; else one is made once and kept in PLAY_DIR/.salt).
 "use strict";
 const http = require("http"), fs = require("fs"), path = require("path"), crypto = require("crypto"), zlib = require("zlib");
 const {Readable} = require("stream");
@@ -18,6 +21,7 @@ const MAX_BODY = 256 * 1024, MAX_FILES = 20000, MAX_DIR_BYTES = 500 * 1024 * 102
 const PER_MIN = 5, PER_DAY = 60;
 
 fs.mkdirSync(REPORT_DIR, {recursive: true});
+const PLAY_DIR = process.env.PLAY_DIR || (process.env.REPORT_DIR ? path.join(path.dirname(REPORT_DIR), "play") : path.join(ROOT, ".play"));
 if (!process.env.REPORT_DIR) console.warn(`REPORT_DIR not set: reports go to ${REPORT_DIR}, which is lost on redeploy`);
 if (!TOKEN) console.warn("REPORT_TOKEN not set (or shorter than 24 chars): reading reports is disabled");
 
@@ -46,9 +50,15 @@ function readBody(req){
   });
 }
 
+const clientIp = req => String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "?").split(",")[0].trim();
+let play = null;   // the Play quiz API (play-api.js), created on first use
 async function api(req, res, url){
+  if (url.pathname.startsWith("/api/play/")){
+    if (!play) play = require("./play-api.js")({ROOT, PLAY_DIR, TOKEN, send, readBody, clientIp});
+    return play(req, res, url);
+  }
   if (url.pathname === "/api/report" && req.method === "POST"){
-    const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "?").split(",")[0].trim();
+    const ip = clientIp(req);
     if (limited(ip)) return send(res, 429, {error: "Too many reports from here — try again later."});
     if (files >= MAX_FILES || bytes >= MAX_DIR_BYTES) return send(res, 507, {error: "Report storage is full."});
     let body; try { body = JSON.parse(await readBody(req)); } catch (e) { return send(res, 400, {error: "Bad report."}); }
@@ -80,7 +90,7 @@ async function api(req, res, url){
 // serve-handler still does routing, headers (serve.json: CSP, nosniff, …), ETag/304, Range and HEAD; we swap in the
 // compressed bytes through its createReadStream hook and fix the headers in writeHead. Range requests get identity bytes.
 const COMPRESSIBLE = /\.(html|js|json|css|svg|txt|xml|webmanifest|ico)$/i, MIN_SIZE = 1024;
-const SKIP = /(^|\/)(\.|node_modules(\/|$)|reasoning(\/|$))|\.template(\.html)?$|^(package(-lock)?|railway|serve|links)\.json$|^server\.js$/;
+const SKIP = /(^|\/)(\.|node_modules(\/|$)|reasoning(\/|$))|\.template(\.html)?$|^(package(-lock)?|railway|serve|links|play-pool)\.json$|^(server|play-api)\.js$/;
 const packs = new Map();   // absolute path → {key, gz: Promise<Buffer>, br: Buffer|null, brJob: Promise|null}
 const brOpts = size => ({params: {[zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: size}});
 const pz = (fn, buf, opts) => new Promise((ok, fail) => fn(buf, opts, (e, out) => e ? fail(e) : ok(out)));
@@ -170,4 +180,4 @@ http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname.startsWith("/api/")) return api(req, res, url).catch(e => send(res, 500, {error: "Server error"}));
   return serveStatic(req, res);
-}).listen(PORT, () => { console.log(`Rift Logic on :${PORT} · reports → ${REPORT_DIR}`); if (process.env.RL_NO_WARM !== "1") warm(); });
+}).listen(PORT, () => { console.log(`Rift Logic on :${PORT} · reports → ${REPORT_DIR} · play scores → ${PLAY_DIR}`); if (process.env.RL_NO_WARM !== "1") warm(); });
