@@ -252,7 +252,7 @@ td small{color:var(--muted);font-size:11px;margin-left:5px}
 .rsec h2 svg{width:15px;height:15px;fill:currentColor;vertical-align:-3px;margin-right:4px}
 #ov-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:1000px){#ov-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:600px){#ov-cards{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:600px){#ov-cards{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto;gap:8px}#ov-cards .card{padding:11px 12px}#ov-cards .card .big{font-size:22px}#ov-cards .split{grid-template-columns:40px minmax(0,1fr) 46px}}
 .ov-sum{margin-top:-4px}
 .lenchart{margin-top:2px}
 .soonl{padding:6px 10px;border-left:3px solid var(--line-strong);background:var(--surface-2);border-radius:0 6px 6px 0}
@@ -373,6 +373,85 @@ details.lowg summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin:4
 .mucb{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .mucb .cb{flex:1 1 220px;max-width:300px}
 .vs{font:600 13px/1 var(--sans);color:var(--muted)}
+/* champion overview (summary first, as the pro player page): jump bar, 3 x 2 cards, strengths / weaknesses, profile tiles that
+   open dot strips, matchup / player rows, trend charts. One red-grey-green percentile scale (pcol). */
+:root{--lnL:62%;--lnS:62%;--tagL:34%;--tagS:45%}
+:root[data-theme="light"]{--lnL:42%;--lnS:60%;--tagL:40%;--tagS:55%}
+#tip{position:fixed;z-index:100;pointer-events:none;max-width:280px;background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;box-shadow:var(--shadow);padding:6px 9px;font-size:12px;line-height:1.4;color:var(--ink);white-space:pre-line}
+.jump{position:sticky;top:var(--barh,0px);z-index:25;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:var(--bg);border-bottom:1px solid var(--line)}
+.jump::-webkit-scrollbar{display:none}
+.jump button{flex:none;border:0;background:none;padding:10px 12px;font:500 13.5px/1 var(--sans);color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.jump button:hover{color:var(--ink)}.jump button[aria-current]{color:var(--accent);border-bottom-color:var(--accent)}
+.jsec{scroll-margin-top:calc(var(--barh,0px) + 52px);display:grid;gap:12px;min-width:0;padding-top:6px}
+.jsec > h2{font-size:12px;margin:6px 0 0;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.jsec > h2 .more-l2{margin-left:auto;display:flex;flex-wrap:wrap;gap:4px 12px;letter-spacing:0;text-transform:none;font-weight:500;font-size:12.5px}
+.more-l2 a{text-decoration:none}.more-l2 a:hover{text-decoration:underline}
+.chip.tier{font-weight:700;color:var(--tc);border-color:color-mix(in srgb,var(--tc) 55%,transparent)}
+.card .big.tierb{color:var(--tc);font-size:34px}
+.card .mini{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--inset);margin-top:8px}
+.card .mini i{display:block;height:100%}.card .mini i.pk{background:var(--accent)}.card .mini i.bn{background:color-mix(in srgb,var(--accent) 45%,var(--muted))}
+.card .mini i.r0{background:var(--accent)}.card .mini i.r1{background:color-mix(in srgb,var(--accent) 50%,var(--muted))}.card .mini i.r2{background:var(--faint)}
+.card .ci b{font-weight:600;color:var(--ink-2)}
+.swc{margin:0}.chip.sw{border-color:color-mix(in srgb,var(--pc) 55%,transparent);color:var(--ink-2)}.chip.sw b{color:var(--pc);font-weight:600}
+.dims{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dim{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:4px 10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--pc);border-radius:10px;padding:11px 14px;cursor:pointer;min-width:0;color:var(--ink)}
+.dim:hover{border-color:var(--line-strong);border-left-color:var(--pc)}.dim.on{border-color:var(--accent);border-left-color:var(--pc);background:var(--surface-2)}
+.dim .nm{font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dim b{grid-row:span 2;font:600 30px/1 var(--sans);color:var(--pc);align-self:center}
+.dim .g{display:block;height:6px;border-radius:3px;background:var(--inset);overflow:hidden}.dim .g i{display:block;height:100%;background:var(--pc);border-radius:3px}
+.dim small{grid-column:1 / -1;font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dim:disabled{cursor:default;opacity:.55}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0;display:grid;gap:10px;align-content:start}
+.panel h3{margin:0;font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.panel h3 small{letter-spacing:0;text-transform:none;font-weight:400;color:var(--faint)}
+.fig{min-width:0}
+.chart{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font:500 10.5px var(--sans);fill:var(--muted)}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .ref{stroke:var(--line-strong);stroke-width:1;stroke-dasharray:3 3}
+.chart .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;stroke:hsl(var(--th,180) var(--lnS) var(--lnL))}
+.chart .ln.acc{stroke:var(--accent)}.chart .ln.mut{stroke:var(--gold)}
+.chart .pt{fill:hsl(var(--th,180) var(--lnS) var(--lnL));stroke:var(--surface);stroke-width:2}
+.chart .pt.acc{fill:var(--accent)}.chart .pt.mut{fill:var(--gold)}.chart .pt.few{fill:var(--surface);stroke:var(--faint);stroke-width:1.5}
+.chart .hit{fill:transparent;cursor:crosshair}
+.chart .lbl{font-weight:600;fill:var(--ink-2)}.chart .lbl.acc{fill:var(--accent)}.chart .lbl.mut{fill:var(--gold)}
+.chart.dots .dl{font:500 12px var(--sans);fill:var(--ink-2)}.chart.dots .dv{font:600 12px var(--mono)}
+.chart.dots .ax{stroke:var(--line-strong);stroke-width:1}.chart.dots .avg{stroke:var(--ink-2);stroke-width:2;opacity:.5}
+.chart.dots .pd{fill:var(--faint);opacity:.6}.chart.dots a:hover .pd{opacity:1;fill:var(--ink-2)}.chart.dots .me{stroke:var(--surface);stroke-width:2}
+.trends{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:12px}
+.trends .card{display:grid;gap:6px;align-content:start}
+.hs-row.tiles{grid-auto-columns:128px;gap:8px}
+.hs-row.tiles .tile{scroll-snap-align:start}
+.tile.mt small.up{color:var(--ok)}.tile.mt small.dn{color:var(--no)}
+.tile .ph.op{width:44px;height:44px}
+.murow{display:grid;gap:6px;min-width:0}
+.murow h3{margin:0;display:flex;align-items:center;gap:10px;font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muvs{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.muvs .cb{flex:1 1 220px;max-width:300px}
+.vsres{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.vsres .ph{width:40px;height:40px;border-radius:6px}
+.vsres .kv2{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--muted)}
+.vsres .kv2 b{font:600 15px/1.2 var(--mono);color:var(--ink);display:block}
+.tag{display:inline-grid;place-items:center;min-width:38px;height:22px;padding:0 5px;border-radius:5px;font:700 10.5px/1 var(--mono);letter-spacing:.02em;color:#fff;background:hsl(var(--th) var(--tagS) var(--tagL));flex:none;text-decoration:none;white-space:nowrap}
+.tag.md{min-width:46px;height:30px;font-size:12px;border-radius:7px}
+.tag.logo{width:46px;padding:0;background:none}
+.tag.logo img{width:100%;height:30px;object-fit:contain;display:block}
+:root:not([data-theme="light"]) .tag.logo img{filter:drop-shadow(0 0 .6px rgba(255,255,255,.55))}
+.tile.pl{border-top-color:var(--pc,var(--line-strong))}
+.tile.pl .rl{display:inline-flex;align-items:center;gap:3px}.tile.pl .rl svg{width:12px;height:12px;fill:currentColor}
+.brows{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.brow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:4px 10px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--line)}
+.brow:first-of-type{border-top:0}
+.brow .icons{display:flex;gap:3px;align-items:center}
+.brow .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+.brow .pr{grid-column:2;height:4px;border-radius:2px;background:var(--inset);overflow:hidden}.brow .pr i{display:block;height:100%;background:var(--accent)}
+.brow b{font:600 13px/1 var(--mono);text-align:right}
+.brow small{grid-column:3;font:500 10.5px/1 var(--mono);color:var(--muted);text-align:right}
+.fistrip{grid-column:1 / -1;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px}
+.fistrip span{height:16px;border-radius:3px;background:var(--pc);font:500 9.5px/16px var(--mono);color:var(--bg);text-align:center;overflow:hidden}
+.fistrip span.na{background:var(--inset);color:var(--faint)}
+@media (max-width:1000px){.dims{grid-template-columns:repeat(2,minmax(0,1fr))}.brows{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.trends{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:600px){.dims{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dim{padding:9px 11px}.dim b{font-size:24px}.brows{grid-template-columns:minmax(0,1fr)}.jump button{padding:9px 9px;font-size:13px}}
 @media (min-width:761px){.bar{position:sticky}}
 @media (max-width:760px){
   .bar{position:static}
@@ -457,6 +536,9 @@ html[data-hx=pro] .cards6>.card:nth-child(4){animation-delay:.18s}html[data-hx=p
 html[data-hx=pro] .cards6>.card:nth-child(6){animation-delay:.3s}
 html[data-hx=pro] .hx-wipe{animation-name:hx-wipe-v}
 html[data-hx=champions] .hx-wipe{animation-name:hx-wipe-c}
+html[data-hx=play] .pl-card{animation:hx-deal .7s var(--spring) backwards}
+html[data-hx=play] .pl-card+.pl-card{animation-delay:.14s}
+html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
 }
 @keyframes hx-from-l{from{opacity:0;transform:translateX(-36px)}}
 @keyframes hx-from-r{from{opacity:0;transform:translateX(36px)}}
@@ -467,6 +549,8 @@ html[data-hx=champions] .hx-wipe{animation-name:hx-wipe-c}
 @keyframes hx-zoom{from{opacity:0;transform:scale(.78);filter:blur(4px)}}
 @keyframes hx-focus{from{opacity:0;filter:blur(6px);transform:scale(.99)}}
 @keyframes hx-wipe-v{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes hx-deal{from{opacity:0;transform:perspective(900px) translateY(-26px) rotateX(24deg) rotate(-2.5deg) scale(.94)}}
+@keyframes hx-pulse{from{opacity:0;transform:scale(.7);box-shadow:0 0 0 0 var(--glow-gold)}60%{opacity:1;transform:scale(1.04);box-shadow:0 0 0 14px transparent}}
 @keyframes hx-wipe-c{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}}
 #hx-veil.rev{transform:scaleX(-1)}
 @keyframes hx-rip{from{transform:scale(0);opacity:.9}to{transform:scale(22);opacity:0}}
@@ -517,13 +601,18 @@ html[data-hx=champions] .hx-wipe{animation-name:hx-wipe-c}
   .rlnav-tab{gap:4px;padding:0 4px;font-size:12.5px}
   .rlnav-tab svg{width:16px;height:16px}
 }
-@media (max-width:420px){
+@media (max-width:760px){
   .rlnav-tab .l{display:none}
   .rlnav-tab .s{display:inline}
   .rlnav-docs span{display:none}
 }
+@media (max-width:470px){
+  .rlnav-tab:not([aria-current="page"]) .s{display:none}
+  .rlnav-tab:not([aria-current="page"]){flex:0 0 auto;padding:0 9px}
+  .rlnav-tab[aria-current="page"]{flex:1 1 auto}
+}
 @media (prefers-reduced-motion:reduce){.rlnav-tab,.rlnav-pill{transition:none}}</style>
-<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a></div><div class="rlnav-side"><div class="rlset"><button type="button" class="rlnav-set" id="rlset" aria-expanded="false" aria-controls="rlset-pop" title="Settings" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg></button><div class="rlset-pop" id="rlset-pop" role="dialog" aria-label="Settings" hidden><div class="rlset-row"><span>Background</span><div class="seg" role="group" aria-label="Background"><button type="button" data-bg="anim" aria-pressed="true">Animated</button><button type="button" data-bg="still" aria-pressed="false">Still</button><button type="button" data-bg="off" aria-pressed="false">Off</button></div></div></div></div><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
+<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a><a class="rlnav-tab" id="playlink" href="play.html" title="Quiz: kill or no kill, cooldowns and damage"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.6 6.2h6.8a4 4 0 0 1 3.9 4.9l-.8 3.5a1.9 1.9 0 0 1-3.3.9L11.7 14H8.3l-1.5 1.5a1.9 1.9 0 0 1-3.3-.9l-.8-3.5a4 4 0 0 1 3.9-4.9Z"/><path d="M6.6 8.9v2.8M5.2 10.3H8"/><circle cx="13.1" cy="9.5" r=".55" fill="currentColor"/><circle cx="14.7" cy="11.1" r=".55" fill="currentColor"/></svg><span class="l">Play</span><span class="s" aria-hidden="true">Play</span></a></div><div class="rlnav-side"><div class="rlset"><button type="button" class="rlnav-set" id="rlset" aria-expanded="false" aria-controls="rlset-pop" title="Settings" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg></button><div class="rlset-pop" id="rlset-pop" role="dialog" aria-label="Settings" hidden><div class="rlset-row"><span>Background</span><div class="seg" role="group" aria-label="Background"><button type="button" data-bg="anim" aria-pressed="true">Animated</button><button type="button" data-bg="still" aria-pressed="false">Still</button><button type="button" data-bg="off" aria-pressed="false">Off</button></div></div></div></div><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
 <div id="hx-veil" aria-hidden="true"></div><div id="hx-beam" aria-hidden="true"><i></i></div>
 <script>(() => {
 "use strict";
@@ -690,7 +779,7 @@ TOWERS.forEach(t => dot(t.p, .012, t.side ? P.red : P.blue, t.side ? .45 : .9));
 dot([-.36, -.12], .014, P.blue, 1);
 CAMPS.forEach(c => dot(c.p, .01, P.gold, c.side ? .25 : .6));
 }
-const FRAME = [[0, 0], [-.1, -.08], [.07, -.06], [-.06, .08]];
+const FRAME = [[0, 0], [-.1, -.08], [.07, -.06], [-.06, .08], [.08, .07]];
 function create(gl, host) {
 const sh = (type, src) => {
 const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
@@ -773,7 +862,7 @@ if (!st.off) initGL(); else st.reason = "off";
 const fb2 = () => { if (!live || !SCENE.fallback) return; try { SCENE.fallback(isLight()); st.fallback2d = true; } catch (_) {} };
 const nofx = () => { R.classList.add("nofx"); fb2(); };
 if (!st.gl && !st.off) nofx();
-const canRun = () => st.gl && !st.paused && !st.hidden && !st.reduced && !st.typing;
+const canRun = () => st.gl && !st.paused && !st.hidden && !st.reduced && !st.typing && !st.held;
 function size() {
 if (!st.gl) return;
 ratio = Math.min(1, Math.sqrt(BUDGET / Math.max(1, W.innerWidth * W.innerHeight))) * st.q / .55;
@@ -870,6 +959,7 @@ size(); sync(); kick();
 return {
 state: () => Object.assign({}, st, {raf: !!rq}),
 pause, paused: () => st.paused, canRun, setMode, mode: () => mode,
+hold(v) { st.held = !!v; kick(); },
 set(o) { if (o && "evalP" in o) { const v = +o.evalP; evT = o.evalP == null || !isFinite(v) ? -1 : Math.max(0, Math.min(1, v)); if (!st.running) still(); } }
 };
 })();
@@ -1060,6 +1150,7 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
   <main id="main" tabindex="-1"><div class="loading"><i></i>Loading match data (about 500 KB, fetched once)…</div></main>
   <p class="foot" id="foot"></p>
 </div>
+<div id="tip" role="tooltip" hidden></div>
 <script>
 (() => {
 "use strict";
@@ -1549,31 +1640,6 @@ function viewTier(r, c){
     holder));
 }
 
-/* ---------- plain-language summary ---------- */
-function phaseWords(x, what){
-  if (!x.ok) return null;
-  const v = pp(x.v, 1);
-  if (what === "lane") return x.lo > 0 ? `wins lane (${v} lane WPA)` : x.hi < 0 ? `loses lane (${v} lane WPA)` : `the lane phase is about even (${v}, within noise)`;
-  return x.lo > 0 ? `gains more after 15 minutes (${v})` : x.hi < 0 ? `gives some back later (${v})` : `after 15 minutes it's about even (${v}, within noise)`;
-}
-function summary(S, i, r, name){
-  const out = [], where = r != null ? ` as ${ROLE_L[r]}` : "";
-  if (S.pro){
-    const L = avgOf(S, "wpaLane", i, r), T = avgOf(S, "wpaTeam", i, r), W = avgOf(S, "wpa", i, r);
-    if (L.ok && T.ok){
-      const a = phaseWords(L, "lane"), b = phaseWords(T, "team"), sL = L.lo > 0 ? 1 : L.hi < 0 ? -1 : 0, sT = T.lo > 0 ? 1 : T.hi < 0 ? -1 : 0;
-      const join = sL && sT && sL !== sT ? " but " : (sL || sT) && !(sL && sT) ? "; " : " and ";
-      let s = `${name}${where} ${a}${join}${b}.`; s = s[0].toUpperCase() + s.slice(1);
-      out.push(s);
-    } else out.push(`${name}${where}: too little data for WPA in ${S.name}.`);
-  } else {
-    const w = champWin(S, i, {role: r});
-    if (w.ok) out.push(`${name}${where}: ${w.lo > 0.5 ? "above an even game" : w.hi < 0.5 ? "below an even game" : "not distinguishable from 50%"} in solo queue.`);
-    else out.push(`${name}${where}: too little data in ${S.name} (${grp(w.n)} games).`);
-  }
-  return out.join(" ");
-}
-
 /* ---------- open in Rift Logic ---------- */
 const rlChamp = id => { const n = nameOf(id); return /^[A-Za-z]+$/.test(n) ? n : JSON.stringify(n); };
 function rlOpts(c, extra){ const o = [...(extra || [])]; if (c.mode === "pro"){ o.push("pro: true"); if (c.year !== String(ST.proDefault)) o.push(`year: ${/^\d+$/.test(c.year) ? c.year : JSON.stringify(c.year)}`); } return o.join(", "); }
@@ -1598,6 +1664,17 @@ function matchupProgram(c, a, b, r){
   if (c.mode === "pro" || dataset("solo").hasWpa){ const rr = r != null ? [`role: "${ROLES[r]}"`] : [];
     for (const ph of ["total", "lane", "team"]) L.push(`print(wpa(${A}, ${rlOpts(c, [`vs: ${B}`, ...rr, ...(ph === "total" ? [] : [`phase: "${ph}"`])])}));`); }
   return L.join("\n") + "\n";
+}
+/* "Copy link": the champion's static page (src/landing.py writes web/champions/<slug>.html), which search engines and link previews
+   can read (a #/champ/... hash is invisible to them). pageSlug() is landing.py's slug() */
+const pageSlug = s => String(s).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/['\u2019.]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+function shareButton(path, what){
+  const url = "https://www.riftlogic.dev" + path;
+  return h("button", {type: "button", class: "btn", id: "share", title: `Copy a link to ${what}'s page (${url})`, onclick: () => {
+    const shown = () => status(`Link: ${url}`);
+    try { if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(() => status(`Link copied: ${url}`), shown); return; } } catch (_) {}
+    shown();
+  }}, "Copy link");
 }
 function openButton(title, code){
   return h("button", {type: "button", class: "btn primary", onclick: () => openInEditor(title, code)}, "Open in Rift Logic");
@@ -1636,11 +1713,12 @@ function viewChamp(r, c){
   const rq = roleQ(r.q), ro = rq === undefined ? mainRole(S, i) : rq, tab = tabOf(r.args[1]);
   recentAdd(id, ro);
   const title = `Stats: ${name}${ro != null ? " " + ROLES[ro] : ""} (${c.mode === "pro" ? "pro " + c.year : "solo queue"})`;
-  const nG = ro != null ? D.role[i][2 * ro] : D.gw[i][0];
+  const nG = ro != null ? D.role[i][2 * ro] : D.gw[i][0], T = champTier(S, i, ro != null ? ro : mainRole(S, i));
   main.append(h("div", {class: "head chead"}, portrait(id, true), h("div", {}, h("h1", {}, name),
-      h("div", {class: "chips"}, h("span", {class: "chip"}, roleIcon(ro), ro != null ? ROLE_L[ro] : "All roles"),
+      h("div", {class: "chips"}, h("span", {class: "chip"}, roleIcon(ro), ro != null ? ROLE_L[ro] : "All roles"), tierChip(T),
         h("span", {class: "chip mode"}, c.mode === "pro" ? `Pro ${c.year}` : "Solo queue 16.x"), h("span", {class: "chip"}, `${grp(nG)} games`))),
-    h("span", {class: "grow"}), openButton(title, champProgram(c, id, ro))));
+    h("span", {class: "grow"}), pageSlug(name) ? shareButton("/champions/" + pageSlug(name), name) : null, openButton(title, champProgram(c, id, ro))));
+  if (tab === "overview"){ champOverview(main, c, S, id, i, ro, name, T); return; }
   // tabs: links (shareable, Back / Forward), arrow keys move between them
   const tl = dragScroll(h("div", {class: "tabs", role: "tablist", "aria-label": `${name} sections`}, TABS.map(([k, t, only]) => h("a", {role: "tab", id: "tab-" + k, href: champLink(c, id, k, rq),
     "aria-selected": String(k === tab), "aria-controls": "panel", tabindex: k === tab ? "0" : "-1"}, t, only && only !== c.mode ? h("span", {class: "pill", title: `${only === "solo" ? "solo queue" : "pro"} data only`}, only) : null))));
@@ -1676,26 +1754,7 @@ function viewChamp(r, c){
   const wrTip = (x, lead) => `${lead}: ${pct(x.wr.v)} in ${grp(x.n)} games, 95% CI ${pct(x.wr.lo)}–${pct(x.wr.hi)}`;
   const tierTip = (x, of) => x.tier ? `; tier ${x.tier} (#${x.rank} of ${of})` : "";
 
-  if (tab === "overview"){
-    P(h("p", {class: "note ov-sum", id: "summary"}, summary(S, i, ro, name)));
-    const W = champWin(S, i, {role: ro});
-    const cards = h("div", {class: "cards", id: "ov-cards"});
-    cards.append(card(`Win rate${ro != null ? " · " + ROLE_L[ro] : ""}`, W.ok ? h("span", {class: clsCI(W.lo, W.hi, 0.5), id: "c-wr"}, pct(W.v)) : h("span", {class: "tl"}, "too little data"),
-      W.ok ? `95% CI ${pct(W.lo)}–${pct(W.hi)} · ${grp(W.n)} games` : `${grp(W.n)} games (fewer than ${D.min})`));
-    const pk = rate(D.gw[i][0], D.games, 1), bn = rate(D.bans[i], D.games, 1), pr = rate(D.gw[i][0] + D.bans[i], D.games, 1);
-    cards.append(card("Presence", h("span", {id: "c-pres"}, pct(pr.v)), `picked or banned in ${grp(pr.k)} of ${grp(D.games)} games`, kv([["Pick rate", pct(pk.v)], ["Ban rate", pct(bn.v)], ["Games", grp(D.gw[i][0])]])));
-    /* always six cards (3 x 2). pro: win rate, presence, WPA, laning, game length, draft model;
-       solo: win rate, presence, per game, game length, most common build, draft model. No draft value: pro per game / solo roles. */
-    if (S.pro) wpaCards(S, i, ro, cards, true);
-    else cards.append(soloCard(S, i, ro));
-    cards.append(lengthCard(S, i, ro));
-    if (!S.pro){ const bc = card("Most common build", null, null, h("div", {class: "ci"}, "loading…")); bc.id = "c-build"; cards.append(bc); buildTeaser(bc, c, id, ro != null ? ro : mainRole(S, i)); }
-    const dr = ro != null ? ro : mainRole(S, i), dv = dr != null ? draftValue(c.mode, i, dr) : null;
-    if (dv != null) cards.append(card(`Draft model · ${ROLE_L[dr]}`, h("span", {class: clsCI(dv, dv, 0), id: "c-pick"}, pp(dv, 1)), `pick WPA as blue's first pick into an empty draft, vs the role's typical ${ROLE_L[dr]}`));
-    else cards.append(S.pro ? soloCard(S, i, ro) : rolesCard(S, i));
-    P(cards);
-    const sim = similarStrip(c, i); if (sim) P(sim);
-  } else if (tab === "matchups"){
+  if (tab === "matchups"){
     const rows = matchRows(muFloor);
     const opp = combo({label: "Opponent", placeholder: `Compare ${name} with…`, items: () => rows.slice().sort((a, b) => a.name.localeCompare(b.name)).map(x => ({id: x.id, name: x.name, sub: `${grp(x.n)} games${x.wr.ok ? " · " + pct(x.wr.v) : ""}`})),
       onPick: b => { location.hash = link("matchup", [id, b], mq); }});
@@ -1747,11 +1806,6 @@ function soloCard(S, i, ro){
   const g = k => avgOf(S, k, i, ro), K = g("kills"), De = g("deaths"), As = g("assists");
   return card("Per game", K.ok && De.ok && As.ok ? `${K.v.toFixed(1)} / ${De.v.toFixed(1)} / ${As.v.toFixed(1)}` : h("span", {class: "tl"}, "too little data"), "kills / deaths / assists",
     kv([["KDA", K.ok && De.ok ? ((K.v + As.v) / Math.max(De.v, 1e-9)).toFixed(2) : "–"], ["Damage / min", g("dpm").ok ? grp(g("dpm").v) : "–"], ["CS / min", g("cspm").ok ? g("cspm").v.toFixed(1) : "–"], ["Damage share", g("dmgshare").ok ? pct(g("dmgshare").v) : "–"]]));
-}
-/* games per role with the win rate (the sixth overview card when there is no draft value) */
-function rolesCard(S, i){
-  const rs = [0, 1, 2, 3, 4].map(k => [k, rate(S.D.role[i][2 * k + 1], S.D.role[i][2 * k], S.D.min)]).filter(([, x]) => x.n > 0).sort((a, b) => b[1].n - a[1].n);
-  return card("Roles", null, null, kv(rs.length ? rs.map(([k, x]) => [ROLE_L[k], `${grp(x.n)} · ${x.ok ? pct(x.v) : "–"}`]) : [["Games", "0"]]), h("div", {class: "ci"}, "games · win rate"));
 }
 /* win rate by game length: stats.json "len" / "lenRole" (games, wins per bucket; edges "lengthBuckets"), a small SVG with 95%
    intervals, a 50% line and buckets under the dataset minimum greyed; the values in a tooltip per bucket and a visually hidden table */
@@ -1808,6 +1862,384 @@ function wpaCards(S, i, ro, cards, ids){
 function modeNotice(id, head, body, to, btn){
   return h("div", {class: "notice", id}, h("b", {}, head), h("p", {class: "note"}, body),
     h("div", {}, h("button", {type: "button", class: "btn", onclick: () => setMode(to)}, btn)));
+}
+
+/* ---------- champion overview: summary first (the pro player page's layout) ----------
+   header, a sticky jump bar (Overview · Matchups · Builds · Players (pro) · Trends), then: six cards, strengths / weaknesses chips
+   (80th percentile or better, 20th or worse vs the role), six profile tiles that open dot strips (every champion of the role a dot),
+   best / worst lane matchups (shrunk win rates; pro: GD@15 vs the matchup model's expectation), a "vs" lookup, builds and runes
+   (solo), the champion's most frequent pro players, and win rate / presence by patch. Extra per-dataset data (bans by patch, blind /
+   counter picks, pro lane pairs down to 5 games with the expected GD@15, players) comes from web/champ-<dataset>.json
+   (src/champ_page_export.py), fetched once per dataset when a champion is opened. */
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[ch]));
+function svgNode(markup){ const d = document.createElement("div"); d.innerHTML = markup; return d.firstElementChild; }
+function srTable(caption, head, rows){
+  return h("table", {class: "sr"}, h("caption", {}, caption), h("thead", {}, h("tr", {}, head.map(x => h("th", {}, x)))), h("tbody", {}, rows.slice(0, 400).map(r => h("tr", {}, r.map(x => h("td", {}, x))))));
+}
+const chartW = frac => { const m = $("main"), w = (m && m.clientWidth) || 1100; return Math.round(Math.max(300, Math.min(1200, (w < 760 ? w : w * frac) - 34))); };
+function niceTicks(lo, hi, n = 5){
+  const span = hi - lo || 1, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0))), f = step0 / mag;
+  const step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+const mean = xs => { const v = xs.filter(x => x != null && isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+function percentile(vals, v, hi){ const xs = vals.filter(x => x != null && isFinite(x)); if (!xs.length || v == null) return null; let below = 0, eq = 0; for (const x of xs){ if (x < v) below++; else if (x === v) eq++; } const p = (below + eq / 2) / xs.length; return hi ? p : 1 - p; }
+/* one colour scale for every percentile on the page: bad (red) through neutral grey to good (green) */
+const pcol = q => q == null ? "var(--faint)" : q < 0.5 ? `color-mix(in oklab, var(--no) ${Math.round(200 * (0.5 - q))}%, var(--muted))` : `color-mix(in oklab, var(--ok) ${Math.round(200 * (Math.min(1, q) - 0.5))}%, var(--muted))`;
+const clamp01 = x => Math.max(0, Math.min(1, x));
+const ordn = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+const pN = q => q == null ? "–" : ordn(Math.round(100 * q)) + " pct";
+const hue = s => { let x = 0; for (const ch of String(s)) x = (x * 31 + ch.charCodeAt(0)) % 360; return x; };
+/* tooltip: any element with data-tip (tiles, chart points, chips) */
+const TIP = $("tip");
+function tipAt(e){ const t = e.target && e.target.closest ? e.target.closest("[data-tip]") : null;
+  if (!t){ TIP.hidden = true; return; }
+  TIP.textContent = t.getAttribute("data-tip"); TIP.hidden = false;
+  const w = TIP.offsetWidth || 200, hh = TIP.offsetHeight || 40, vw = window.innerWidth || 1000;
+  TIP.style.left = Math.max(8, Math.min(vw - w - 8, e.clientX + 12)) + "px"; TIP.style.top = Math.max(8, e.clientY - hh - 12) + "px"; }
+document.addEventListener("pointermove", tipAt, {passive: true});
+document.addEventListener("pointerleave", () => { TIP.hidden = true; });
+document.addEventListener("scroll", () => { TIP.hidden = true; }, {passive: true, capture: true});
+
+/* the extra per-dataset file (web/champ-*.json), once per dataset; null when it's missing (the page falls back to stats.json) */
+const CX = new Map();
+const cxFile = (mode, year) => mode === "pro" ? `champ-pro-${year === "2025+" ? "2025plus" : year}.json` : "champ-solo.json";
+function prepX(d){
+  if (!d) return null;
+  d.bansP = {}; for (const [p, rows] of Object.entries(d.bans || {})) d.bansP[p] = new Map(rows);
+  d.muM = new Map(); for (const e of d.mu || []) d.muM.set(e[0] + "|" + e[1] + "|" + e[2], e);
+  d.pickM = new Map(); for (const e of d.pick || []) d.pickM.set(e[0] + "|" + e[1], e);
+  return d;
+}
+function loadChampX(mode, year){
+  const f = cxFile(mode, year);
+  if (!CX.has(f)){
+    const p = PAGE.inline ? Promise.resolve(prepX(((PAGE.inline.champx || {})[f]) || null))
+      : fetch(f).then(r => r.ok ? r.json() : null).then(prepX, () => null);
+    CX.set(f, p);
+  }
+  return CX.get(f);
+}
+/* pro lane pair from the extra file: a's games, wins, and GD@15 / the matchup model's expected GD@15 (means over ng games) */
+function muX(X, a, b, r){
+  const [x, y] = a < b ? [a, b] : [b, a], s = a === x ? 1 : -1;
+  let n = 0, w = 0, ng = 0, sg = 0, se = 0, found = false;
+  for (let k = 0; k < 5; k++){ if (r != null && k !== r) continue; const e = X.muM.get(`${x}|${y}|${k}`); if (!e) continue; found = true;
+    n += e[3]; w += s > 0 ? e[4] : e[3] - e[4]; if (e[5] && e[6] != null){ ng += e[5]; sg += s * e[6] * e[5]; se += s * e[7] * e[5]; } }
+  return found ? {n, w, ng, gd: ng ? sg / ng : null, ex: ng ? se / ng : null} : null;
+}
+/* the champion's tier in role r, as on the tier list (the low end of the 95% interval, within-role percentiles, default floor) */
+function champTier(S, i, r){
+  if (r == null) return null;
+  const {dmin} = tierMin(S, {}), rows = [];
+  ST.champs.forEach((id, j) => { const wr = champWin(S, j, {role: r}); if (wr.n >= S.D.min) rows.push({j, n: wr.n, wr, small: wr.n < dmin}); });
+  const ranked = assignTiers(rows.filter(x => !x.small), x => x.wr.lo), me = ranked.find(x => x.j === i);
+  return {r, of: ranked.length, dmin, tier: me ? me.tier : null, rank: me ? me.rank : null};
+}
+const tierChip = T => T && T.tier ? h("span", {class: "chip tier t-" + T.tier, id: "c-tierchip", "data-tip": `Tier ${T.tier}: #${T.rank} of ${T.of} ${ROLE_L[T.r]}s with ${T.dmin}+ games, ranked by the low end of the 95% interval of the win rate`}, `Tier ${T.tier} · #${T.rank}`) : null;
+
+/* profile stats per mode: key, label, short name, value(j) for champion j in role r, format, higher is better, dimension */
+function profileDefs(S, X, r){
+  const A = k => j => { const e = S.avg[k] && S.avg[k].get(j + "|" + r); return e ? e.mean : null; };
+  const lenWR = ks => j => { const B = lengthBuckets(S, j, r); if (!B) return null; let g = 0, w = 0; for (const k of ks){ g += B[k].g; w += B[k].w; } return g >= 10 ? w / g : null; };
+  const SH = [0, 1], LG = [3, 4, 5], late = j => { const a = lenWR(SH)(j), b = lenWR(LG)(j); return a == null || b == null ? null : 100 * (b - a); };
+  const pk = f => j => { const e = X && X.pickM ? X.pickM.get(j + "|" + r) : null; return e ? f(e) : null; };
+  const f1 = v => v.toFixed(1), f2 = v => sgn(v, 2), p1 = v => pct(v, 1);
+  const lane = S.pro ? [["gd10", "Gold @10", "GD10", sgInt], ["gd15", "Gold @15", "GD15", sgInt], ["xpd10", "XP @10", "XP10", sgInt], ["xpd15", "XP @15", "XP15", sgInt],
+    ["csd10", "CS @10", "CS10", v => sgn(v, 1)], ["csd15", "CS @15", "CS15", v => sgn(v, 1)]].map(([k, lab, sh, fm]) => ({k, lab, sh, f: A(k), fm, hi: 1, dim: "lane"})) : [];
+  const out = [...lane,
+    {k: "wpaLane", lab: `Lane WPA (0–${S.laneEnd} min)`, sh: "lane WPA", f: A("wpaLane"), fm: f2, hi: 1, dim: "lane"},
+    ...(S.pro ? [] : [{k: "cspm", lab: "CS / min", sh: "CS/min", f: A("cspm"), fm: f1, hi: 1, dim: "lane"}]),
+    {k: "dmgshare", lab: "Damage share", sh: "share", f: A("dmgshare"), fm: p1, hi: 1, dim: "dmg"},
+    {k: "dpm", lab: "Damage / min", sh: "DPM", f: A("dpm"), fm: v => grp(v), hi: 1, dim: "dmg"},
+    {k: "wrShort", lab: "Win rate <25 min", sh: "<25 min", f: lenWR(SH), fm: p1, hi: 1, dim: "scale"},
+    {k: "wrLong", lab: "Win rate 30+ min", sh: "30+ min", f: lenWR(LG), fm: p1, hi: 1, dim: "scale"},
+    {k: "late", lab: "Late − early win rate", sh: "late − early", f: late, fm: v => sgn(v, 1) + " pp", hi: 1, dim: "scale"},
+    {k: "wpaTeam", lab: `Team WPA (${S.laneEnd} min–end)`, sh: "team WPA", f: A("wpaTeam"), fm: f2, hi: 1, dim: "fight"},
+    {k: "kills", lab: "Kills / game", sh: "kills", f: A("kills"), fm: f1, hi: 1, dim: "fight"},
+    {k: "assists", lab: "Assists / game", sh: "assists", f: A("assists"), fm: f1, hi: 1, dim: "fight"},
+    ...(S.pro ? [] : [{k: "conv", lab: "Wins from 80%+", sh: "closing", f: A("conv"), fm: p1, hi: 1, dim: "fight"}]),
+    {k: "deaths", lab: "Deaths / game", sh: "deaths", f: A("deaths"), fm: f1, hi: 0, dim: "safe"},
+    ...(S.pro ? [] : [{k: "wpLost", lab: "WP lost to deaths", sh: "WP lost", f: A("wpLost"), fm: v => f1(v) + " pp", hi: 0, dim: "safe"},
+      {k: "untraded", lab: "Untraded deaths", sh: "untraded", f: A("untraded"), fm: v => v.toFixed(2), hi: 0, dim: "safe"}]),
+    ...(S.pro && X && X.pickM ? [{k: "blind", lab: "Win rate, blind pick", sh: "blind", f: pk(e => e[2] >= 5 ? e[3] / e[2] : null), fm: p1, hi: 1, dim: "pick"},
+      {k: "counter", lab: "Win rate, counter pick", sh: "counter", f: pk(e => e[4] >= 5 ? e[5] / e[4] : null), fm: p1, hi: 1, dim: "pick"},
+      {k: "blindShare", lab: "Picked blind", sh: "blind share", f: pk(e => e[2] + e[4] >= 10 ? e[2] / (e[2] + e[4]) : null), fm: p1, hi: 1, dim: "pick"}] : []),
+    ...(S.avg.wpaDraft ? [{k: "wpaDraft", lab: "Draft WPA", sh: "draft WPA", f: A("wpaDraft"), fm: f2, hi: 1, dim: "pick"}] : [])];
+  return out;
+}
+const DIMS_OF = S => [["lane", "Lane"], ["dmg", "Damage"], ["scale", "Scaling"], ["fight", "Teamfight"], ["safe", "Safety"], ["pick", S.pro ? "Pick context" : "Draft"]];
+/* each stat: this champion's value, its percentile among the role's champions with enough games, every peer's value */
+function profileData(S, X, i, r){
+  const floor = S.pro ? 20 : 100, peers = ST.champs.map((_, j) => j).filter(j => j === i || S.D.role[j][2 * r] >= floor);
+  return profileDefs(S, X, r).map(s => {
+    const vals = peers.map(j => ({id: ST.champs[j], name: nameOf(ST.champs[j]), me: j === i, v: s.f(j)})).filter(x => x.v != null && isFinite(x.v)), v = s.f(i);
+    return {...s, label: s.lab, v: v != null && isFinite(v) ? v : null, q: percentile(vals.map(x => x.v), v, s.hi), vals, avg: mean(vals.filter(x => !x.me).map(x => x.v)), n: vals.length};
+  });
+}
+function swChips(st){
+  const rd = x => +x.toFixed(6), band = q => q >= 0.8 ? `Top ${Math.max(10, 10 * Math.ceil(rd((1 - q) * 10)))}%` : `Bottom ${Math.max(10, 10 * Math.ceil(rd(q * 10)))}%`;
+  const ok = st.filter(s => s.q != null), top = ok.filter(s => s.q >= 0.8).sort((a, b) => b.q - a.q).slice(0, 3), bot = ok.filter(s => s.q <= 0.2).sort((a, b) => a.q - b.q).slice(0, 3);
+  const chip = (s, kind) => h("span", {class: "chip sw " + kind, style: `--pc:${pcol(s.q)}`, "data-stat": s.k, "data-q": s.q.toFixed(3), "data-tip": `${s.label}: ${s.fm(s.v)} · ${pN(s.q)} of ${s.n} · role average ${s.avg == null ? "–" : s.fm(s.avg)}`},
+    h("b", {}, band(s.q)), " · ", s.label);
+  return h("div", {class: "chips swc", id: "sw"}, top.map(s => chip(s, "st")), bot.map(s => chip(s, "wk")));
+}
+/* dot strips: one row per stat, every champion of the role a dot (a link to its page), this one the large coloured dot, the role
+   average a tick; better to the right */
+function dotStrip(rows, {w = chartW(1), title, href} = {}){
+  const narrow = w < 520, LW = narrow ? 118 : 176, VW = narrow ? 58 : 74, RH = 34, T = 8, hh = T + rows.length * RH + 4;
+  const x0 = LW + 10, x1 = w - VW - 10;
+  let g = "";
+  rows.forEach((r, k) => {
+    const y = T + k * RH + RH / 2, vs = r.vals.map(z => z.v);
+    g += `<g class="ds" data-stat="${esc(r.k)}"><text class="dl" x="${LW}" y="${(y + 4).toFixed(1)}" text-anchor="end">${esc(r.label)}</text><line class="ax" x1="${x0}" x2="${x1}" y1="${y}" y2="${y}"/>`;
+    if (vs.length){
+      let lo = Math.min(...vs), hi = Math.max(...vs); if (hi - lo < 1e-9){ lo -= 1; hi += 1; }
+      const X = v => { const u = (v - lo) / (hi - lo); return x0 + (x1 - x0) * (r.hi ? u : 1 - u); };
+      if (r.avg != null) g += `<line class="avg" x1="${X(r.avg).toFixed(1)}" x2="${X(r.avg).toFixed(1)}" y1="${y - 9}" y2="${y + 9}" data-tip="${esc(`Role average: ${r.fm(r.avg)}`)}"/>`;
+      for (const z of r.vals){ if (z.me) continue; g += `<a href="${esc(href(z.id))}" data-id="${esc(z.id)}"><circle class="pd" r="4.5" cx="${X(z.v).toFixed(1)}" cy="${y}" data-tip="${esc(`${z.name}: ${r.fm(z.v)} · ${pN(percentile(vs, z.v, r.hi))}`)}"/></a>`; }
+      if (r.v != null) g += `<circle class="me" r="7" cx="${X(r.v).toFixed(1)}" cy="${y}" style="fill:${pcol(r.q)}" data-tip="${esc(`${r.me}: ${r.fm(r.v)} · ${pN(r.q)} of ${r.n}`)}"/>`;
+    }
+    g += `<text class="dv" x="${w - 4}" y="${(y + 4).toFixed(1)}" text-anchor="end" style="fill:${pcol(r.q)}">${esc(r.v == null ? "–" : r.fm(r.v))}</text></g>`;
+  });
+  const svg = svgNode(`<svg class="chart dots" viewBox="0 0 ${w} ${hh}" role="img" aria-label="${esc(title)}"><title>${esc(title)}</title><desc>${esc(`Dot strips: one row per stat; each dot is a champion of the role, the large dot is ${rows[0] ? rows[0].me : "this champion"}, better to the right; hover a dot for its value.`)}</desc>${g}</svg>`);
+  return h("div", {class: "fig"}, svg, srTable(title, ["Stat", "Value", "Percentile", "Role average"], rows.map(r => [r.label, r.v == null ? "–" : r.fm(r.v), pN(r.q), r.avg == null ? "–" : r.fm(r.avg)])));
+}
+/* the profile: six dimension tiles (3 x 2), each the mean of its stats' percentiles; a tile opens its stats as dot strips */
+function profileSec(S, X, i, r, name, c){
+  const st = profileData(S, X, i, r).map(s => ({...s, me: name})), DIMS = DIMS_OF(S), el = h("div", {class: "sec", id: "profile"});
+  const href = bid => champLink(c, bid, "overview", r);
+  let open = null;
+  const draw = () => {
+    const tiles = DIMS.map(([d, lab]) => { const xs = st.filter(s => s.dim === d), q = mean(xs.map(s => s.q));
+      return h("button", {type: "button", class: "dim" + (open === d ? " on" : ""), "data-dim": d, "data-q": q == null ? "" : q.toFixed(4), "aria-expanded": String(open === d), "aria-controls": "pdet", style: `--pc:${pcol(q)}`,
+        disabled: xs.length ? null : true, "data-tip": xs.map(s => `${s.label}: ${s.v == null ? "–" : s.fm(s.v)} · ${pN(s.q)}`).join("\n") || "no data", onclick: () => { open = open === d ? null : d; draw(); }},
+        h("span", {class: "nm"}, lab), h("b", {}, q == null ? "–" : String(Math.round(100 * q))), h("span", {class: "g", "aria-hidden": "true"}, h("i", {style: `width:${q == null ? 0 : Math.round(100 * q)}%`})),
+        h("small", {}, xs.map(s => s.sh).join(" · ") || "–")); });
+    const lab = open && DIMS.find(x => x[0] === open)[1];
+    const det = open ? h("div", {class: "panel", id: "pdet", "data-dim": open}, h("h3", {}, lab, h("small", {}, `every ${ROLE_L[r]} with ${S.pro ? 20 : 100}+ games · click a dot to open that champion`)),
+      dotStrip(st.filter(s => s.dim === open), {title: `${name}: ${lab.toLowerCase()} vs every ${ROLE_L[r]}`, href})) : null;
+    el.replaceChildren(swChips(st), h("div", {class: "dims", role: "group", "aria-label": "Profile vs the role"}, tiles), ...(det ? [det] : []));
+  };
+  draw();
+  return el;
+}
+/* the six overview cards (3 x 2): win rate, presence, games, WPA, tier (+ the draft model's pick value), gold @15 (pro) / K/D/A (solo) */
+function ovCards(S, c, i, ro, T){
+  const D = S.D, W = champWin(S, i, {role: ro}), cards = h("div", {class: "cards", id: "ov-cards"});
+  cards.append(card(`Win rate${ro != null ? " · " + ROLE_L[ro] : ""}`, W.ok ? h("span", {class: clsCI(W.lo, W.hi, 0.5), id: "c-wr"}, pct(W.v)) : h("span", {class: "tl", id: "c-wr"}, "too little data"),
+    W.ok ? h("span", {"data-tip": `${grp(W.k)} wins of ${grp(W.n)}; 95% Wilson interval`}, `${pct(W.lo)}–${pct(W.hi)} · ${grp(W.n)} games`) : `${grp(W.n)} games (fewer than ${D.min})`));
+  const pk = D.gw[i][0] / D.games, bn = D.bans[i] / D.games, pr = pk + bn;
+  cards.append(card("Presence", h("span", {id: "c-pres"}, pct(pr)), h("span", {}, "Pick ", h("b", {}, pct(pk)), " · Ban ", h("b", {}, pct(bn))),
+    h("div", {class: "mini", "aria-hidden": "true", "data-tip": `picked in ${grp(D.gw[i][0])} and banned in ${grp(D.bans[i])} of ${grp(D.games)} games`}, h("i", {class: "pk", style: `width:${100 * pk}%`}), h("i", {class: "bn", style: `width:${100 * bn}%`}))));
+  const rs = [0, 1, 2, 3, 4].map(k => [k, D.role[i][2 * k]]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]), tot = D.gw[i][0];
+  cards.append(card("Games", h("span", {id: "c-games"}, grp(ro != null ? D.role[i][2 * ro] : tot)), rs.slice(0, 3).map(([k, n], j) => [j ? " · " : "", `${ROLE_L[k]} ${grp(n)}`]),
+    h("div", {class: "mini", "aria-hidden": "true"}, rs.slice(0, 3).map(([k, n], j) => h("i", {class: "r" + j, style: `width:${100 * n / Math.max(1, tot)}%`, "data-tip": `${ROLE_L[k]}: ${grp(n)} games`})))));
+  const Tw = avgOf(S, "wpa", i, ro);
+  if (S.hasWpa){
+    const L = avgOf(S, "wpaLane", i, ro), Tm = avgOf(S, "wpaTeam", i, ro), ex = S.extra.map(k => [phaseLabel(k).replace(" WPA", ""), avgOf(S, k, i, ro)]);
+    cards.append(card("WPA per game", Tw.ok ? h("span", {class: clsCI(Tw.lo, Tw.hi, 0), id: S.pro ? "c-wpa" : "c-swpa"}, pp(Tw.v)) : h("span", {class: "tl"}, "too little data"),
+      Tw.ok ? `95% CI ${sgn(Tw.lo)} to ${sgn(Tw.hi)} · ${grp(Tw.n)} games` : null, splitBars([["Lane", L], ["Team", Tm], ...ex])));
+  } else cards.append(soloCard(S, i, ro));
+  const dr = ro != null ? ro : mainRole(S, i), dv = dr != null ? draftValue(c.mode, i, dr) : null;
+  cards.append(card(T ? `Tier · ${ROLE_L[T.r]}` : "Tier", T && T.tier ? h("span", {class: "t-" + T.tier, style: "color:var(--tc)", id: "c-tier"}, T.tier) : h("span", {class: "tl", id: "c-tier"}, "unranked"),
+    T && T.tier ? `#${T.rank} of ${T.of} ${ROLE_L[T.r]}s` : T ? `fewer than ${T.dmin} games as ${ROLE_L[T.r]}` : null,
+    dv != null ? h("div", {class: "ci", "data-tip": `the ${c.mode === "pro" ? "pro" : "solo-queue"} draft model: blue's first pick into an empty draft vs the role's typical ${ROLE_L[dr]}`}, "Draft pick value ", h("span", {class: clsCI(dv, dv, 0), id: "c-pick"}, pp(dv, 1))) : null));
+  if (S.pro){
+    const g = k => avgOf(S, k, i, ro), G15 = g("gd15");
+    cards.append(card("Gold @15", G15.ok ? h("span", {class: clsCI(G15.lo, G15.hi, 0), id: "c-gd15"}, sgInt(G15.v)) : h("span", {class: "tl", id: "c-gd15"}, "–"),
+      h("span", {"data-tip": "means vs the same-position opponent"}, `XP ${g("xpd15").ok ? sgInt(g("xpd15").v) : "–"} · CS ${g("csd15").ok ? sgn(g("csd15").v, 1) : "–"} · Gold @10 ${g("gd10").ok ? sgInt(g("gd10").v) : "–"}`)));
+  } else {
+    const g = k => avgOf(S, k, i, ro), K = g("kills"), De = g("deaths"), As = g("assists");
+    cards.append(card("K / D / A", K.ok && De.ok && As.ok ? h("span", {id: "c-kda"}, `${K.v.toFixed(1)} / ${De.v.toFixed(1)} / ${As.v.toFixed(1)}`) : h("span", {class: "tl"}, "too little data"),
+      K.ok && De.ok ? `KDA ${((K.v + As.v) / Math.max(De.v, 1e-9)).toFixed(2)} · CS ${g("cspm").ok ? g("cspm").v.toFixed(1) : "–"}/min` : null));
+  }
+  return cards;
+}
+/* matchups: every lane opponent with the pair's games and wins (pro: the extra file's pairs down to 5 games, with the matchup
+   model's expected GD@15; else stats.json's pairs), the win rate shrunk towards the champion's own (K pseudo-games) */
+function matchupRows(S, X, i, ro){
+  const out = [], W = champWin(S, i, {role: ro}), p0 = W.n ? W.v : 0.5, K = S.pro ? 20 : 50, KG = 10;
+  ST.champs.forEach((bid, j) => {
+    if (j === i) return;
+    let n = 0, w = 0, gd = null, ex = null, ng = 0;
+    const m = S.pro && X ? muX(X, i, j, ro) : null;
+    if (m){ ({n, w, gd, ex, ng} = m); }
+    else { const v = vsWin(S, i, j, ro, true); if (!v.n) return; n = v.n; w = v.k; }
+    const res = gd != null && ex != null ? gd - ex : null;
+    out.push({id: bid, j, name: nameOf(bid), n, w, raw: rate(w, n, 1), shr: (w + K * p0) / (n + K), gd, ex, ng, res, resS: res == null ? null : res * ng / (ng + KG),
+      lw: S.hasWpa ? vsWpa(S, i, j, ro, 1) : {ok: false}});
+  });
+  return {rows: out, p0, K, KG, min: S.pro ? 8 : S.D.min};
+}
+function muTip(S, name, x, M, where){
+  return `${name} vs ${x.name} (${where}): ${x.w}–${x.n - x.w} in ${grp(x.n)} games, ${pct(x.raw.v)} (95% CI ${pct(x.raw.lo)}–${pct(x.raw.hi)})\nshrunk towards ${name}'s ${pct(M.p0)} (${M.K} games' weight): ${pct(x.shr)}` +
+    (x.res != null ? `\nGD@15 ${sgInt(x.gd)} · the matchup model expects ${sgInt(x.ex)} · ${sgInt(x.res)} vs expectation (${x.ng} games)` : "") +
+    (x.lw && x.lw.ok ? `\nlane WPA ${pp(x.lw.v)} per game` : "");
+}
+function muTile(S, c, id, name, x, M, mq, where){
+  const q = clamp01((x.shr - 0.4) / 0.2), sub = x.resS != null ? [`GD ${sgInt(x.resS)} vs exp`, x.resS] : x.lw && x.lw.ok ? [`lane ${sgn(x.lw.v, 1)}`, x.lw.v] : null;
+  return h("a", {class: "tile mt", href: link("matchup", [id, x.id], mq), "data-id": x.id, "data-n": String(x.n), "data-w": String(x.w), "data-shr": x.shr.toFixed(4),
+    "data-res": x.resS == null ? "" : x.resS.toFixed(1), style: `--tc:${pcol(q)}`, "data-tip": muTip(S, name, x, M, where)},
+    portrait(x.id), h("b", {}, x.name), h("span", {class: "wr", style: `color:${pcol(q)}`}, pct(x.shr)), h("small", {}, `${grp(x.n)} g · ${x.w}–${x.n - x.w}`),
+    sub ? h("small", {class: sub[1] > 0 ? "up" : sub[1] < 0 ? "dn" : ""}, sub[0]) : null);
+}
+function tileRow(label, tiles, rid){
+  const cr = carousel(label, tiles, rid); cr.row.classList.add("tiles");
+  return {cr, el: h("div", {class: "murow"}, h("h3", {}, label, cr.nav), cr.wrap)};
+}
+function matchupsSec(sec, S, X, c, id, i, ro, name){
+  const M = matchupRows(S, X, i, ro), where = ro != null ? ROLE_L[ro] : "any lane", mq = {...base(c), role: ro != null ? ROLES[ro] : null};
+  const ok = M.rows.filter(x => x.n >= M.min).sort((a, b) => b.shr - a.shr || b.n - a.n);
+  const nb = Math.min(8, Math.ceil(ok.length / 2)), best = ok.slice(0, nb), worst = ok.slice(nb).reverse().slice(0, 8);
+  const res = h("div", {id: "mu-vs-res"});
+  const showVs = bid => {
+    const x = M.rows.find(y => y.id === bid); res.textContent = "";
+    if (!x){ res.append(h("p", {class: "note"}, `${name} and ${nameOf(bid)} haven't met in the same lane${S.pro ? "" : ` in ${S.D.min}+ games`}.`)); return; }
+    const q = clamp01((x.shr - 0.4) / 0.2);
+    res.append(h("div", {class: "vsres", "data-id": x.id, "data-n": String(x.n)}, portrait(id), h("span", {class: "vs"}, "vs"), portrait(x.id),
+      h("div", {class: "kv2"}, h("span", {}, h("b", {style: `color:${pcol(q)}`}, pct(x.shr)), "win rate (shrunk)"), h("span", {}, h("b", {}, `${x.w}–${x.n - x.w}`), `${grp(x.n)} games · ${pct(x.raw.v)} raw`),
+        x.res != null ? h("span", {}, h("b", {class: x.res > 0 ? "up" : x.res < 0 ? "dn" : ""}, sgInt(x.res)), `GD@15 vs exp (${sgInt(x.gd)} / ${sgInt(x.ex)})`) : null,
+        x.lw && x.lw.ok ? h("span", {}, h("b", {class: clsCI(x.lw.lo, x.lw.hi, 0)}, sgn(x.lw.v, 2)), "lane WPA") : null),
+      h("a", {class: "btn", href: link("matchup", [id, x.id], mq)}, "Head to head →")));
+  };
+  const opp = combo({label: "Opponent", placeholder: `${name} vs…`, items: () => M.rows.slice().sort((a, b) => a.name.localeCompare(b.name)).map(x => ({id: x.id, name: x.name, sub: `${grp(x.n)} games · ${pct(x.raw.v)}`})), onPick: showVs});
+  const rows = [];
+  if (best.length){ const t = tileRow("Best", best.map(x => muTile(S, c, id, name, x, M, mq, where)), "mu-best"); t.el.id = "mu-best-w"; rows.push(t.el); }
+  if (worst.length){ const t = tileRow("Worst", worst.map(x => muTile(S, c, id, name, x, M, mq, where)), "mu-worst"); t.el.id = "mu-worst-w"; rows.push(t.el); }
+  sec.append(h("h2", {id: "h-mu"}, "Matchups", h("small", {}, `same lane · ${where} · ${ok.length} opponents with ${M.min}+ games`),
+      h("span", {class: "more-l2"}, h("a", {href: champLink(c, id, "matchups", ro)}, "All matchups →"), h("a", {href: champLink(c, id, "wpa", ro)}, "WPA by opponent →"), h("a", {href: champLink(c, id, "teammates", ro)}, "Teammates →"))),
+    ...(rows.length ? rows : [h("p", {class: "note"}, `No lane opponent with ${M.min}+ games.`)]),
+    h("div", {class: "muvs", id: "mu-vs"}, h("span", {class: "vs"}, `${name} vs`), opp), res);
+}
+/* builds and runes (solo): the most common cores, keystones and first items, each a compact row; first items with their item WPA by
+   completion minute as a coloured strip */
+function buildsSec(sec, c, S, id, i, ro, name){
+  const r = ro != null ? ro : mainRole(S, i), tok = RTOK;
+  const head = h("h2", {id: "h-bd"}, "Builds", h("small", {}, S.pro ? "solo-queue data only" : `solo queue${r != null ? " · " + ROLE_L[r] : ""}`),
+    h("span", {class: "more-l2"}, h("a", {href: champLink(c, id, "builds", ro)}, S.pro ? "Build sandbox →" : "All builds →"), S.pro ? null : h("a", {href: champLink(c, id, "runes", ro)}, "Runes & spells →")));
+  sec.append(head);
+  if (S.pro){ sec.append(h("div", {class: "notice", id: "ov-no-pro-items"}, h("b", {}, "No item or rune data in pro."), h("div", {}, h("button", {type: "button", class: "btn", onclick: () => setMode("solo")}, `Show ${name}'s solo-queue builds`)))); return; }
+  const body = h("div", {class: "brows", id: "c-build"}, h("div", {class: "loading", style: "padding:14px 0"}, h("i"), "Loading builds…")); sec.append(body);
+  loadBuilds().then(() => {
+    if (tok !== RTOK) return;
+    const E = r != null ? soloEntry(id, r) : null; body.textContent = "";
+    if (!E || !E.core3.length){ body.append(h("p", {class: "note"}, `Too few solo-queue games for build stats${r != null ? " as " + ROLE_L[r] : ""}.`)); return; }
+    const base0 = E.w / E.n, wq = wr => pcol(clamp01(0.5 + (wr - base0) / 0.1));
+    const row = (icons, nm, n, w, tip, extra) => h("div", {class: "brow", "data-n": String(n), "data-tip": tip}, h("span", {class: "icons"}, icons), h("span", {class: "nm"}, nm),
+      h("b", {style: `color:${wq(w / n)}`}, pct(w / n)), h("span", {class: "pr", "aria-hidden": "true"}, h("i", {style: `width:${Math.min(100, 100 * n / E.n)}%`})), h("small", {}, `${pct(n / E.n, 0)} · ${grp(n)}`), extra || null);
+    const tipOf = (lab, n, w) => { const x = rate(w, n, 1); return `${lab}: ${pct(x.v)} in ${grp(n)} games (95% CI ${pct(x.lo)}–${pct(x.hi)}), ${pct(n / E.n, 1)} of ${name}'s games; ${name}'s average ${pct(base0)}`; };
+    const cores = [...E.core3].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([set, n, w]) => row(set.map(x => bicon("i" + x, itemName(x))), set.map(itemName).join(" · "), n, w, tipOf(set.map(itemName).join(" + "), n, w)));
+    const keys = E.keys.slice().sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n, w]) => row([bicon("p" + k, perkName(k), "rn")], perkName(k), n, w, tipOf(perkName(k), n, w)));
+    const edges = BUILDS.firstEdges || [0, 10, 12, 14, 16, 18, 20, 99], bk = edges.slice(0, -1), bl = (a, k) => a === 0 ? `<${edges[k + 1]}` : edges[k + 1] >= 99 ? `${a}+` : `${a}–${edges[k + 1]}`;
+    const firsts = (E.first || []).slice().sort((a, b) => b[1] - a[1]).slice(0, 4).map(([iid, n, m, cells]) => {
+      const strip = h("span", {class: "fistrip", "aria-hidden": "true"}, bk.map((a, k) => { const x = cells.find(y => y[0] === a);
+        return x && x[2] >= 30 ? h("span", {style: `--pc:${pcol(clamp01(0.5 + x[3] / 10))}`, "data-tip": `${itemName(iid)} done ${bl(a, k)} min: ${sgn(x[3], 1)} pp item WPA (${grp(x[2])} completions)`}, sgn(x[3], 0))
+          : h("span", {class: "na", "data-tip": `${itemName(iid)} done ${bl(a, k)} min: ${x ? grp(x[2]) + " completions (too few)" : "none"}`}, bl(a, k)); }));
+      return h("div", {class: "brow", "data-n": String(n), "data-tip": `${itemName(iid)} as the first completed item: ${grp(n)} games, item WPA ${sgn(m, 1)} pp over all completion minutes`},
+        h("span", {class: "icons"}, bicon("i" + iid, itemName(iid))), h("span", {class: "nm"}, itemName(iid)), h("b", {class: m > 0 ? "up" : m < 0 ? "dn" : ""}, sgn(m, 1)), strip);
+    });
+    const col = (t, sub, rows) => h("div", {class: "panel"}, h("h3", {}, t, h("small", {}, sub)), rows.length ? rows : h("p", {class: "note"}, "–"));
+    body.append(col("Core builds", "3 items · win rate · share of games", cores), col("Keystones", "win rate · share", keys), col("First item", "item WPA by the minute it was done", firsts));
+  }, () => { if (tok === RTOK){ body.textContent = ""; body.append(h("p", {class: "note"}, "Build data unavailable.")); } });
+}
+/* team badge with the logo when web/logos/index.json has one (the pro page's logos), else the team's initials */
+let LOGO = null, LOGOP = null;
+function loadLogos(){
+  if (!LOGOP) LOGOP = (PAGE.inline ? Promise.resolve(null) : fetch("logos/index.json").then(r => r.ok ? r.json() : null).catch(() => null)).then(J => { LOGO = (J && J.lookup) || {}; return LOGO; });
+  return LOGOP;
+}
+function teamBadge(name){
+  const t = String(name).split(/\s+/).filter(w => /^[A-Za-z0-9]/.test(w)).map(w => w[0]).join("").slice(0, 3).toUpperCase() || "?";
+  const e = h("span", {class: "tag md", style: `--th:${hue(name)}`, title: name, "aria-hidden": "true"}, t);
+  const f = LOGO && Object.prototype.hasOwnProperty.call(LOGO, name) ? LOGO[name] : null;
+  if (f){ e.classList.add("logo"); e.textContent = ""; e.append(h("img", {src: "logos/" + f, alt: "", loading: "lazy", decoding: "async", onerror: () => { e.classList.remove("logo"); e.textContent = t; }})); }
+  return e;
+}
+/* pro: the champion's most frequent players in the dataset, with the GD@15 vs the matchup model; a tile opens the player's pro page */
+function playersSec(sec, S, X, c, i, name){
+  const rows = X && X.players ? X.players[String(i)] || [] : [], y = c.year === "2025" ? "2025" : null;
+  const proUrl = (p, L) => (PAGE.standalone ? "pro.html" : "https://www.riftlogic.dev/pro.html") + `#/player/${encodeURIComponent(p)}?` + new URLSearchParams({...(y ? {year: y} : {}), lg: L}).toString();
+  sec.append(h("h2", {id: "h-pl"}, "Players", h("small", {}, `most games on ${name} · ${S.name}`)));
+  if (!rows.length){ sec.append(h("p", {class: "note"}, "No player data.")); return; }
+  const draw = () => {
+    const tiles = rows.map(([p, ti, lg, ro, n, w, ng, mg, page]) => {
+      const team = X.teams[ti] || "", q = mg == null ? null : clamp01(0.5 + mg / 1200);
+      return h(page ? "a" : "div", {class: "tile pl", href: page ? proUrl(p, page) : null, "data-player": p, "data-n": String(n), "data-w": String(w), "data-mg": mg == null ? "" : String(mg), style: `--pc:${pcol(q)}`,
+        "data-tip": `${p} (${team}, ${lg}) · ${ROLE_L[ro]}: ${n} games on ${name}, ${w}–${n - w}` + (mg != null ? `\nGD@15 vs the matchup: ${sgInt(mg)} gold (${ng} games), the gold lead at 15 minus what the champion matchup usually gives in pro play` : "") + (page ? "" : "\nno pro page (outside LCK, LPL, LEC, LCS)")},
+        teamBadge(team), h("b", {}, p), h("span", {class: "wr"}, `${w}–${n - w}`), h("small", {}, h("span", {class: "rl"}, roleIcon(ro), `${n} g`)),
+        h("small", {class: mg == null ? "" : mg > 0 ? "up" : mg < 0 ? "dn" : "", style: mg == null ? null : `color:${pcol(q)}`}, mg == null ? "–" : `${sgInt(mg)} vs mu`));
+    });
+    const t = tileRow("Most games", tiles, "pl-row"); t.el.id = "pl-w";
+    [...sec.children].slice(1).forEach(e => e.remove()); sec.append(t.el);
+  };
+  draw();
+  if (LOGO == null) loadLogos().then(() => { if (sec.isConnected && Object.keys(LOGO).length) draw(); });
+}
+/* line chart (the pro page's, one series per call): pts {x, y, tip, few}; x ticks with labels; y format and reference line */
+function lineChart({title, pts, cls, ticks, xfmt, yfmt, ref, hh = 150, w = chartW(0.6)}){
+  if (!pts.length) return h("p", {class: "note"}, "No data.");
+  const L = 40, R = 12, T = 8, B = 22, x0 = Math.min(...ticks), x1 = Math.max(x0 + 1, ...ticks);
+  let y0 = Math.min(...pts.map(p => p.y)), y1 = Math.max(...pts.map(p => p.y));
+  if (ref != null){ y0 = Math.min(y0, ref); y1 = Math.max(y1, ref); }
+  if (y1 - y0 < 1e-9){ y0 -= 0.05; y1 += 0.05; }
+  const pad = (y1 - y0) * 0.08; y0 -= pad; y1 += pad;
+  const X = v => L + (w - L - R) * (v - x0) / (x1 - x0), Y = v => T + (hh - T - B) * (1 - (v - y0) / (y1 - y0));
+  let g = "";
+  for (const t of niceTicks(y0, y1, 3)) g += `<line class="gl" x1="${L}" x2="${w - R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text x="${L - 6}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end">${esc(yfmt(t))}</text>`;
+  if (ref != null) g += `<line class="ref" x1="${L}" x2="${w - R}" y1="${Y(ref).toFixed(1)}" y2="${Y(ref).toFixed(1)}"/>`;
+  const every = Math.max(1, Math.ceil(ticks.length / Math.max(2, Math.floor((w - L - R) / 42))));
+  ticks.forEach((t, k) => { if (k % every === 0 || k === ticks.length - 1 && (ticks.length - 1) % every > every / 2) g += `<text x="${X(t).toFixed(1)}" y="${hh - 6}" text-anchor="middle">${esc(xfmt(t))}</text>`; });
+  const d = pts.map((p, k) => (k && !p.gap ? "L" : "M") + X(p.x).toFixed(1) + " " + Y(p.y).toFixed(1)).join("");
+  let dots = "";
+  for (const p of pts) dots += `<circle class="pt ${p.few ? "few" : cls}" r="3.5" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}"/><circle class="hit" r="9" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" data-tip="${esc(p.tip)}"/>`;
+  const svg = svgNode(`<svg class="chart" viewBox="0 0 ${w} ${hh}" role="img" aria-label="${esc(title)}"><title>${esc(title)}</title><desc>${esc("Line chart; hover a point for its value. The values are in the table that follows.")}</desc>${g}<path class="ln ${cls}" d="${d}"/>${dots}</svg>`);
+  return h("div", {class: "fig"}, svg, srTable(title, ["x", "Value"], pts.map(p => [xfmt(p.x), yfmt(p.y)])));
+}
+const cmpPatch = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); return x[0] - y[0] || x[1] - y[1]; };
+/* win rate and presence by patch (all roles: the patch split has no role) */
+function patchSeries(S, X, i){
+  const D = S.D, P = Object.keys(D.patchGames).sort(cmpPatch), minG = S.pro ? 5 : 30;
+  return P.map((p, k) => { const e = (D.patch[p] || []).find(x => x[0] === i), g = e ? e[1] : 0, w = e ? e[2] : 0, N = D.patchGames[p];
+    const b = X && X.bansP ? (X.bansP[p] ? X.bansP[p].get(i) || 0 : 0) : null;
+    return {k, p, g, w, N, b, wr: g >= minG ? w / g : null, pres: (g + (b || 0)) / N, few: g < D.min}; });
+}
+function trendsSec(sec, S, X, c, i, ro, name){
+  const ps = patchSeries(S, X, i), hasB = !!(X && X.bansP), ticks = ps.map(p => p.k), xfmt = k => ps[k] ? ps[k].p : "";
+  const wrPts = ps.filter(p => p.wr != null).map(p => ({x: p.k, y: p.wr, few: p.few, tip: `Patch ${p.p}: ${pct(p.wr)} win rate in ${grp(p.g)} games${p.few ? ` (fewer than ${S.D.min})` : ""}`}));
+  const prPts = ps.map(p => ({x: p.k, y: p.pres, tip: `Patch ${p.p}: ${hasB ? "presence" : "pick rate"} ${pct(p.pres)} · picked ${grp(p.g)}${hasB ? `, banned ${grp(p.b)}` : ""} of ${grp(p.N)} games`}));
+  const byPatch = h("div", {class: "card", id: "c-patch", "data-patches": String(ps.length)}, h("h3", {}, "By patch", h("small", {class: "tl", style: "font-style:normal"}, " all roles")),
+    h("div", {class: "ci"}, "Win rate"), lineChart({title: `${name}: win rate by patch`, pts: wrPts, cls: "acc", ticks, xfmt, yfmt: v => Math.round(100 * v) + "%", ref: 0.5}),
+    h("div", {class: "ci"}, hasB ? "Presence (picked or banned)" : "Pick rate"), lineChart({title: `${name}: ${hasB ? "presence" : "pick rate"} by patch`, pts: prPts, cls: "mut", ticks, xfmt, yfmt: v => Math.round(100 * v) + "%"}));
+  sec.append(h("h2", {id: "h-tr"}, "Trends", h("small", {}, S.name)), h("div", {class: "trends"}, byPatch, lengthCard(S, i, ro)));
+}
+const JUMP_OF = S => [["sec-overview", "Overview"], ["sec-matchups", "Matchups"], ["sec-builds", "Builds"], ...(S.pro ? [["sec-players", "Players"]] : []), ["sec-trends", "Trends"]];
+function jumpBar(items){
+  const nav = h("nav", {class: "jump", id: "cjump", "aria-label": "Champion sections"}, items.map(([id, t]) => h("button", {type: "button", "data-jump": id,
+    onclick: () => { const el = $(id); if (el) el.scrollIntoView({behavior: reduced() ? "auto" : "smooth", block: "start"}); }}, t)));
+  dragScroll(nav);
+  setTimeout(() => { const b = document.querySelector(".bar"); if (b && window.getComputedStyle) document.documentElement.style.setProperty("--barh", (getComputedStyle(b).position === "sticky" ? b.offsetHeight : 0) + "px");
+    if (window.IntersectionObserver){ const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) nav.querySelectorAll("button").forEach(x => x.toggleAttribute("aria-current", x.getAttribute("data-jump") === e.target.id)); }, {rootMargin: "-30% 0px -60% 0px"});
+      items.forEach(([id]) => { const el = $(id); if (el) io.observe(el); }); } }, 0);
+  return nav;
+}
+function champOverview(main, c, S, id, i, ro, name, T){
+  const tok = RTOK, r = ro != null ? ro : mainRole(S, i), items = JUMP_OF(S);
+  const secs = Object.fromEntries(items.map(([sid]) => [sid, h("section", {class: "jsec sec", id: sid})]));
+  main.append(jumpBar(items), ...Object.values(secs));
+  const O = secs["sec-overview"], prof = h("div", {id: "profile-w", class: "sec"}, h("div", {class: "loading", style: "padding:14px 0"}, h("i"), "Loading…"));
+  O.append(h("h2", {id: "h-ov", class: "sr"}, "Overview"), ovCards(S, c, i, ro, T), prof);
+  const sim = similarStrip(c, i); if (sim) O.append(sim);
+  buildsSec(secs["sec-builds"], c, S, id, i, ro, name);
+  loadChampX(c.mode, c.year).then(X => {
+    if (tok !== RTOK) return;
+    prof.replaceChildren(...(r != null && S.D.role[i][2 * r] >= S.D.min ? [h("h2", {id: "h-prof"}, "Profile", h("small", {}, `percentile vs every ${ROLE_L[r]} · ${S.name}`)), profileSec(S, X, i, r, name, c)]
+      : [h("p", {class: "note"}, `Too few games${r != null ? " as " + ROLE_L[r] : ""} for a profile.`)]));
+    matchupsSec(secs["sec-matchups"], S, X, c, id, i, ro, name);
+    if (S.pro) playersSec(secs["sec-players"], S, X, c, i, name);
+    trendsSec(secs["sec-trends"], S, X, c, i, ro, name);
+  });
 }
 
 /* drag to scroll: a mouse drag scrolls a horizontal row (touch keeps the native swipe, pen and keyboard are untouched). It starts after
@@ -1916,18 +2348,6 @@ function deltaCell(x){
 const wpaVal = (n, m, sd, base) => n >= 30 && m != null ? {ok: true, v: (m - (base || 0)) / 100, lo: (m - (base || 0) - 1.96 * sd / Math.sqrt(n)) / 100, hi: (m - (base || 0) + 1.96 * sd / Math.sqrt(n)) / 100, n} : {ok: false};
 const shareCell = x => h("span", {title: `${grp(x.n)} of the champion's games in this role`}, pct(x.share, x.share < 0.1 ? 1 : 0));
 function soloEntry(id, r){ return BUILDS && BUILDS.champs[id] ? BUILDS.champs[id][String(r)] || null : null; }
-function buildTeaser(el, c, id, r){
-  const tok = RTOK;
-  loadBuilds().then(() => {
-    if (tok !== RTOK) return;
-    const E = soloEntry(id, r), body = el.querySelector(".ci"); body.textContent = "";
-    if (!E || !E.core3.length){ body.textContent = "no build data for this role"; return; }
-    const [set, n, w] = E.core3[0], k = E.keys[0];
-    el.insertBefore(h("div", {class: "core"}, h("div", {class: "icons"}, set.map(x => bicon("i" + x, itemName(x), "lg")))), body);
-    body.append(`${set.map(itemName).join(" + ")}: ${pct(w / n)} in ${grp(n)} games`, k ? h("br") : null, k ? `Keystone: ${perkName(k[0])} (${pct(k[1] / E.n, 0)})` : null, " · ",
-      h("a", {href: champLink(c, id, "builds", r)}, "Builds →"));
-  }, () => { if (tok === RTOK) el.querySelector(".ci").textContent = "build data unavailable"; });
-}
 /* ---------- build sandbox (Builds tab, solo and pro): six item slots -> the champion's combo on a practice-tool dummy ----------
    The numbers come from the Rift Logic engine itself (web/engine.js + kb.json + calc.json, the files tools/rl.js runs), fetched once
    when the sandbox is first opened. Each change writes the same program "Open in Rift Logic" hands to the editor and runs it. */
