@@ -1372,7 +1372,7 @@ function tierBands(ranked, small, tile, {unit = ["team", "teams"], by, smallText
 /* ---------- Impact (web/pro-impact.json, src/impact.py): teammate- and opponent-adjusted WPA per player-season, shown
    centred on the season's tier-1 average, i.e. pp of win probability per game vs the average tier-1 player ---------- */
 let IMPP = null;
-const IMP_TIP = "Impact: teammate- and opponent-adjusted WPA, pp of win probability per game vs the average tier-1 player (whole season). Beat carried-over Elo at forecasting teams after roster changes; the late phase is noisy. Method: reasoning/impact/verdict.md";
+const IMP_TIP = "Impact: pp of win probability per game vs the average tier-1 player, from the selected season or split only. Built from the gold lead at 15 vs the matchup and the team-adjusted results before and after 15. Method: reasoning/impact/verdict.md";
 const IMP_T1 = new Set(["LCK", "LPL", "LEC", "LCS", "LTA N"]);
 const IMP_CUT = [["S", 8], ["A", 3], ["B", -3], ["C", -8]];
 const IMP_SHARES = {S: "+8 pp or more", A: "+3 to +8 pp", B: "−3 to +3 pp", C: "−8 to −3 pp", D: "below −8 pp"};
@@ -1380,33 +1380,39 @@ const impTier = v => (IMP_CUT.find(([, lo]) => v >= lo) || ["D"])[0];
 const IMP_MIN = 20;
 function loadImpact(){
   if (!IMPP) IMPP = (PAGE.inline ? Promise.resolve(null) : fetch("pro-impact.json").then(r => r.ok ? r.json() : null).catch(() => null)).then(J => {
-    if (!J || !J.players || !J.seasonFields) return null;
-    const F = Object.fromEntries(J.seasonFields.map((k, i) => [k, i])), acc = {}, byName = new Map();
-    for (const [id, P] of Object.entries(J.players)){
-      if (!byName.has(norm(P.n))) byName.set(norm(P.n), []); byName.get(norm(P.n)).push(id);
-      for (const [y, x] of Object.entries(P.s)) if (x[F.games] >= IMP_MIN && IMP_T1.has(x[F.homeLeague])){ const a = acc[y] || (acc[y] = [0, 0]); a[0] += x[F.games] * x[F.lane]; a[1] += x[F.games]; }
-    }
-    // the tier-1 lane mean per season (games-weighted, 20+ games); late = the season mean minus it, so lane + late = Impact
-    return {J, F, byName, laneMean: Object.fromEntries(Object.entries(acc).map(([y, [sx, n]]) => [y, sx / n]))};
+    if (!J || !J.players || !J.seasonFields || !J.periods) return null;
+    const F = Object.fromEntries(J.seasonFields.map((k, i) => [k, i])), byName = new Map();
+    for (const [id, P] of Object.entries(J.players)){ if (!byName.has(norm(P.n))) byName.set(norm(P.n), []); byName.get(norm(P.n)).push(id); }
+    return {J, F, byName};
   });
   return IMPP;
 }
+/* the selected period's key in pro-impact.json: the season ("2026"), or one league's split ("2026|LCS|Summer"); a split the
+   league does not have falls back to the season, as gamesSel does */
+function impKey(D, c = CTX){
+  if (!c || c.split === "all") return String(D.y);
+  const sp = c.split === "latest" ? D.splits[D.latestSp] : c.split;
+  return D.splits.includes(sp) ? `${D.y}|${D.L}|${sp}` : String(D.y);
+}
+const impMin = (I, k) => (I && I.J.periods[k] && I.J.periods[k].minGames) || IMP_MIN;
+const impLabel = (I, k) => (I && I.J.periods[k] && I.J.periods[k].label) || k;
 /* a league file's player -> Impact id (the OE playerid's first 12 hex digits, "pids" in the league file; else by name) */
-function impId(I, D, p){
+function impId(I, D, p, k = String(D.y)){
   const id = D.pids && D.pids[p];
   if (id && I.J.players[id]) return id;
-  const xs = (I.byName.get(norm(D.players[p])) || []).filter(k => I.J.players[k].s[D.y]);
+  const xs = (I.byName.get(norm(D.players[p])) || []).filter(q => I.J.players[q].s[k]);
   return xs.length === 1 ? xs[0] : null;
 }
-/* one season, centred: v (Impact), lo/hi (90%), lane/late (each centred by its tier-1 mean), war, se, raw WPA, uncertain */
-function impSeason(I, id, y){
-  const P = id ? I.J.players[id] : null, x = P && P.s[y];
+/* one period (stored centred on the period's tier-1 average): v (Impact), lo/hi (90%), lane/late, war, se, raw WPA,
+   matchup-adjusted GD@15, uncertain (fewer games than the period's minimum) */
+function impSeason(I, id, k){
+  const P = id ? I.J.players[id] : null, x = P && P.s[k];
   if (!x) return null;
-  const F = I.F, m = I.J.tier1Mean[y] != null ? I.J.tier1Mean[y] : 0, lm = I.laneMean[y] != null ? I.laneMean[y] : 0, v = x[F.impact] - m;
-  return {id, P, y: String(y), n: x[F.games], v, se: x[F.se], lo: x[F.lo90] - m, hi: x[F.hi90] - m, lane: x[F.lane] - lm, late: x[F.late] - (m - lm),
-    war: x[F.war], warSe: x[F.se] * x[F.games] / 100, raw: x[F.rawWPA], home: x[F.homeLeague], role: x[F.role], team: x[F.team], unc: x[F.games] < IMP_MIN}; // near-average is a rating, not "uncertain": only too few games hides the number
+  const F = I.F;
+  return {id, P, y: String(k), lab: impLabel(I, k), n: x[F.games], v: x[F.impact], se: x[F.se], lo: x[F.lo90], hi: x[F.hi90], lane: x[F.lane], late: x[F.late],
+    war: x[F.war], warSe: x[F.se] * x[F.games] / 100, raw: x[F.rawWPA], mgd: x[F.matchupGD15], home: x[F.homeLeague], role: x[F.role], team: x[F.team], min: impMin(I, k), unc: x[F.games] < impMin(I, k)};
 }
-const impOf = (I, D, p) => I ? impSeason(I, impId(I, D, p), D.y) : null;
+const impOf = (I, D, p) => { if (!I) return null; const k = impKey(D); return impSeason(I, impId(I, D, p, k), k); };
 const s1 = x => sgn(x, 1);
 const impTxt = x => !x ? "–" : x.unc ? "uncertain" : s1(x.v);
 const impCls = x => !x || x.unc ? "" : x.v > 0 ? "up" : x.v < 0 ? "dn" : "";
@@ -1419,37 +1425,42 @@ function rangeBar(label, lo, v, hi, lim, tip){
     h("span", {class: "hv"}, `${s1(lo)} to ${s1(hi)}`));
 }
 function impactCard(x, pname){
-  if (!x) return h("div", {class: "card imp"}, h("h3", {}, impLab()), h("div", {class: "big"}, "–"), h("div", {class: "ci"}, "No rating this season (rated: players whose main league is tier-1)"));
+  if (!x) return h("div", {class: "card imp"}, h("h3", {}, impLab()), h("div", {class: "big"}, "–"), h("div", {class: "ci"}, "No rating in this period (rated: players whose main league is tier-1)"));
   const lim = Math.max(10, Math.ceil(Math.max(Math.abs(x.lo), Math.abs(x.hi), Math.abs(x.lane), Math.abs(x.late)) / 5) * 5);
-  const seasons = Object.keys(x.P.s).sort().map(y => impSeason(IMP, x.id, y));
-  return h("div", {class: "card imp", id: "impact"}, h("h3", {}, impLab(), h("small", {}, ` pp / game · ${x.y}`)),
-    h("div", {class: "big " + impCls(x), "data-tip": `${pname}: ${s1(x.v)} ± ${x.se.toFixed(1)} pp per game vs the average tier-1 player in ${x.y} (${x.n} games${x.unc ? `; uncertain: fewer than ${IMP_MIN} games` : ""})`},
+  const seasons = Object.keys(x.P.s).filter(y => !y.includes("|")).sort().map(y => impSeason(IMP, x.id, y));
+  return h("div", {class: "card imp", id: "impact"}, h("h3", {}, impLab(), h("small", {}, ` pp / game · ${x.lab}`)),
+    h("div", {class: "big " + impCls(x), "data-tip": `${pname}: ${s1(x.v)} ± ${x.se.toFixed(1)} pp per game vs the average tier-1 player, ${x.lab} games only (${x.n} games${x.unc ? `; uncertain: fewer than ${x.min} games` : ""})`},
       impTxt(x), x.unc ? null : h("small", {class: "pm"}, ` ± ${x.se.toFixed(1)}`)),
     h("div", {class: "bars mini"}, rangeBar("90%", x.lo, x.v, x.hi, lim, `90% interval: ${s1(x.lo)} to ${s1(x.hi)} pp`),
-      bars([{label: "Lane", v: x.lane, txt: s1(x.lane), tip: `Lane (draft to 15 minutes): ${s1(x.lane)} pp vs the tier-1 lane average`, c: x.lane >= 0 ? "var(--ok)" : "var(--no)"},
-        {label: "Late", v: x.late, txt: s1(x.late), tip: `Late (15 minutes to the end): ${s1(x.late)} pp vs the tier-1 late average (noisier)`, c: x.late >= 0 ? "var(--ok)" : "var(--no)"}], {min: -lim, max: lim, lw: 34})),
-    h("div", {class: "ci"}, h("span", {"data-tip": "Raw WPA: the win probability the player's own stats added, not adjusted for teammates or opponents"}, `raw WPA ${sgn(x.raw, 1)}`), ` · ${x.n} g · `,
+      bars([{label: "Lane", v: x.lane, txt: s1(x.lane), tip: `Lane (draft to 15 minutes): ${s1(x.lane)} pp vs the tier-1 lane average${x.mgd != null ? ` · gold lead at 15 vs matchup ${sgn(x.mgd)}` : ""}`, c: x.lane >= 0 ? "var(--ok)" : "var(--no)"},
+        {label: "Late", v: x.late, txt: s1(x.late), tip: `Late (15 minutes to the end): ${s1(x.late)} pp vs the tier-1 late average`, c: x.late >= 0 ? "var(--ok)" : "var(--no)"}], {min: -lim, max: lim, lw: 34})),
+    h("div", {class: "ci"}, h("span", {"data-tip": "Gold lead at 15 vs matchup: the gold difference at 15 minus what the champion matchup usually gives"}, `GD@15 vs matchup ${x.mgd != null ? sgn(x.mgd) : "–"}`), ` · `, h("span", {"data-tip": "Raw WPA: the win probability the player's own stats added, not adjusted for teammates or opponents"}, `raw WPA ${sgn(x.raw, 1)}`), ` · ${x.n} g · `,
       h("span", {"data-tip": seasons.map(z => `${z.y}: ${s1(z.v)} (${z.n} g)`).join("\n")}, spark(seasons.map(z => z.v), {w: 64, hh: 16, zero: true}), " ", seasons[0].y.slice(2) + "–" + seasons[seasons.length - 1].y.slice(2))));
 }
 function warCard(x, rank){
-  if (!x || x.war == null) return card(h("span", {"data-tip": "Wins above replacement: games × (Impact − a promoted rookie's) / 100, this season"}, "WAR"), "–", x ? `main league ${x.home}: no replacement level` : "no rating this season");
+  if (!x || x.war == null) return card(h("span", {"data-tip": "Wins above replacement: games × (Impact − a promoted rookie's) / 100, in this period"}, "WAR"), "–", x ? `main league ${x.home}: no replacement level` : "no rating in this period");
   const L = IMP_T1.has(x.home) ? (x.home === "LTA N" ? "LCS" : x.home) : x.home, rep = IMP.J.replacement[L];
-  return card(h("span", {"data-tip": `Wins above replacement: ${x.n} games × (Impact − the ${L} replacement level) / 100. Replacement = the average promoted player in a first tier-1 season (${L}: ${rep != null ? f1(rep - (IMP.J.tier1Mean[x.y] || 0)) : "–"} pp vs average)`}, "WAR"),
-    h("span", {}, sgn(x.war, 1), h("small", {class: "pm"}, ` ± ${x.warSe.toFixed(1)}`)), `wins vs replacement · ${x.y}${rank ? ` · #${rank[0]} of ${rank[1]} ${rank[2]}` : ""}`, x.war > 0 ? "up" : x.war < 0 ? "dn" : "");
+  return card(h("span", {"data-tip": `Wins above replacement: ${x.n} games × (Impact − the ${L} replacement level) / 100. Replacement = the average promoted player in a first tier-1 season (${L}: ${rep != null ? f1(rep) : "–"} pp vs average)`}, "WAR"),
+    h("span", {}, sgn(x.war, 1), h("small", {class: "pm"}, ` ± ${x.warSe.toFixed(1)}`)), `wins vs replacement · ${x.lab}${rank ? ` · #${rank[0]} of ${rank[1]} ${rank[2]}` : ""}`, x.war > 0 ? "up" : x.war < 0 ? "dn" : "");
 }
 /* a lineup slot's value for sums: the estimate (uncertain ones too: ridge estimates are already shrunk); an unrated player (main
    league outside tier 1, e.g. an academy call-up) counts at the league's replacement level */
-const replC = (I, L, y) => I.J.replacement[L] != null ? I.J.replacement[L] - (I.J.tier1Mean[y] || 0) : 0;
-const slotV = (I, L, y, x) => x ? x.v : replC(I, L, y);
+const replC = (I, L) => I.J.replacement[L] != null ? I.J.replacement[L] : 0;
+const slotV = (I, L, y, x) => x ? x.v : replC(I, L);
 let IMP = null;   // the loaded Impact data (set by the views that await loadImpact())
 
 /* ---------- aggregates (all from the per-game rows) ---------- */
-/* standings over games: per team games, wins, Elo after its last game, its Elo path */
+/* team rating (src/impact_period.py): Bradley–Terry on the selected period's games only (every league: internationals link
+   them), Elo scale, tier-1 average 1500; g.rt = [season blue, season red, split blue, split red] after the game */
+const RT_TIP = "Rating: fitted on the selected season's or split's games only (every league; internationals link them). Elo scale: +100 ≈ 64% to win; tier-1 average 1500";
+const rtI = (D, c = CTX) => !c || c.split === "all" || (c.split !== "latest" && !D.splits.includes(c.split)) ? 0 : 2;
+const rtOf = (g, s, k) => g.rt && g.rt[k + s] != null ? g.rt[k + s] : null;
+/* standings over games: per team games, wins, rating after its last game, its rating path */
 function standings(D, games){
-  const T = D.teams.map((name, t) => ({name, t, n: 0, w: 0, elo: null, path: [], last: null}));
+  const T = D.teams.map((name, t) => ({name, t, n: 0, w: 0, elo: null, path: [], last: null})), k = rtI(D);
   for (const g of games) for (const s of [0, 1]){
     const x = T[g.t[s]]; x.n++; if (g.w === s) x.w++;
-    if (g.elo){ x.elo = g.elo[1][s]; x.path.push({x: g.t0, y: g.elo[1][s], g, s}); }
+    const v = rtOf(g, s, k); if (v != null){ x.elo = v; x.path.push({x: g.t0, y: v, g, s}); }
     x.last = g;
   }
   const out = T.filter(x => x.n > 0);
@@ -1528,19 +1539,19 @@ function champStats(games){
   const n = games.length || 1;
   return [...m.values()].map(e => ({...e, pres: (e.pick + e.ban) / n, wr: e.pick ? e.w / e.pick : null}));
 }
-/* the league's mean Elo over time (every team's latest rating, after each game) */
+/* the league's mean rating over time (every team's latest rating, after each game) */
 function leagueEloPath(D, games){
-  const cur = new Map(), out = [];
-  for (const g of games){ if (!g.elo) continue; cur.set(g.t[0], g.elo[1][0]); cur.set(g.t[1], g.elo[1][1]); out.push({x: g.t0, y: mean([...cur.values()])}); }
+  const cur = new Map(), out = [], k = rtI(D);
+  for (const g of games){ if (!g.rt || g.rt[k] == null) continue; cur.set(g.t[0], g.rt[k]); cur.set(g.t[1], g.rt[k + 1]); out.push({x: g.t0, y: mean([...cur.values()])}); }
   return out;
 }
 
 /* ---------- cards used by several views ---------- */
 function teamTile(c, x){
   return h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: teamLink(c, x.name), "data-team": x.name, "data-rank": x.rank,
-    title: `${x.name}: ${x.w}–${x.l} (${pct(x.wr)}), Elo ${x.elo != null ? Math.round(x.elo) : "–"} (#${x.eloRank} in the league)`},
+    title: `${x.name}: ${x.w}–${x.l} (${pct(x.wr)}), rating ${x.elo != null ? Math.round(x.elo) : "–"} (#${x.eloRank} in the league)`},
     x.rank ? h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank) : null, tagBadge(x.name, "md"), h("b", {}, x.name),
-    h("span", {class: "wr", "data-rec": `${x.w}-${x.l}`}, `${x.w}–${x.l}`), h("small", {}, `${pct(x.wr)} · Elo ${x.elo != null ? Math.round(x.elo) : "–"}`), spark(x.path.slice(-20).map(p => p.y)));
+    h("span", {class: "wr", "data-rec": `${x.w}-${x.l}`}, `${x.w}–${x.l}`), h("small", {}, `${pct(x.wr)} · ${x.elo != null ? Math.round(x.elo) : "–"}`), spark(x.path.slice(-20).map(p => p.y)));
 }
 /* a game card: perspective side s (null: neutral, blue on top) */
 function gameCard(c, D, g, s){
@@ -1599,7 +1610,7 @@ function drawChrome(r, c, L, D){
   if (r.view === "game") items.push(["Game", null]);
   cr.append(h("ol", {}, items.map(([t, href]) => h("li", {}, href ? h("a", {href}, t) : h("span", {"aria-current": "page"}, t)))));
   const info = L && IX.years[c.year][L];
-  $("foot").textContent = `Pro play only (Oracle's Elixir), season ${c.year}${info ? `: ${info.label}, ${info.games} games, ${info.dates[0]} to ${info.dates[1]}` : ""}. Elo: every pro game since 2019, updated after each game. Win probability and WPA: the site's pro draft and in-game models.`;
+  $("foot").textContent = `Pro play only (Oracle's Elixir), season ${c.year}${info ? `: ${info.label}, ${info.games} games, ${info.dates[0]} to ${info.dates[1]}` : ""}. Team rating and Impact: the selected season's or split's games only. Win probability and WPA: the site's pro draft and in-game models.`;
 }
 let SEARCH = null;
 function searchItems(y){
@@ -1847,7 +1858,7 @@ async function viewHome(r, c){
     const s = h("section", {class: "sec", "data-league": D.L},
       h("h2", {}, h("a", {href: leagueLink(c, D.L)}, D.label), h("small", {}, `${D.teams.length} teams · ${ng} games · ${splitLabel(D, c)}`)));
     const grow = carousel(`${D.label} recent games`, games.slice(-12).reverse().map(g => gameCard(c, D, g, null)));
-    s.append(h("div", {class: "sec"}, h("h2", {}, "Standings", h("small", {}, "by win rate")), tierBands(st, [], x => teamTile(c, x), {by: "win rate (ties: game difference, then Elo)"})),
+    s.append(h("div", {class: "sec"}, h("h2", {}, "Standings", h("small", {}, "by win rate")), tierBands(st, [], x => teamTile(c, x), {by: "win rate (ties: game difference, then rating)"})),
       h("div", {class: "sec"}, h("h2", {}, "Recent games", grow.nav), grow.wrap));
     out.push(s);
   });
@@ -1873,21 +1884,21 @@ async function viewLeague(r, c){
   const n = games.length, blue = games.filter(g => g.w === 0).length;
   const fdW = games.filter(g => ts(g, g.w, "fd") === 1).length, fdN = games.filter(g => ts(g, 0, "fd") != null && (ts(g, 0, "fd") + ts(g, 1, "fd")) === 1).length;
   const kills = mean(games.map(g => (ts(g, 0, "k") || 0) + (ts(g, 1, "k") || 0)));
-  const topElo = st.slice().sort((a, b) => b.elo - a.elo)[0];
+  const topElo = st.slice().sort((a, b) => (b.elo || 0) - (a.elo || 0))[0];
   out.push(h("div", {class: "cards6", id: "cards"},
     card("Games", grp(n), `${D.teams.length} teams · ${new Set(games.map(g => g.pt)).size} patches`),
     card("Average game", mmss(60 * mean(games.map(g => g.min))), `shortest ${mmss(Math.min(...games.map(g => g.len)))} · longest ${mmss(Math.max(...games.map(g => g.len)))}`),
     card("Blue side wins", pct(blue / n, 1), `${blue}–${n - blue} vs red`),
     card("Kills per game", f1(kills), "both teams"),
     card("First dragon → win", pct(fdN ? fdW / fdN : null), `of ${fdN} games with a first dragon`),
-    card("Top Elo", topElo ? String(Math.round(topElo.elo)) : "–", topElo ? topElo.name : "")));
+    card(h("span", {"data-tip": RT_TIP}, "Top rating"), topElo && topElo.elo != null ? String(Math.round(topElo.elo)) : "–", topElo ? topElo.name : "")));
   out.push(h("section", {class: "sec", id: "standings"}, h("h2", {}, "Standings", h("small", {}, "by win rate")),
-    tierBands(st, [], x => teamTile(c, x), {by: "win rate (ties: game difference, then Elo)"})));
+    tierBands(st, [], x => teamTile(c, x), {by: "win rate (ties: game difference, then rating)"})));
   out.push(rowSec("Recent results", `${D.label} recent games`, games.slice(-20).reverse().map(g => gameCard(c, D, g, null))));
-  // Elo over time: every team (hover one to pick it out), labels at the line ends
+  // rating over time: every team (hover one to pick it out), labels at the line ends
   const eloSeries = st.map(x => ({key: x.name, label: x.name, short: IX.tags[x.name] || x.name, th: hue(x.name),
-    pts: x.path.map(p => ({x: p.x, y: p.y, tip: `${x.name}\n${p.g.dt.slice(0, 10)}: Elo ${Math.round(p.y)} (${p.g.w === p.s ? "won" : "lost"} vs ${D.teams[p.g.t[1 - p.s]]})`}))}));
-  out.push(sec("Elo over time", h("div", {class: "panel", id: "elo-chart"}, lineChart({title: `${D.label} Elo over time`, series: eloSeries, x: {date: true}, hh: 300}))));
+    pts: x.path.map(p => ({x: p.x, y: p.y, tip: `${x.name}\n${p.g.dt.slice(0, 10)}: rating ${Math.round(p.y)} (${p.g.w === p.s ? "won" : "lost"} vs ${D.teams[p.g.t[1 - p.s]]})`}))}));
+  out.push(sec(h("span", {"data-tip": RT_TIP}, "Rating over time"), h("div", {class: "panel", id: "elo-chart"}, lineChart({title: `${D.label} rating over time, ${splitLabel(D, c)}`, series: eloSeries, x: {date: true}, hh: 300}))));
   // length, sides
   const buckets = [[0, 25, "<25"], [25, 30, "25–30"], [30, 35, "30–35"], [35, 40, "35–40"], [40, 99, "40+"]];
   const lenCols = buckets.map(([a, b, lab]) => { const xs = games.filter(g => g.min >= a && g.min < b); return {label: lab, v: xs.length / n, txt: pct(xs.length / n), tip: `${lab} min: ${xs.length} games (${pct(xs.length / n)}), blue won ${xs.filter(g => g.w === 0).length}`}; });
@@ -1929,31 +1940,32 @@ async function leaguePlayers(r, c, D, games){
   const I = IMP = await loadImpact();
   if (!I) return [rt, notice("No Impact data", "pro-impact.json could not be loaded.", link("league", [D.L, "players"], {...base(c), view: "wpa"}), "WPA rankings")];
   if (pv === "roster") return [rt, ...await rosterChanges(c, D, I)];
-  // the season's players of this league (in the selected split) with a rating; role = Impact's main role of the season
+  // the players of this league in the selection with a rating in the selected period; role = Impact's main role in it
+  const pk = impKey(D), MIN = impMin(I, pk), plab = impLabel(I, pk);
   const seen = new Map();
   for (const g of games) for (const s of [0, 1]) g.pl[s].forEach((pl, ro) => { if (pl != null) seen.set(pl, D.teams[g.t[s]]); });
   const all = [...seen].map(([p, team]) => ({p, name: D.players[p], team, x: impOf(I, D, p)})).filter(e => e.x && (role == null || e.x.role === role));
   const tile = e => { const x = e.x, war = pv === "war";
     return h("a", {class: "tile" + (e.tier ? " t-" + e.tier : " small"), href: playerLink(c, e.name, D.L), "data-player": e.name, "data-v": String(war ? x.war : x.v),
-      title: `${e.name} (${e.team}, ${ROLE_L[x.role]}), ${x.y}: Impact ${s1(x.v)} ± ${x.se.toFixed(1)} pp per game vs the tier-1 average (lane ${s1(x.lane)}, late ${s1(x.late)}); WAR ${x.war != null ? sgn(x.war, 1) : "–"}; ${x.n} games${x.unc ? "; uncertain" : ""}`},
+      title: `${e.name} (${e.team}, ${ROLE_L[x.role]}), ${x.lab}: Impact ${s1(x.v)} ± ${x.se.toFixed(1)} pp per game vs the tier-1 average (lane ${s1(x.lane)}, late ${s1(x.late)}; GD@15 vs matchup ${x.mgd != null ? sgn(x.mgd) : "–"}); WAR ${x.war != null ? sgn(x.war, 1) : "–"}; ${x.n} games${x.unc ? "; uncertain" : ""}`},
       e.tier ? h("span", {class: "tb", "aria-hidden": "true"}, "#" + e.rank) : null, roleIcon(x.role), tagBadge(e.team, "md"), h("b", {}, e.name),
       h("span", {class: "wr " + (war ? (x.war > 0 ? "up" : x.war < 0 ? "dn" : "") : impCls(x))}, war ? sgn(x.war, 1) : s1(x.v)),
       h("small", {}, war ? `± ${x.warSe.toFixed(1)} · ${x.n} g` : `± ${x.se.toFixed(1)} · lane ${s1(x.lane)} · ${x.n} g`)); };
   const out = [rt];
   if (pv === "war"){
-    const ok = all.filter(e => e.x.war != null && e.x.n >= IMP_MIN), few = all.filter(e => !ok.includes(e));
+    const ok = all.filter(e => e.x.war != null && e.x.n >= MIN), few = all.filter(e => !ok.includes(e));
     const rk = assignTiers(ok, e => e.x.war, e => e.x.n);
-    out.push(h("section", {class: "sec", id: "prank"}, h("h2", {}, h("span", {"data-tip": "Wins above replacement this season: games × (Impact − the league's replacement level) / 100; replacement = promoted players in a first tier-1 season"}, "WAR"), h("small", {}, `wins above replacement · ${D.y} season · ${IMP_MIN}+ games`)),
-      tierBands(rk, few, tile, {unit: ["player", "players"], by: "wins above replacement", smallText: `Fewer than ${IMP_MIN} games or no replacement level: ${few.length} more`})));
+    out.push(h("section", {class: "sec", id: "prank"}, h("h2", {}, h("span", {"data-tip": "Wins above replacement in this period: games × (Impact − the league's replacement level) / 100; replacement = promoted players in a first tier-1 season"}, "WAR"), h("small", {}, `wins above replacement · ${plab} · ${MIN}+ games`)),
+      tierBands(rk, few, tile, {unit: ["player", "players"], by: "wins above replacement", smallText: `Fewer than ${MIN} games or no replacement level: ${few.length} more`})));
     return out;
   }
-  const ok = all.filter(e => e.x.n >= IMP_MIN && !e.x.unc), unc = all.filter(e => e.x.n >= IMP_MIN && e.x.unc), few = all.filter(e => e.x.n < IMP_MIN);
+  const ok = all.filter(e => e.x.n >= MIN && !e.x.unc), unc = all.filter(e => e.x.n >= MIN && e.x.unc), few = all.filter(e => e.x.n < MIN);
   const rk = ok.slice().sort((a, b) => b.x.v - a.x.v || b.x.n - a.x.n);
   rk.forEach((e, k) => { e.rank = k + 1; e.tier = impTier(e.x.v); });
   unc.sort((a, b) => b.x.v - a.x.v); few.sort((a, b) => b.x.n - a.x.n);
-  out.push(h("section", {class: "sec", id: "prank"}, h("h2", {}, impLab("Impact"), h("small", {}, `pp per game vs the average tier-1 player · ${D.y} season · ${IMP_MIN}+ games`)),
+  out.push(h("section", {class: "sec", id: "prank"}, h("h2", {}, impLab("Impact"), h("small", {}, `pp per game vs the average tier-1 player · ${plab} · ${MIN}+ games`)),
     tierBands(rk, unc, tile, {unit: ["player", "players"], by: "Impact", shares: IMP_SHARES, smallText: unc.length ? `Uncertain: ${unc.length}` : ""}),
-    few.length ? h("details", {class: "lowg", id: "pfew"}, h("summary", {}, `Fewer than ${IMP_MIN} games: ${few.length}`), h("div", {class: "grid"}, few.map(tile))) : null));
+    few.length ? h("details", {class: "lowg", id: "pfew"}, h("summary", {}, `Fewer than ${MIN} games: ${few.length}`), h("div", {class: "grid"}, few.map(tile))) : null));
   // lane vs late: every ranked player, labelled when far from the middle
   const far = rk.filter(e => Math.abs(e.x.lane) + Math.abs(e.x.late) > 6).slice(0, 14).map(e => e.p);
   out.push(h("div", {class: "two"},
@@ -1974,7 +1986,7 @@ async function rosterChanges(c, D, I){
   if (!prevD || prevSp < 0) return [notice("No earlier split", "There is no split before the latest one to compare with.", leagueLink(c, D.L, "players"), "Impact")];
   const now = lineups(D, D.latestSp), before = lineups(prevD, prevSp);
   // a player's rating: this season's, else the latest before it
-  const rate = x => { if (!x) return null; const id = impId(I, x.D, x.p); if (!id) return null; const ys = Object.keys(I.J.players[id].s).filter(y => +y <= +D.y).sort(); return ys.length ? impSeason(I, id, ys[ys.length - 1]) : null; };
+  const rate = x => { if (!x) return null; const id = impId(I, x.D, x.p); if (!id) return null; const ys = Object.keys(I.J.players[id].s).filter(y => !y.includes("|") && +y <= +D.y).sort(); return ys.length ? impSeason(I, id, ys[ys.length - 1]) : null; };
   const val = z => slotV(I, D.L, D.y, z);
   const rows = [...now].map(([t, L5]) => { const B5 = before.get(t) || [null, null, null, null, null];
     const ins = [], outs = []; let d = 0;
@@ -2033,7 +2045,7 @@ async function viewTeam(r, c){
   const st = standings(D, games), me = st.find(x => x.t === t), rk = rankStandings(st), place = me ? rk.find(x => x.t === t).rank : null;
   const out = [h("div", {class: "head", id: "thead"}, tagBadge(name, "lg"), h("div", {}, h("h1", {}, name),
     h("div", {class: "chips"}, h("a", {class: "chip", href: leagueLink(c, L)}, D.label), h("span", {class: "chip"}, splitLabel(D, c)),
-      me ? h("span", {class: "chip", id: "rec"}, `${me.w}–${me.l} · #${place} of ${st.length}`) : null, me && me.elo != null ? h("span", {class: "chip"}, `Elo ${Math.round(me.elo)}`) : null)), nextCard)];
+      me ? h("span", {class: "chip", id: "rec"}, `${me.w}–${me.l} · #${place} of ${st.length}`) : null, me && me.elo != null ? h("span", {class: "chip", "data-tip": RT_TIP}, `Rating ${Math.round(me.elo)}`) : null)), nextCard)];
   const ttab = r.args[1] === "draft" ? "draft" : "overview";
   out.push(h("nav", {class: "tabs", id: "ttabs", "aria-label": "Team sections"}, [["overview", "Overview"], ["draft", "Draft"]].map(([k, t]) => h("a", {href: link("team", k === "draft" ? [name, "draft"] : [name], base(c)), "aria-selected": String(ttab === k)}, t))));
   if (!rows.length){ out.push(notice("No games", "No games for this team in this split.", teamLink({...c, split: "all"}, name), "Whole season")); return out; }
@@ -2056,7 +2068,7 @@ async function viewTeam(r, c){
   const gdR = st.map(x => teamAgg(D, teamGames(games, x.t)).gdm[1]).filter(v => v != null).sort((x, y) => y - x);
   out.push(h("div", {class: "cards6", id: "cards"},
     card("Record", `${a.w}–${a.l}`, `${pct(a.wr)} win rate · #${place} in the standings`),
-    card("Elo", me.elo != null ? String(Math.round(me.elo)) : "–", `#${me.eloRank} of ${st.length} in the ${D.label} · ${sgn(me.path.length > 1 ? me.path[me.path.length - 1].y - me.path[0].y : 0)} over these games`),
+    card(h("span", {"data-tip": RT_TIP}, "Rating"), me.elo != null ? String(Math.round(me.elo)) : "–", `#${me.eloRank} of ${st.length} in the ${D.label} · ${sgn(me.path.length > 1 ? me.path[me.path.length - 1].y - me.path[0].y : 0)} over these games`),
     card("Gold diff at 15", sgn(a.gdm[1]), a.gdm[1] != null ? `#${gdR.indexOf(a.gdm[1]) + 1} in the league · at 10: ${sgn(a.gdm[0])}` : "no snapshots", a.gdm[1] > 0 ? "up" : a.gdm[1] < 0 ? "dn" : ""),
     card("First dragon", pct(a.fr.fd), `first herald ${pct(a.fr.fh)} · grubs ${f1(a.pm.grb)} per game`),
     card("First tower", pct(a.fr.ft), `first blood ${pct(a.fr.fb)} · first to 3 towers ${pct(a.fr.f3t)}`),
@@ -2109,8 +2121,8 @@ async function viewTeam(r, c){
   const lpath = leagueEloPath(D, games);
   const others = st.filter(x => x.t !== t).map(x => ({key: x.name, label: x.name, cls: "mut", endLabel: false, pts: teamAgg(D, teamGames(games, x.t)).gdm.map((v, j) => v == null ? null : {x: [10, 15, 20, 25][j], y: v, tip: `${x.name}: ${sgn(v)} gold at ${[10, 15, 20, 25][j]} min`}).filter(Boolean)}));
   out.push(h("div", {class: "two"},
-    panel("Elo over time", lineChart({title: `${name} Elo over time`, w: chartW(0.5), series: [{key: "league", label: "League average", short: "avg", cls: "dash", pts: lpath.map(p => ({x: p.x, y: p.y}))},
-      {key: name, label: name, short: IX.tags[name] || name, emph: true, th: hue(name), dots: 2.5, pts: me.path.map(p => ({x: p.x, y: p.y, tip: `${p.g.dt.slice(0, 10)}: Elo ${Math.round(p.y)} (${p.g.w === p.s ? "won" : "lost"} vs ${D.teams[p.g.t[1 - p.s]]})`, cls: p.g.w === p.s ? "w" : "l"}))}], x: {date: true}})),
+    panel(h("span", {"data-tip": RT_TIP}, "Rating over time"), lineChart({title: `${name} rating over time`, w: chartW(0.5), series: [{key: "league", label: "League average", short: "avg", cls: "dash", pts: lpath.map(p => ({x: p.x, y: p.y}))},
+      {key: name, label: name, short: IX.tags[name] || name, emph: true, th: hue(name), dots: 2.5, pts: me.path.map(p => ({x: p.x, y: p.y, tip: `${p.g.dt.slice(0, 10)}: rating ${Math.round(p.y)} (${p.g.w === p.s ? "won" : "lost"} vs ${D.teams[p.g.t[1 - p.s]]})`, cls: p.g.w === p.s ? "w" : "l"}))}], x: {date: true}})),
     panel("Gold difference by minute", lineChart({title: `${name} average gold difference at 10, 15, 20 and 25 minutes vs every other team`, w: chartW(0.5), y: {ref: 0, fmt: v => sgn(v)},
       x: {ticks: [10, 15, 20, 25], fmt: v => v + " min", min: 10, max: 25}, series: [...others, {key: name, label: name, short: IX.tags[name] || name, emph: true, th: hue(name), dots: 3,
         pts: a.gdm.map((v, j) => v == null ? null : {x: [10, 15, 20, 25][j], y: v, tip: `${name}: ${sgn(v)} gold at ${[10, 15, 20, 25][j]} min (${a.gd[j].length} games)`}).filter(Boolean)}]}))));
@@ -2160,7 +2172,7 @@ function teamImpact(c, D, games, t, name, five, I){
   const bar = svgNode(`<svg class="stk5" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(`${name} starters' Impact: ${xs.map(e => `${e.name || "–"} ${e.x ? s1(e.x.v) : "unrated"}`).join(", ")}`)}"><line class="z" x1="${W / 2}" x2="${W / 2}" y1="0" y2="${H}"/>${segs.join("")}</svg>`);
   const lim = Math.max(6, ...xs.flatMap(e => e.x ? [Math.abs(e.x.lane), Math.abs(e.x.late)] : [])), row = (e, k) => ({label: h("span", {class: "hl"}, roleIcon(e.ro), e.name ? h("a", {href: playerLink(c, e.name, D.L)}, e.name) : "–"),
     v: e.x ? e.x[k] : null, txt: e.x ? s1(e.x[k]) : "–", c: e.x && e.x[k] < 0 ? "var(--no)" : "var(--ok)", tip: e.x ? `${e.name}: ${k} ${s1(e.x[k])} pp vs the tier-1 ${k} average${e.x.unc ? " (uncertain overall)" : ""}` : `${e.name || "–"}: no rating`});
-  return [h("section", {class: "sec", id: "timpact"}, h("h2", {}, impLab("Impact"), h("small", {}, `the five starters · pp per game vs the average tier-1 player · ${D.y} season`)),
+  return [h("section", {class: "sec", id: "timpact"}, h("h2", {}, impLab("Impact"), h("small", {}, `the five starters · pp per game vs the average tier-1 player · ${impLabel(I, impKey(D))}`)),
     h("div", {class: "panel"}, h("div", {class: "isum"}, h("b", {class: sum > 0 ? "up" : sum < 0 ? "dn" : "", "data-tip": "The starters' summed Impact: a relative strength on paper, not a win chance (an unrated player counts at the league's replacement level)"}, `${s1(sum)} pp`),
       h("span", {class: "note"}, place ? `#${place} of ${sums.length} lineups in the ${D.label}` : "")),
       bar, h("div", {class: "chips i5"}, xs.map(e => h("span", {class: "chip " + impCls(e.x)}, roleSvg(e.ro), `${e.name || "–"} ${e.x ? impTxt(e.x) : "unrated"}`)))),
@@ -2204,8 +2216,8 @@ async function viewPlayer(r, c){
   const pmin = minGames(peers), pe = peers.filter(x => x.agg.n >= pmin || x.p === p);
   // Impact (season, centred) replaces the gold-at-15 card (it stays in the percentile bars and the lane-phase chart); WAR replaces
   // the raw WPA card (raw WPA is in the Impact card, its lane / team / draft parts in the percentile bars)
-  const X = impOf(I, D, p), wars = I ? D.players.map((_, q) => impOf(I, D, q)).filter(z => z && z.war != null && z.role === (X ? X.role : ro) && z.n >= IMP_MIN) : [];
-  const warRank = X && X.war != null && X.n >= IMP_MIN ? [wars.filter(z => z.war > X.war).length + 1, wars.length, `${ROLE_L[X.role]} in the ${D.label}`] : null;
+  const X = impOf(I, D, p), wars = I ? D.players.map((_, q) => impOf(I, D, q)).filter(z => z && z.war != null && z.role === (X ? X.role : ro) && z.n >= z.min) : [];
+  const warRank = X && X.war != null && X.n >= X.min ? [wars.filter(z => z.war > X.war).length + 1, wars.length, `${ROLE_L[X.role]} in the ${D.label}`] : null;
   out.push(h("div", {class: "cards6", id: "cards"},
     card("Games", String(A.n), `${A.w}–${A.l} · ${pct(A.wr)} win rate`),
     card("KDA", f1(A.kda), `${f1(A.k / A.n)} / ${f1(A.d / A.n)} / ${f1(A.a / A.n)} per game`),
