@@ -2220,20 +2220,21 @@ async function viewPlayer(r, c){
       c: q == null ? null : q >= 0.7 ? "var(--ok)" : q < 0.3 ? "var(--no)" : null}; });
   out.push(sec(`Compared with every ${ROLE_L[ro]} in the ${D.label}`, h("div", {class: "panel", id: "pctl"}, bars(prow, {max: 1, ref: 0.5, lw: 190}))));
   // champion pool as tier bands by games
-  const pool = [...A.champs.values()];
-  const rk = assignTiers(pool, x => x.n, x => x.w);
+  // tiers are a quality scale, so rank by performance: WPA per game shrunk toward 0 by 3 phantom games; under 3 games in a fold
+  const pool = [...A.champs.values()], POOL_MIN = 3, shr = x => x.wpa.reduce((a, v) => a + (v || 0), 0) / (x.n + 3);
+  const rk = assignTiers(pool.filter(x => x.n >= POOL_MIN), shr, x => x.n), fewC = pool.filter(x => x.n < POOL_MIN).sort((a, b) => b.n - a.n || shr(b) - shr(a));
   const cs = champStats(games), csm = new Map(cs.map(x => [x.c, x]));
-  out.push(h("section", {class: "sec", id: "pool"}, h("h2", {}, "Champion pool", h("small", {}, `${pool.length} champions · by games`)),
-    tierBands(rk, [], x => h("a", {class: "tile t-" + x.tier, href: "stats.html#/champ/" + encodeURIComponent(CH[x.c]) + "?mode=pro", "data-champ": CH[x.c], title: `${nameOf(CH[x.c])}: ${x.n} games, ${x.w}–${x.n - x.w}, KDA ${f1((x.k + x.a) / Math.max(1, x.d))}, WPA ${pp(mean(x.wpa))} per game`},
-      h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank), portrait(x.c), h("b", {}, nameOf(CH[x.c])), h("span", {class: "wr"}, `${x.w}–${x.n - x.w}`), h("small", {}, `KDA ${f1((x.k + x.a) / Math.max(1, x.d))} · ${pp(mean(x.wpa)).replace(" pp", "")}`)),
-      {unit: ["champion", "champions"], by: "games played", gridCls: "ch"})));
+  out.push(h("section", {class: "sec", id: "pool"}, h("h2", {}, "Champion pool", h("small", {}, `${pool.length} champions · by WPA per game · ${POOL_MIN}+ games`)),
+    tierBands(rk, fewC, x => h("a", {class: "tile" + (x.tier ? " t-" + x.tier : " small"), href: "stats.html#/champ/" + encodeURIComponent(CH[x.c]) + "?mode=pro", "data-champ": CH[x.c], title: `${nameOf(CH[x.c])}: ${x.n} games, ${x.w}–${x.n - x.w}, KDA ${f1((x.k + x.a) / Math.max(1, x.d))}, WPA ${pp(mean(x.wpa))} per game`},
+      x.rank && x.tier ? h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank) : null, portrait(x.c), h("b", {}, nameOf(CH[x.c])), h("span", {class: "wr"}, `${x.w}–${x.n - x.w}`), h("small", {}, `KDA ${f1((x.k + x.a) / Math.max(1, x.d))} · ${pp(mean(x.wpa)).replace(" pp", "")}`)),
+      {unit: ["champion", "champions"], by: "WPA per game (shrunk toward 0 for small samples)", smallText: `Fewer than ${POOL_MIN} games: ${fewC.length}`, gridCls: "ch"})));
   // tendencies
   const flex = pool.filter(x => { const e2 = csm.get(x.c); return e2 && e2.roles.filter(n => n >= 2).length >= 2; });
-  const top3 = rk.slice(0, 3).reduce((s, x) => s + x.n, 0);
+  const byN = pool.slice().sort((x, y) => y.n - x.n || y.w - x.w), top3 = byN.slice(0, 3).reduce((s, x) => s + x.n, 0);
   const metaRank = new Map(cs.slice().sort((x, y) => y.pres - x.pres).map((x, k) => [x.c, k + 1]));
   const offMeta = pool.filter(x => (metaRank.get(x.c) || 999) > 20).reduce((s, x) => s + x.n, 0);
   out.push(h("section", {class: "sec", id: "tend"}, h("h2", {}, "Tendencies"), h("div", {class: "two"},
-    panel("Comfort vs meta", scatter({title: `${name}'s champions: games played vs league presence`, pts: pool.map(x => ({x: (csm.get(x.c) || {pres: 0}).pres, y: x.n, r: 3 + Math.min(6, x.n / 2), name: nameOf(CH[x.c]), label: x.n >= Math.max(3, rk[0].n * 0.5) ? nameOf(CH[x.c]) : null,
+    panel("Comfort vs meta", scatter({title: `${name}'s champions: games played vs league presence`, pts: pool.map(x => ({x: (csm.get(x.c) || {pres: 0}).pres, y: x.n, r: 3 + Math.min(6, x.n / 2), name: nameOf(CH[x.c]), label: x.n >= Math.max(3, byN[0].n * 0.5) ? nameOf(CH[x.c]) : null,
       tip: `${nameOf(CH[x.c])}: ${x.n} games by ${name}; presence ${pct((csm.get(x.c) || {pres: 0}).pres)} in the ${D.label} (#${metaRank.get(x.c) || "–"})`})), x: {label: "league presence", fmt: v => pct(v), min: 0}, y: {label: "games", fmt: v => String(Math.round(v)), min: 0}}),
       bars([{label: "Top 3 champions", v: top3 / A.n, txt: pct(top3 / A.n), tip: `${top3} of ${A.n} games on the three most played champions`},
         {label: "Outside the top 20", v: offMeta / A.n, txt: pct(offMeta / A.n), tip: `${offMeta} of ${A.n} games on champions outside the league's 20 most present`}], {max: 1, lw: 140}),
