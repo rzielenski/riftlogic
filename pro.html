@@ -1846,9 +1846,9 @@ async function viewHome(r, c){
     const games = D.summary ? D.games : gamesSel(D, c), st = rankStandings(D.summary ? D.st : standings(D, games)), ng = D.summary ? IX.years[c.year][D.L].games : games.length;
     const s = h("section", {class: "sec", "data-league": D.L},
       h("h2", {}, h("a", {href: leagueLink(c, D.L)}, D.label), h("small", {}, `${D.teams.length} teams · ${ng} games · ${splitLabel(D, c)}`)));
-    const crow = carousel(`${D.label} standings, best first`, st.map(x => teamTile(c, x)), "tiles");
     const grow = carousel(`${D.label} recent games`, games.slice(-12).reverse().map(g => gameCard(c, D, g, null)));
-    s.append(h("div", {class: "sec"}, h("h2", {}, "Standings", h("small", {}, "by win rate"), crow.nav), crow.wrap), h("div", {class: "sec"}, h("h2", {}, "Recent games", grow.nav), grow.wrap));
+    s.append(h("div", {class: "sec"}, h("h2", {}, "Standings", h("small", {}, "by win rate")), tierBands(st, [], x => teamTile(c, x), {by: "win rate (ties: game difference, then Elo)"})),
+      h("div", {class: "sec"}, h("h2", {}, "Recent games", grow.nav), grow.wrap));
     out.push(s);
   });
   return out;
