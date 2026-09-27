@@ -118,6 +118,9 @@ a.chip:hover{border-color:var(--accent)}
 .tag{display:inline-grid;place-items:center;min-width:38px;height:22px;padding:0 5px;border-radius:5px;font:700 10.5px/1 var(--mono);letter-spacing:.02em;color:#fff;background:hsl(var(--th) var(--tagS) var(--tagL));flex:none;text-decoration:none;white-space:nowrap}
 .tag.md{min-width:46px;height:30px;font-size:12px;border-radius:7px}
 .tag.lg{min-width:64px;height:64px;font-size:17px;border-radius:12px}
+.tag.logo{width:38px;padding:0;background:none}.tag.md.logo{width:46px}.tag.lg.logo{width:64px}
+.tag.logo img{width:100%;height:22px;object-fit:contain;display:block}.tag.md.logo img{height:30px}.tag.lg.logo img{height:64px}
+:root:not([data-theme="light"]) .tag.logo img{filter:drop-shadow(0 0 .6px rgba(255,255,255,.55))}
 .ri{display:inline-grid;place-items:center;width:18px;height:18px;color:var(--muted);flex:none}
 .ri svg{width:18px;height:18px;fill:currentColor;display:block}
 
@@ -366,14 +369,14 @@ svg.stk5 text{font:600 11.5px/1 var(--sans);fill:var(--bg)}svg.stk5 .z{stroke:va
 @media (max-width:600px){.cards6,.mults{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){.loading i{animation:none}.hs::before,.hs::after,.chart .sr0{transition:none}}
 </style>
-<style>:root{--bg:#07080A;--surface:#0E1014;--glass:rgba(12,15,20,.8);--glass-hi:rgba(16,19,25,.88);--inset:rgba(255,255,255,.045);--ink:#E8EBEF;--ink-2:#B3BAC3;--muted:#8A939E;--faint:#5A626C;--line:rgba(255,255,255,.075);--line-strong:rgba(255,255,255,.14);--accent:#3FB7B4;--accent-ink:#04201F;--teal:#4FD8D2;--blue:#5B93E8;--gold:#D4AF63;--gold-hi:#F4D796;--ok:#4CC287;--no:#F07580;--side1:#5B93E8;--side2:#E26B5F;--hair-a:rgba(212,175,99,.55);--hair-b:rgba(79,216,210,.38);--hair-mid:rgba(255,255,255,.035);--glow:rgba(79,216,210,.5);--glow-gold:rgba(244,215,150,.55);--spot:rgba(79,216,210,.085);--shine:rgba(255,255,255,.07);--band-blend:screen;--shadow-panel:0 12px 34px rgba(0,0,0,.42);--fx-scrim:radial-gradient(120% 90% at 50% 30%,rgba(7,8,10,.1),rgba(7,8,10,.55));--fx-veil:rgba(7,8,10,.85);--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.34,1.4,.5,1)}
-:root[data-theme="light"]{--bg:#EFF2F5;--surface:#FFFFFF;--glass:rgba(255,255,255,.84);--glass-hi:rgba(255,255,255,.9);--inset:rgba(18,26,35,.045);--ink:#121A23;--ink-2:#36424F;--muted:#5F6B79;--faint:#8C97A3;--line:rgba(18,26,35,.1);--line-strong:rgba(18,26,35,.18);--accent:#0B6E78;--accent-ink:#FFFFFF;--teal:#0B7C85;--blue:#2F6FD0;--gold:#8A6516;--gold-hi:#A87A12;--ok:#1C7A48;--no:#B42F3E;--side1:#2F6FD0;--side2:#C4453A;--hair-a:rgba(168,122,18,.5);--hair-b:rgba(11,110,120,.36);--hair-mid:rgba(18,26,35,.05);--glow:rgba(11,124,133,.28);--glow-gold:rgba(168,122,18,.3);--spot:rgba(11,124,133,.06);--shine:rgba(255,255,255,.7);--band-blend:multiply;--shadow-panel:0 10px 28px rgba(18,26,35,.12);--fx-scrim:radial-gradient(120% 90% at 50% 30%,rgba(239,242,245,.3),rgba(239,242,245,.72));--fx-veil:rgba(239,242,245,.88)}
+<style>:root{--bg:#07080A;--glass-ed:rgba(10,12,16,.72);--surface:#0E1014;--glass:rgba(12,15,20,.8);--glass-hi:rgba(16,19,25,.88);--inset:rgba(255,255,255,.045);--ink:#E8EBEF;--ink-2:#B3BAC3;--muted:#8A939E;--faint:#5A626C;--line:rgba(255,255,255,.075);--line-strong:rgba(255,255,255,.14);--accent:#3FB7B4;--accent-ink:#04201F;--teal:#4FD8D2;--blue:#5B93E8;--gold:#D4AF63;--gold-hi:#F4D796;--ok:#4CC287;--no:#F07580;--side1:#5B93E8;--side2:#E26B5F;--hair-a:rgba(212,175,99,.55);--hair-b:rgba(79,216,210,.38);--hair-mid:rgba(255,255,255,.035);--glow:rgba(79,216,210,.5);--glow-gold:rgba(244,215,150,.55);--spot:rgba(79,216,210,.085);--shine:rgba(255,255,255,.07);--band-blend:screen;--shadow-panel:0 12px 34px rgba(0,0,0,.42);--fx-scrim:radial-gradient(120% 90% at 50% 30%,rgba(7,8,10,.1),rgba(7,8,10,.55));--fx-veil:rgba(7,8,10,.85);--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.34,1.4,.5,1)}
+:root[data-theme="light"]{--bg:#EFF2F5;--glass-ed:rgba(255,255,255,.8);--surface:#FFFFFF;--glass:rgba(255,255,255,.84);--glass-hi:rgba(255,255,255,.9);--inset:rgba(18,26,35,.045);--ink:#121A23;--ink-2:#36424F;--muted:#5F6B79;--faint:#8C97A3;--line:rgba(18,26,35,.1);--line-strong:rgba(18,26,35,.18);--accent:#0B6E78;--accent-ink:#FFFFFF;--teal:#0B7C85;--blue:#2F6FD0;--gold:#8A6516;--gold-hi:#A87A12;--ok:#1C7A48;--no:#B42F3E;--side1:#2F6FD0;--side2:#C4453A;--hair-a:rgba(168,122,18,.5);--hair-b:rgba(11,110,120,.36);--hair-mid:rgba(18,26,35,.05);--glow:rgba(11,124,133,.28);--glow-gold:rgba(168,122,18,.3);--spot:rgba(11,124,133,.06);--shine:rgba(255,255,255,.7);--band-blend:multiply;--shadow-panel:0 10px 28px rgba(18,26,35,.12);--fx-scrim:radial-gradient(120% 90% at 50% 30%,rgba(239,242,245,.3),rgba(239,242,245,.72));--fx-veil:rgba(239,242,245,.88)}
 html{background:var(--bg)}
 body{background:transparent}
-#fx,#fx-scrim{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block}
+#fx,#fx-still,#fx-scrim{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block}
 #fx-scrim{background:var(--fx-scrim)}
-html.nofx #fx{display:none}
-html.nofx{background:radial-gradient(60% 50% at 15% 10%,rgba(79,216,210,.09),transparent 70%),radial-gradient(50% 45% at 85% 30%,rgba(212,175,99,.07),transparent 70%),radial-gradient(70% 60% at 50% 100%,rgba(91,147,232,.07),transparent 70%),var(--bg)}
+html.nofx #fx,html.bgoff #fx,html.bgoff #fx-still,html.bgoff #fx2d{display:none}#fx-still{background:center/100% 100% no-repeat}html.fxoff #fx{visibility:hidden}
+html.nofx,html.bgoff{background:radial-gradient(60% 50% at 15% 10%,rgba(79,216,210,.09),transparent 70%),radial-gradient(50% 45% at 85% 30%,rgba(212,175,99,.07),transparent 70%),radial-gradient(70% 60% at 50% 100%,rgba(91,147,232,.07),transparent 70%),var(--bg)}
 .bar{background:var(--glass-hi);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3)}
 :where(:is(.card,.panel,.gc,.pc,.dside,.nextm)){position:relative}
 :is(.card,.panel,.gc,.pc,.dside,.nextm){background:radial-gradient(520px circle at var(--mx,50%) var(--my,-60%),var(--spot),transparent 62%),var(--glass);box-shadow:var(--shadow-panel)}
@@ -421,7 +424,7 @@ hx-r>hx-d{position:absolute;display:block;width:12px;height:12px;margin:-6px 0 0
 @keyframes hx-shine{from{background-position:100% 0;opacity:1}to{background-position:0 0;opacity:1}}
 @keyframes hx-veil{to{transform:translateX(150vw)}}
 @keyframes hx-beam{from{transform:translateX(0)}to{transform:translateX(calc(100% + 60px))}}</style>
-<canvas id="fx" aria-hidden="true"></canvas><div id="fx-scrim" aria-hidden="true"></div>
+<div id="fx-still" aria-hidden="true"></div><canvas id="fx" aria-hidden="true"></canvas><div id="fx-scrim" aria-hidden="true"></div>
 <style>.rlnav{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;height:56px;padding:0;margin:0 auto;max-width:1680px;font-family:var(--sans)}
 .rlnav svg{width:18px;height:18px;flex:none;display:block}
 .rlnav-brand{display:flex;align-items:center;gap:8px;font:600 15.5px/1 var(--sans);letter-spacing:-.005em;color:var(--ink);white-space:nowrap;min-width:0}
@@ -437,11 +440,12 @@ hx-r>hx-d{position:absolute;display:block;width:12px;height:12px;margin:-6px 0 0
 .rlnav-brand svg{filter:drop-shadow(0 0 6px var(--glow,transparent))}
 .rlnav-tab .s{display:none}
 .rlnav-side{display:flex;align-items:center;justify-content:flex-end;gap:2px;min-width:0}
-.rlnav-fx{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:7px;background:none;color:var(--faint);cursor:pointer}
-.rlnav-fx svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.rlnav-fx:hover{color:var(--ink);background:var(--inset)}
-.rlnav-fx .play,.rlnav-fx[aria-pressed="true"] .pause{display:none}.rlnav-fx[aria-pressed="true"] .play{display:block}
-html.nofx .rlnav-fx{display:none}
+#sitenav{position:relative;z-index:45}.rlset{position:relative}.rlnav-set{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:7px;background:none;color:var(--faint);cursor:pointer}
+.rlnav-set svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rlnav-set:hover,.rlnav-set[aria-expanded="true"]{color:var(--ink);background:var(--inset)}
+#rlset-pop[hidden]{display:none}#rlset-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;padding:10px 12px;border-radius:10px;background:var(--surface,#0E1014);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap}
+.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}
+#rlset-pop .seg{display:inline-flex;flex-direction:row;flex-wrap:nowrap;width:auto;border:0;gap:2px;padding:2px;border-radius:8px;background:var(--inset)}#rlset-pop .seg>button{display:inline-block;width:auto;min-height:0;margin:0;border:0;background:none;color:var(--muted);font:500 12px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}#rlset-pop .seg>button[aria-pressed="true"]{background:var(--inset);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .rlnav-docs{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;color:var(--muted);text-decoration:none;font:500 13px/1 var(--sans)}
 .rlnav-docs svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .rlnav-docs:hover{color:var(--ink);background:var(--inset)}
@@ -456,7 +460,6 @@ html.nofx .rlnav-fx{display:none}
 }
 @media (max-width:1000px) and (min-width:761px){.rlnav-tab{padding:0 12px}}
 @media (max-width:480px){
-  .rlnav-fx{display:none}
   .rlnav-tab{gap:4px;padding:0 4px;font-size:12.5px}
   .rlnav-tab svg{width:16px;height:16px}
 }
@@ -466,7 +469,7 @@ html.nofx .rlnav-fx{display:none}
   .rlnav-docs span{display:none}
 }
 @media (prefers-reduced-motion:reduce){.rlnav-tab,.rlnav-pill{transition:none}}</style>
-<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a></div><div class="rlnav-side"><button type="button" class="rlnav-fx" id="fxtoggle" aria-pressed="false" title="Pause background animation" aria-label="Pause background animation"><svg class="pause" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5v10M13 5v10"/></svg><svg class="play" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5 15.5 10l-9 5.5Z"/></svg></button><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
+<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a></div><div class="rlnav-side"><div class="rlset"><button type="button" class="rlnav-set" id="rlset" aria-expanded="false" aria-controls="rlset-pop" title="Settings" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg></button><div class="rlset-pop" id="rlset-pop" role="dialog" aria-label="Settings" hidden><div class="rlset-row"><span>Background</span><div class="seg" role="group" aria-label="Background"><button type="button" data-bg="anim" aria-pressed="true">Animated</button><button type="button" data-bg="still" aria-pressed="false">Still</button><button type="button" data-bg="off" aria-pressed="false">Off</button></div></div></div></div><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
 <div id="hx-veil" aria-hidden="true"></div><div id="hx-beam" aria-hidden="true"><i></i></div>
 <script>(() => {
 "use strict";
@@ -689,23 +692,36 @@ gl.drawArrays(gl.TRIANGLES, 0, 3);
 return {create, fallback: fallback2D};
 })();
 const FX = (() => {
-const cv = D.getElementById("fx"), btn = D.getElementById("fxtoggle");
-let paused = false; try { paused = W.localStorage.getItem("riftlogic.fx") === "off"; } catch (_) {}
-const T0 = Date.now(), st = {gl: false, paused, hidden: !!D.hidden, reduced, typing: false, running: false, frames: 0, q: .55, reason: ""};
+const cv = D.getElementById("fx"), stillEl = D.getElementById("fx-still"), btn = D.getElementById("rlset"), pop = D.getElementById("rlset-pop");
+let mode = "anim";
+try { const v = W.localStorage.getItem("riftlogic.bg"), o = W.localStorage.getItem("riftlogic.fx"); mode = v === "still" || v === "off" ? v : o === "off" ? "still" : "anim"; } catch (_) {}
+const paused = mode !== "anim";
+if (mode === "off") R.classList.add("bgoff");
+const T0 = Date.now(), st = {gl: false, paused, off: mode === "off", mode, hidden: !!D.hidden, reduced, typing: false, running: false, frames: 0, q: .55, reason: ""};
 let gl = null, scene = null, rq = 0, last = 0, time = 24, acc = 0, n = 0, CW = 1, CH = 1, ratio = 1, typeT = 0, rzT = 0;
 let light = isLight() ? 1 : 0, lightT = light, ev = -1, evT = -1;
+const BUDGET = 230000, FPS_MS = 1000 / 30 - 2, IDLE_MS = 4000;
+let released = false, relT = 0, needStill = false;
+const GLOPT = {antialias: false, alpha: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: "low-power"};
+function makeScene() {
+try { scene = SCENE.create(gl, {section: C.page, sec: C.sec, FRAG: "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nuniform vec2 uR;uniform float uT;uniform vec3 uM;uniform float uL;\nuniform vec4 uCam;uniform float uTx;\nuniform vec4 uMin[9];uniform vec4 uFront[3];uniform vec4 uTw[12];uniform vec4 uCamp[8];\nuniform vec4 uPing[3];uniform vec4 uWard[4];uniform vec3 uEW;uniform vec3 uChamp;uniform vec4 uRecall;\nuniform vec4 uShot;uniform vec3 uSP;uniform vec4 uDrag;uniform float uBar;uniform float uE;\nfloat h1(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}\nfloat vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);\nreturn mix(mix(h1(i),h1(i+vec2(1.,0.)),f.x),mix(h1(i+vec2(0.,1.)),h1(i+vec2(1.,1.)),f.x),f.y);}\nfloat fbm(vec2 p){float v=0.,a=.5;for(int i=0;i\u003c4;i++){v+=a*vn(p);p=mat2(1.6,1.2,-1.2,1.6)*p;a*=.5;}return v;}\nfloat fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i\u003c3;i++){v+=a*vn(p);p=mat2(1.6,1.2,-1.2,1.6)*p;a*=.5;}return v;}\nfloat seg(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}\nfloat gs(float d,float k){return exp(-d*d*k);}\nfloat ring(float d,float r,float w){float x=(d-r)/w;return exp(-x*x);}\nconst vec2 BB=vec2(-.8,-.8);const vec2 RB=vec2(.8,.8);\nconst vec2 BARON=vec2(-.3,.4);const vec2 DRAG=vec2(.32,-.36);\nfloat laneD(vec2 p){\nfloat d=min(seg(p,vec2(-.82,-.6),vec2(-.82,.82)),seg(p,vec2(-.82,.82),vec2(.6,.82)));\nd=min(d,seg(p,vec2(-.6,-.6),vec2(.6,.6)));\nd=min(d,min(seg(p,vec2(-.6,-.82),vec2(.82,-.82)),seg(p,vec2(.82,-.82),vec2(.82,.6))));\nreturn d;}\nfloat riverD(vec2 p){float w=.035*sin(dot(p,vec2(1.,1.))*5.);return seg(p+vec2(w,w),vec2(-.85,.85),vec2(.85,-.85));}\nfloat openD(vec2 p){\nfloat d=min(laneD(p)-.05,riverD(p)-.085);\nd=min(d,min(length(p-BB),length(p-RB))-.27);\nd=min(d,min(length(p-BARON),length(p-DRAG))-.1);\nd=min(d,min(length(p-vec2(-.42,-.05)),length(p-vec2(.42,.05)))-.07);\nd=min(d,min(length(p-vec2(-.05,-.5)),length(p-vec2(.05,.5)))-.07);\nd=min(d,min(length(p-vec2(-.6,.2)),length(p-vec2(.6,-.2)))-.06);\nd=min(d,min(length(p-vec2(.2,-.6)),length(p-vec2(-.2,.6)))-.06);\nreturn d;}\nfloat height(vec2 p){\nfloat o=openD(p);\nfloat n=fbm(p*3.2+vec2(3.1,1.7));\nfloat w=smoothstep(.015,.07,o)*smoothstep(.4,.52,n+.12*smoothstep(.1,.35,o));\nfloat edge=max(abs(p.x),abs(p.y));\nreturn max(w,smoothstep(.93,.97,edge));}\nvec2 toMap(vec2 uv){\nfloat z=1.+(.5+uCam.w)*uv.y+uTx*uv.x;\nreturn vec2(uv.x*1.2*z,uv.y*1.7)*z*.95*uCam.z+uCam.xy+vec2(0.,.05);}\nvoid main(){\nvec2 uv=(gl_FragCoord.xy-.5*uR)/uR.y;\nfloat t=uT;\nvec2 p=toMap(uv);\nvec2 mp=toMap((uM.xy-.5*uR)/uR.y);\nfloat H=height(p);\nfloat H2=height(p+vec2(-.012,-.016));\nfloat rim=clamp((H-H2)*3.,0.,1.);\nfloat lD=laneD(p),rD=riverD(p);\nfloat g=fbm3(p*9.);\nfloat lane=1.-smoothstep(.03,.05,lD);\nfloat riv=1.-smoothstep(.06,.09,rD);\nvec2 wp=p*14.+vec2(t*.25,-t*.25);\nfloat wv=fbm3(wp+fbm3(wp*.5-t*.1)*2.);\nfloat caus=pow(abs(sin(wv*12.)),8.);\nfloat bp=length(p-BARON),dp=length(p-DRAG);\nfloat db=length(p-BB),dr=length(p-RB);\nfloat wn=fbm3(p*20.);\nvec3 cD=mix(vec3(.022,.045,.035),vec3(.035,.07,.05),g);\ncD=mix(cD,vec3(.085,.075,.058)*(.8+.4*g),lane);\ncD=mix(cD,vec3(.02,.06,.1)+vec3(.05,.2,.25)*caus*.6,riv);\nvec3 cL=vec3(.925,.9,.83)*(.96+.06*g);\ncL=mix(cL,vec3(.84,.78,.66)*(.97+.05*g),lane);\ncL=mix(cL,vec3(.76,.84,.86)+vec3(.08,.07,.05)*caus,riv);\ncL-=vec3(.03,.035,.04)*(1.-smoothstep(.0,.006,abs(rD-.075)))*riv;\nvec3 dh=uDrag.rgb;\nfloat dPulse=uDrag.w\u003c1.?ring(dp,.085+.12*uDrag.w,.02+.03*uDrag.w)*(1.-uDrag.w)*1.4:0.;\nfloat bPulse=uBar\u003c1.?ring(bp,.085+.12*uBar,.02+.03*uBar)*(1.-uBar)*1.4:0.;\nfloat breathe=.85+.15*sin(t*.7);\nvec3 pits=vec3(.35,.12,.5)*gs(bp,300.)*.25*breathe+vec3(.5,.2,.9)*(ring(bp,.085,.014)*.25+bPulse*.35)\n+dh*.6*gs(dp,300.)*.25*breathe+dh*(ring(dp,.085,.014)*.28+dPulse*.35);\ncD=mix(cD,vec3(.008,.012,.012)+vec3(.01,.02,.02)*wn,H);\ncD+=mix(vec3(.25,.75,.7),vec3(.95,.72,.35),smoothstep(-.5,.5,p.x-p.y))*rim*.35;\nfloat hatch=.5+.5*sin((p.x-p.y)*220.);\ncL=mix(cL,vec3(.8,.75,.65)-vec3(.05,.045,.04)*hatch*wn,H);\ncL-=vec3(.3,.26,.2)*rim*.55;\nfloat eB=uE\u003c0.?1.:.45+1.1*uE,eR=uE\u003c0.?1.:1.55-1.1*uE;\nvec3 base=vec3(.1,.35,.9)*(gs(db,60.)*.35+gs(db,2000.)*.9)*eB+vec3(.95,.15,.12)*(gs(dr,60.)*.35+gs(dr,2000.)*.9)*eR;\ncD+=base;\nfloat vis=1.-smoothstep(.26,.38,db);\nvec3 ally=vec3(0.),foe=vec3(0.),ui=vec3(0.);\nfoe+=pits*.9;\nfor(int i=0;i\u003c12;i++){\nvec4 tw=uTw[i];float d=length(p-tw.xy);\nfloat rg=ring(d,.13,.005)*tw.w*.4+gs(d,4000.)*tw.w*.03;\nif(tw.z\u003c.5){vis=max(vis,1.-smoothstep(.1,.17,d));ally+=vec3(.3,.65,1.)*(gs(d,9000.)*1.2+rg);}\nelse{foe+=vec3(1.,.25,.2)*(gs(d,9000.)*.9*(.75+.25*sin(t*2.+float(i)))+rg);}\n}\nfor(int l=0;l\u003c3;l++){\nvec4 fr=uFront[l];\nfor(int k=0;k\u003c3;k++){\nvec4 mm=uMin[l*3+k];\nfloat d1=length(p-mm.xy),d2=length(p-mm.zw);\nally+=vec3(.35,.7,1.)*gs(d1,22000.)*fr.z;\nvis=max(vis,(1.-smoothstep(.04,.085,d1))*fr.z);\nfoe+=vec3(1.,.3,.25)*gs(d2,22000.)*fr.z*.85;\n}\nfloat sk=floor(t*9.+float(l)*3.7);\nvec2 jo=vec2(h1(vec2(sk,float(l)))-.5,h1(vec2(float(l),sk))-.5)*.03;\nfloat on=step(.55,h1(vec2(sk*.37,float(l)+.5)));\nally+=vec3(1.,.85,.55)*gs(length(p-fr.xy-jo),60000.)*on*fr.z*.9;\n}\nif(uSP.x\u003c1.){\nvec3 sc=uSP.z\u003c.5?vec3(.55,.85,1.):vec3(1.,.55,.3);\nfor(int k=0;k\u003c3;k++){\nfloat s=clamp(uSP.x-float(k)*.07,0.,1.);\nvec2 sp=mix(uShot.xy,uShot.zw,s)+vec2(0.,.07*sin(3.14159*s));\nfloat d=length(p-sp);\nvec3 e=sc*gs(d,26000.-float(k)*6000.)*(1.2-float(k)*.35);\nif(uSP.z\u003c.5)ally+=e;else foe+=e;\n}\nfloat hit=smoothstep(.85,1.,uSP.x);\nvec3 e2=sc*ring(length(p-uShot.zw),.012+.02*hit,.006)*hit*.8;\nif(uSP.z\u003c.5)ally+=e2;else foe+=e2;\n}\nfor(int i=0;i\u003c8;i++){\nvec4 cp=uCamp[i];float d=length(p-cp.xy);\nvec3 e=vec3(.95,.72,.32)*(gs(d,7000.)*.55+gs(d,500.)*.05)*cp.z;\ne+=vec3(1.,.8,.4)*ring(d,.02+.06*cp.w,.007)*(cp.w>0.?1.-cp.w:0.)*.8;\nif(i\u003c4)ally+=e;else foe+=e;\n}\nfor(int i=0;i\u003c4;i++){\nvec4 w=uWard[i];float d=length(p-w.xy);\nvis=max(vis,(1.-smoothstep(w.w*.72,w.w,d))*w.z);\nally+=vec3(1.,.82,.3)*(gs(d,14000.)*.9+ring(d,w.w*.94,.005)*.07)*w.z;\n}\nfloat dc=length(p-uChamp.xy);\nvis=max(vis,(1.-smoothstep(.1,.15,dc))*uChamp.z);\nally+=(vec3(.4,.75,1.)*gs(dc,6000.)+vec3(.9,.97,1.)*gs(dc,30000.))*uChamp.z;\nif(uRecall.z\u003c1.){\nfloat rp=uRecall.z;vec2 rv=p-uRecall.xy;float d=length(rv);\nfloat grow=smoothstep(0.,.15,rp)*(1.-smoothstep(.82,.9,rp));\nfloat sw=.6+.4*sin(atan(rv.y,rv.x)*5.-t*5.);\nally+=vec3(.35,.7,1.)*(ring(d,.034,.006)*sw*grow*.9+gs(d,4000.)*grow*.35);\nally+=vec3(.7,.9,1.)*gs(d,1500.)*smoothstep(.84,.9,rp)*(1.-smoothstep(.9,1.,rp))*.9;\nvis=max(vis,(1.-smoothstep(.05,.09,d))*grow);\n}\nfloat wd=length(p-mp);\nfloat wr=.2+.015*sin(t*1.5);\nfloat wardOn=0.;\nvis=max(vis,(1.-smoothstep(wr*.75,wr,wd))*wardOn);\nfloat rev=vis*uEW.z;\nfloat de=length(p-uEW.xy);\nui+=vec3(1.,.25,.2)*(gs(de,16000.)*1.1+ring(de,.03,.004)*.35)*rev;\nally+=vec3(1.,.85,.3)*(gs(wd,6000.)*.8+ring(wd,wr*.92,.011)*.08)*wardOn;\nfor(int i=0;i\u003c3;i++){\nvec4 pg=uPing[i];\nif(pg.z\u003c1.){\nfloat d=length(p-pg.xy),a=pg.z;\nvec3 pc=pg.w\u003c.5?vec3(1.,.3,.25):(pg.w\u003c1.5?vec3(.35,.7,1.):vec3(1.,.82,.28));\nfloat a2=clamp(a*1.3-.3,0.,1.);\nfloat e=ring(d,.015+.1*a,.005+.006*a)*pow(1.-a,1.5)+ring(d,.015+.1*a2,.005)*(1.-a2)*step(.23,a)*.6\n+gs(d,9000.)*(1.-smoothstep(.6,1.,a))*.9;\nui+=pc*e;\n}\n}\nfloat fn=fbm(p*3.+vec2(t*.04,-t*.03)-uCam.xy*.6+fbm3(p*2.-t*.02));\nvec3 fogD=vec3(.012,.016,.024)+vec3(.02,.025,.035)*fn;\nfloat lum=dot(cD,vec3(.3,.5,.2));\nvec3 c=mix(mix(vec3(lum),cD,.3)*.45+fogD,cD,vis);\nc+=vec3(.12,.2,.25)*.06*(vis*(1.-vis)*4.);\nc+=ally*mix(.55,1.,vis)+foe*mix(.3,1.,vis)+ui;\nc*=.85;\nvec3 mist=vec3(.95,.955,.96)-vec3(.035,.03,.025)*fn;\nfloat lumL=dot(cL,vec3(.3,.5,.2));\nvec3 l2=mix(mix(vec3(lumL),cL,.35)*.35+mist*.65,cL,vis);\nl2-=vec3(.09,.08,.06)*(vis*(1.-vis)*4.)*.35;\nvec3 em=ally*mix(.6,1.,vis)+foe*mix(.35,1.,vis)+ui+base*.6;\nfloat ea=max(em.r,max(em.g,em.b));\nl2=mix(l2,(em/max(ea,1e-3))*.5,clamp(ea,0.,1.)*.8);\nvec3 o=mix(c,clamp(l2,0.,1.),uL);\nvec3 lb=vec3(.937,.949,.961);\nvec2 v=gl_FragCoord.xy/uR-.5;\no=mix(o,mix(vec3(.006,.008,.012),lb,uL),smoothstep(.35,.95,length(v*vec2(1.,.85)))*.6);\no+=(h1(gl_FragCoord.xy+fract(uT))-.5)/255.;\ngl_FragColor=vec4(o,1.);\n}"}); st.gl = true; return true; }
+catch (e) { gl = null; st.gl = false; st.reason = "scene: " + (e && e.message || e); if (W.console) console.warn("background: WebGL scene failed, 2D fallback:", e); return false; }
+}
+let LCX = null; const LC = () => LCX;               // fetched up front: a lost context returns null
+function initGL() {
 if (live && cv) {
-try { gl = cv.getContext("webgl", {antialias: false, alpha: false, depth: false, stencil: false, premultipliedAlpha: false, powerPreference: "low-power"}); } catch (_) { gl = null; }
-if (gl) { try { scene = SCENE.create(gl, {section: C.page, sec: C.sec, FRAG: "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nuniform vec2 uR;uniform float uT;uniform vec3 uM;uniform float uL;\nuniform vec4 uCam;uniform float uTx;\nuniform vec4 uMin[9];uniform vec4 uFront[3];uniform vec4 uTw[12];uniform vec4 uCamp[8];\nuniform vec4 uPing[3];uniform vec4 uWard[4];uniform vec3 uEW;uniform vec3 uChamp;uniform vec4 uRecall;\nuniform vec4 uShot;uniform vec3 uSP;uniform vec4 uDrag;uniform float uBar;uniform float uE;\nfloat h1(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}\nfloat vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);\nreturn mix(mix(h1(i),h1(i+vec2(1.,0.)),f.x),mix(h1(i+vec2(0.,1.)),h1(i+vec2(1.,1.)),f.x),f.y);}\nfloat fbm(vec2 p){float v=0.,a=.5;for(int i=0;i\u003c4;i++){v+=a*vn(p);p=mat2(1.6,1.2,-1.2,1.6)*p;a*=.5;}return v;}\nfloat fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i\u003c3;i++){v+=a*vn(p);p=mat2(1.6,1.2,-1.2,1.6)*p;a*=.5;}return v;}\nfloat seg(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}\nfloat gs(float d,float k){return exp(-d*d*k);}\nfloat ring(float d,float r,float w){float x=(d-r)/w;return exp(-x*x);}\nconst vec2 BB=vec2(-.8,-.8);const vec2 RB=vec2(.8,.8);\nconst vec2 BARON=vec2(-.3,.4);const vec2 DRAG=vec2(.32,-.36);\nfloat laneD(vec2 p){\nfloat d=min(seg(p,vec2(-.82,-.6),vec2(-.82,.82)),seg(p,vec2(-.82,.82),vec2(.6,.82)));\nd=min(d,seg(p,vec2(-.6,-.6),vec2(.6,.6)));\nd=min(d,min(seg(p,vec2(-.6,-.82),vec2(.82,-.82)),seg(p,vec2(.82,-.82),vec2(.82,.6))));\nreturn d;}\nfloat riverD(vec2 p){float w=.035*sin(dot(p,vec2(1.,1.))*5.);return seg(p+vec2(w,w),vec2(-.85,.85),vec2(.85,-.85));}\nfloat openD(vec2 p){\nfloat d=min(laneD(p)-.05,riverD(p)-.085);\nd=min(d,min(length(p-BB),length(p-RB))-.27);\nd=min(d,min(length(p-BARON),length(p-DRAG))-.1);\nd=min(d,min(length(p-vec2(-.42,-.05)),length(p-vec2(.42,.05)))-.07);\nd=min(d,min(length(p-vec2(-.05,-.5)),length(p-vec2(.05,.5)))-.07);\nd=min(d,min(length(p-vec2(-.6,.2)),length(p-vec2(.6,-.2)))-.06);\nd=min(d,min(length(p-vec2(.2,-.6)),length(p-vec2(-.2,.6)))-.06);\nreturn d;}\nfloat height(vec2 p){\nfloat o=openD(p);\nfloat n=fbm(p*3.2+vec2(3.1,1.7));\nfloat w=smoothstep(.015,.07,o)*smoothstep(.4,.52,n+.12*smoothstep(.1,.35,o));\nfloat edge=max(abs(p.x),abs(p.y));\nreturn max(w,smoothstep(.93,.97,edge));}\nvec2 toMap(vec2 uv){\nfloat z=1.+(.5+uCam.w)*uv.y+uTx*uv.x;\nreturn vec2(uv.x*1.2*z,uv.y*1.7)*z*.95*uCam.z+uCam.xy+vec2(0.,.05);}\nvoid main(){\nvec2 uv=(gl_FragCoord.xy-.5*uR)/uR.y;\nfloat t=uT;\nvec2 p=toMap(uv);\nvec2 mp=toMap((uM.xy-.5*uR)/uR.y);\nfloat H=height(p);\nfloat H2=height(p+vec2(-.012,-.016));\nfloat rim=clamp((H-H2)*3.,0.,1.);\nfloat lD=laneD(p),rD=riverD(p);\nfloat g=fbm3(p*9.);\nfloat lane=1.-smoothstep(.03,.05,lD);\nfloat riv=1.-smoothstep(.06,.09,rD);\nvec2 wp=p*14.+vec2(t*.25,-t*.25);\nfloat wv=fbm3(wp+fbm3(wp*.5-t*.1)*2.);\nfloat caus=pow(abs(sin(wv*12.)),8.);\nfloat bp=length(p-BARON),dp=length(p-DRAG);\nfloat db=length(p-BB),dr=length(p-RB);\nfloat wn=fbm3(p*20.);\nvec3 cD=mix(vec3(.022,.045,.035),vec3(.035,.07,.05),g);\ncD=mix(cD,vec3(.085,.075,.058)*(.8+.4*g),lane);\ncD=mix(cD,vec3(.02,.06,.1)+vec3(.05,.2,.25)*caus*.6,riv);\nvec3 cL=vec3(.925,.9,.83)*(.96+.06*g);\ncL=mix(cL,vec3(.84,.78,.66)*(.97+.05*g),lane);\ncL=mix(cL,vec3(.76,.84,.86)+vec3(.08,.07,.05)*caus,riv);\ncL-=vec3(.03,.035,.04)*(1.-smoothstep(.0,.006,abs(rD-.075)))*riv;\nvec3 dh=uDrag.rgb;\nfloat dPulse=uDrag.w\u003c1.?ring(dp,.085+.12*uDrag.w,.02+.03*uDrag.w)*(1.-uDrag.w)*1.4:0.;\nfloat bPulse=uBar\u003c1.?ring(bp,.085+.12*uBar,.02+.03*uBar)*(1.-uBar)*1.4:0.;\nfloat breathe=.85+.15*sin(t*.7);\nvec3 pits=vec3(.35,.12,.5)*gs(bp,300.)*.25*breathe+vec3(.5,.2,.9)*(ring(bp,.085,.014)*.25+bPulse*.35)\n+dh*.6*gs(dp,300.)*.25*breathe+dh*(ring(dp,.085,.014)*.28+dPulse*.35);\ncD=mix(cD,vec3(.008,.012,.012)+vec3(.01,.02,.02)*wn,H);\ncD+=mix(vec3(.25,.75,.7),vec3(.95,.72,.35),smoothstep(-.5,.5,p.x-p.y))*rim*.35;\nfloat hatch=.5+.5*sin((p.x-p.y)*220.);\ncL=mix(cL,vec3(.8,.75,.65)-vec3(.05,.045,.04)*hatch*wn,H);\ncL-=vec3(.3,.26,.2)*rim*.55;\nfloat eB=uE\u003c0.?1.:.45+1.1*uE,eR=uE\u003c0.?1.:1.55-1.1*uE;\nvec3 base=vec3(.1,.35,.9)*(gs(db,60.)*.35+gs(db,2000.)*.9)*eB+vec3(.95,.15,.12)*(gs(dr,60.)*.35+gs(dr,2000.)*.9)*eR;\ncD+=base;\nfloat vis=1.-smoothstep(.26,.38,db);\nvec3 ally=vec3(0.),foe=vec3(0.),ui=vec3(0.);\nfoe+=pits*.9;\nfor(int i=0;i\u003c12;i++){\nvec4 tw=uTw[i];float d=length(p-tw.xy);\nfloat rg=ring(d,.13,.005)*tw.w*.4+gs(d,4000.)*tw.w*.03;\nif(tw.z\u003c.5){vis=max(vis,1.-smoothstep(.1,.17,d));ally+=vec3(.3,.65,1.)*(gs(d,9000.)*1.2+rg);}\nelse{foe+=vec3(1.,.25,.2)*(gs(d,9000.)*.9*(.75+.25*sin(t*2.+float(i)))+rg);}\n}\nfor(int l=0;l\u003c3;l++){\nvec4 fr=uFront[l];\nfor(int k=0;k\u003c3;k++){\nvec4 mm=uMin[l*3+k];\nfloat d1=length(p-mm.xy),d2=length(p-mm.zw);\nally+=vec3(.35,.7,1.)*gs(d1,22000.)*fr.z;\nvis=max(vis,(1.-smoothstep(.04,.085,d1))*fr.z);\nfoe+=vec3(1.,.3,.25)*gs(d2,22000.)*fr.z*.85;\n}\nfloat sk=floor(t*9.+float(l)*3.7);\nvec2 jo=vec2(h1(vec2(sk,float(l)))-.5,h1(vec2(float(l),sk))-.5)*.03;\nfloat on=step(.55,h1(vec2(sk*.37,float(l)+.5)));\nally+=vec3(1.,.85,.55)*gs(length(p-fr.xy-jo),60000.)*on*fr.z*.9;\n}\nif(uSP.x\u003c1.){\nvec3 sc=uSP.z\u003c.5?vec3(.55,.85,1.):vec3(1.,.55,.3);\nfor(int k=0;k\u003c3;k++){\nfloat s=clamp(uSP.x-float(k)*.07,0.,1.);\nvec2 sp=mix(uShot.xy,uShot.zw,s)+vec2(0.,.07*sin(3.14159*s));\nfloat d=length(p-sp);\nvec3 e=sc*gs(d,26000.-float(k)*6000.)*(1.2-float(k)*.35);\nif(uSP.z\u003c.5)ally+=e;else foe+=e;\n}\nfloat hit=smoothstep(.85,1.,uSP.x);\nvec3 e2=sc*ring(length(p-uShot.zw),.012+.02*hit,.006)*hit*.8;\nif(uSP.z\u003c.5)ally+=e2;else foe+=e2;\n}\nfor(int i=0;i\u003c8;i++){\nvec4 cp=uCamp[i];float d=length(p-cp.xy);\nvec3 e=vec3(.95,.72,.32)*(gs(d,7000.)*.55+gs(d,500.)*.05)*cp.z;\ne+=vec3(1.,.8,.4)*ring(d,.02+.06*cp.w,.007)*(cp.w>0.?1.-cp.w:0.)*.8;\nif(i\u003c4)ally+=e;else foe+=e;\n}\nfor(int i=0;i\u003c4;i++){\nvec4 w=uWard[i];float d=length(p-w.xy);\nvis=max(vis,(1.-smoothstep(w.w*.72,w.w,d))*w.z);\nally+=vec3(1.,.82,.3)*(gs(d,14000.)*.9+ring(d,w.w*.94,.005)*.07)*w.z;\n}\nfloat dc=length(p-uChamp.xy);\nvis=max(vis,(1.-smoothstep(.1,.15,dc))*uChamp.z);\nally+=(vec3(.4,.75,1.)*gs(dc,6000.)+vec3(.9,.97,1.)*gs(dc,30000.))*uChamp.z;\nif(uRecall.z\u003c1.){\nfloat rp=uRecall.z;vec2 rv=p-uRecall.xy;float d=length(rv);\nfloat grow=smoothstep(0.,.15,rp)*(1.-smoothstep(.82,.9,rp));\nfloat sw=.6+.4*sin(atan(rv.y,rv.x)*5.-t*5.);\nally+=vec3(.35,.7,1.)*(ring(d,.034,.006)*sw*grow*.9+gs(d,4000.)*grow*.35);\nally+=vec3(.7,.9,1.)*gs(d,1500.)*smoothstep(.84,.9,rp)*(1.-smoothstep(.9,1.,rp))*.9;\nvis=max(vis,(1.-smoothstep(.05,.09,d))*grow);\n}\nfloat wd=length(p-mp);\nfloat wr=.2+.015*sin(t*1.5);\nfloat wardOn=0.;\nvis=max(vis,(1.-smoothstep(wr*.75,wr,wd))*wardOn);\nfloat rev=vis*uEW.z;\nfloat de=length(p-uEW.xy);\nui+=vec3(1.,.25,.2)*(gs(de,16000.)*1.1+ring(de,.03,.004)*.35)*rev;\nally+=vec3(1.,.85,.3)*(gs(wd,6000.)*.8+ring(wd,wr*.92,.011)*.08)*wardOn;\nfor(int i=0;i\u003c3;i++){\nvec4 pg=uPing[i];\nif(pg.z\u003c1.){\nfloat d=length(p-pg.xy),a=pg.z;\nvec3 pc=pg.w\u003c.5?vec3(1.,.3,.25):(pg.w\u003c1.5?vec3(.35,.7,1.):vec3(1.,.82,.28));\nfloat a2=clamp(a*1.3-.3,0.,1.);\nfloat e=ring(d,.015+.1*a,.005+.006*a)*pow(1.-a,1.5)+ring(d,.015+.1*a2,.005)*(1.-a2)*step(.23,a)*.6\n+gs(d,9000.)*(1.-smoothstep(.6,1.,a))*.9;\nui+=pc*e;\n}\n}\nfloat fn=fbm(p*3.+vec2(t*.04,-t*.03)-uCam.xy*.6+fbm3(p*2.-t*.02));\nvec3 fogD=vec3(.012,.016,.024)+vec3(.02,.025,.035)*fn;\nfloat lum=dot(cD,vec3(.3,.5,.2));\nvec3 c=mix(mix(vec3(lum),cD,.3)*.45+fogD,cD,vis);\nc+=vec3(.12,.2,.25)*.06*(vis*(1.-vis)*4.);\nc+=ally*mix(.55,1.,vis)+foe*mix(.3,1.,vis)+ui;\nc*=.85;\nvec3 mist=vec3(.95,.955,.96)-vec3(.035,.03,.025)*fn;\nfloat lumL=dot(cL,vec3(.3,.5,.2));\nvec3 l2=mix(mix(vec3(lumL),cL,.35)*.35+mist*.65,cL,vis);\nl2-=vec3(.09,.08,.06)*(vis*(1.-vis)*4.)*.35;\nvec3 em=ally*mix(.6,1.,vis)+foe*mix(.35,1.,vis)+ui+base*.6;\nfloat ea=max(em.r,max(em.g,em.b));\nl2=mix(l2,(em/max(ea,1e-3))*.5,clamp(ea,0.,1.)*.8);\nvec3 o=mix(c,clamp(l2,0.,1.),uL);\nvec3 lb=vec3(.937,.949,.961);\nvec2 v=gl_FragCoord.xy/uR-.5;\no=mix(o,mix(vec3(.006,.008,.012),lb,uL),smoothstep(.35,.95,length(v*vec2(1.,.85)))*.6);\no+=(h1(gl_FragCoord.xy+fract(uT))-.5)/255.;\ngl_FragColor=vec4(o,1.);\n}"}); st.gl = true; } catch (e) { gl = null; st.reason = "scene: " + (e && e.message || e); if (W.console) console.warn("background: WebGL scene failed, 2D fallback:", e); } }
-else st.reason = "no webgl";
+try { gl = cv.getContext("webgl", GLOPT); } catch (_) { gl = null; }
+if (gl) { LCX = gl.getExtension ? gl.getExtension("WEBGL_lose_context") : null; makeScene(); } else st.reason = "no webgl";
 } else st.reason = live ? "no canvas" : "no matchMedia";
+}
+if (!st.off) initGL(); else st.reason = "off";
 const fb2 = () => { if (!live || !SCENE.fallback) return; try { SCENE.fallback(isLight()); st.fallback2d = true; } catch (_) {} };
 const nofx = () => { R.classList.add("nofx"); fb2(); };
-if (!st.gl) nofx();
+if (!st.gl && !st.off) nofx();
 const canRun = () => st.gl && !st.paused && !st.hidden && !st.reduced && !st.typing;
 function size() {
 if (!st.gl) return;
-ratio = Math.min(W.devicePixelRatio || 1, 1.5) * st.q;
+ratio = Math.min(1, Math.sqrt(BUDGET / Math.max(1, W.innerWidth * W.innerHeight))) * st.q / .55;
 CW = Math.max(1, Math.round(W.innerWidth * ratio)); CH = Math.max(1, Math.round(W.innerHeight * ratio));
 if (cv.width !== CW || cv.height !== CH) { cv.width = CW; cv.height = CH; }
 scene.resize && scene.resize(CW, CH);
@@ -715,32 +731,67 @@ try { scene.render({t: time, dt, W: CW, H: CH, ratio, light, mx: 0, my: 0, ms: 0
 catch (e) { st.gl = false; st.reason = "render: " + (e && e.message || e); stop(); nofx(); }
 }
 function stop() { if (rq) W.cancelAnimationFrame(rq); rq = 0; st.running = false; }
+function snap() { try { stillEl && (stillEl.style.backgroundImage = "url(" + cv.toDataURL("image/jpeg", .8) + ")"); } catch (_) {} }
+function release() {
+clearTimeout(relT); relT = 0;
+if (released || !st.gl || st.running || !LC()) return;
+if (!st.hidden) { light = lightT; ev = evT; draw(0); snap(); }   // hidden: nothing is drawn; the canvas comes back on return
+released = true; R.classList.add("fxoff"); st.released = true; scene = null;
+LC().loseContext();
+}
+function reacquire() {
+if (!released) return true;
+const x = LC(); if (!x) return false;
+x.restoreContext(); return false;                  // continues in webglcontextrestored
+}
+const idle = () => { clearTimeout(relT); relT = setTimeout(release, st.hidden ? 0 : IDLE_MS); };
 function still() {                                   // paused / reduced motion / resized while stopped: one static frame
-if (!st.gl || st.hidden || st.typing) return;
-light = lightT; ev = evT; draw(0);
+if (!st.gl || st.hidden || st.typing || st.off) return;
+if (released) { needStill = true; reacquire(); return; }
+light = lightT; ev = evT; draw(0); idle();
 }
 function frame(now) {
 rq = 0;
 if (!canRun()) { st.running = false; return; }
+if (last && now - last < FPS_MS) { rq = W.requestAnimationFrame(frame); return; }
 const dt = last ? Math.min(64, now - last) : 16; last = now; time += dt / 1000;
 light += (lightT - light) * (1 - Math.exp(-dt / 180));
 ev = evT < 0 ? -1 : ev < 0 ? evT : ev + (evT - ev) * (1 - Math.exp(-dt / 500));
 draw(dt / 1000);
 acc += dt;                                          // adaptive resolution: slow frames drop the internal scale (floor .3)
-if (++n === 90) { if (acc / n > 22 && st.q > .32) { st.q = Math.max(.3, st.q * .8); size(); } acc = 0; n = 0; }
+if (++n === 60) { if (acc / n > 40 && st.q > .32) { st.q = Math.max(.3, st.q * .8); size(); } acc = 0; n = 0; }
 if (st.gl) rq = W.requestAnimationFrame(frame);
 }
 function kick() {
-if (canRun()) { st.running = true; if (!rq) { last = 0; rq = W.requestAnimationFrame(frame); } }
-else { stop(); still(); }
+if (canRun()) {
+if (released) { reacquire(); return; }
+clearTimeout(relT); relT = 0;
+st.running = true; if (!rq) { last = 0; rq = W.requestAnimationFrame(frame); }
 }
-const sync = () => {
-if (!btn) return;
-const t = st.paused ? "Play background animation" : "Pause background animation";
-btn.setAttribute("aria-pressed", String(st.paused)); btn.title = t; btn.setAttribute("aria-label", t);
-};
-const pause = v => { st.paused = !!v; try { v ? W.localStorage.setItem("riftlogic.fx", "off") : W.localStorage.removeItem("riftlogic.fx"); } catch (_) {} sync(); kick(); };
-on(btn, "click", () => pause(!st.paused));
+else { stop(); if (st.hidden) idle(); else if (!st.typing) still(); }
+}
+const sync = () => { if (pop) pop.querySelectorAll("[data-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === mode))); };
+function setMode(m) {
+if (!/^(anim|still|off)$/.test(m)) return;
+mode = st.mode = m; st.paused = m !== "anim"; st.off = m === "off";
+try { m === "anim" ? W.localStorage.removeItem("riftlogic.bg") : W.localStorage.setItem("riftlogic.bg", m); W.localStorage.removeItem("riftlogic.fx"); } catch (_) {}
+R.classList.toggle("bgoff", st.off); sync();
+if (st.off) {                                      // off: stop and hand the GL context back
+stop(); clearTimeout(relT); relT = 0;
+if (st.gl && !released && LC()) { released = true; st.released = true; scene = null; R.classList.add("fxoff"); LC().loseContext(); }
+return;
+}
+if (!gl && !st.gl) { st.reason = ""; initGL(); if (!st.gl) { nofx(); return; } size(); }
+kick();
+}
+const pause = v => setMode(v ? "still" : "anim");
+if (btn && pop) {
+const open = v => { pop.hidden = !v; btn.setAttribute("aria-expanded", String(v)); };
+on(btn, "click", e => { e.stopPropagation(); open(pop.hidden); });
+on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg")); });
+on(D, "click", () => open(false));
+on(D, "keydown", e => { if (e.key === "Escape" && !pop.hidden) { open(false); btn.focus(); } });
+}
 on(D, "visibilitychange", () => { st.hidden = !!D.hidden; kick(); });
 RMQ && (RMQ.addEventListener ? RMQ.addEventListener("change", e => { reduced = st.reduced = e.matches; kick(); }) : RMQ.addListener && RMQ.addListener(e => { reduced = st.reduced = e.matches; kick(); }));
 on(W, "resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (st.fallback2d) fb2(); size(); if (!st.running) still(); }, 120); }, {passive: true});
@@ -752,11 +803,18 @@ st.typing = true; stop(); clearTimeout(typeT);
 typeT = setTimeout(() => { st.typing = false; kick(); }, 1200);
 }, true);
 if (W.MutationObserver) new MutationObserver(() => { lightT = isLight() ? 1 : 0; if (Date.now() - T0 < 1500) light = lightT; if (st.fallback2d) fb2(); if (!st.running) still(); }).observe(R, {attributes: true, attributeFilter: ["data-theme"]});
-on(cv, "webglcontextlost", e => { e.preventDefault(); st.gl = false; st.reason = "context lost"; stop(); nofx(); });
+on(cv, "webglcontextlost", e => { e.preventDefault(); if (released) return; st.gl = false; st.reason = "context lost"; stop(); nofx(); });
+on(cv, "webglcontextrestored", () => {
+if (!released) return;
+released = false; st.released = false;
+if (!makeScene()) { nofx(); return; }
+size(); R.classList.remove("fxoff");
+if (canRun()) kick(); else if (needStill || !st.hidden) { needStill = false; light = lightT; ev = evT; draw(0); idle(); }
+});
 size(); sync(); kick();
 return {
 state: () => Object.assign({}, st, {raf: !!rq}),
-pause, paused: () => st.paused, canRun,
+pause, paused: () => st.paused, canRun, setMode, mode: () => mode,
 set(o) { if (o && "evalP" in o) { const v = +o.evalP; evT = o.evalP == null || !isFinite(v) ? -1 : Math.max(0, Math.min(1, v)); if (!st.running) still(); } }
 };
 })();
@@ -940,7 +998,7 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
   <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
   <main id="main" tabindex="-1"><div class="loading"><i></i>Loading pro match data…</div></main>
   <p class="foot" id="foot"></p>
-  <p class="foot lpfoot" id="lpfoot">Schedule and rosters: <a href="https://lol.fandom.com" rel="noopener">Leaguepedia</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/" rel="license noopener">CC BY-SA 3.0</a>)<span id="lpupd"></span></p>
+  <p class="foot lpfoot" id="lpfoot">Schedule and rosters: <a href="https://lol.fandom.com" rel="noopener">Leaguepedia</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/" rel="license noopener">CC BY-SA 3.0</a>) · Team logos: Leaguepedia, CC BY-SA 3.0<span id="lpupd"></span></p>
 </div>
 <div id="tip" role="tooltip" hidden></div>
 <script>
@@ -1063,7 +1121,25 @@ function playerEntry(y, name, L){ const xs = (IX.players[y] || []).filter(p => p
 /* ---------- small components ---------- */
 function tagBadge(name, size, href){
   const t = IX.tags[name] || name.slice(0, 3).toUpperCase();
-  return h(href ? "a" : "span", {class: "tag" + (size ? " " + size : ""), style: `--th:${hue(name)}`, title: name, href, "aria-hidden": href ? null : "true"}, t);
+  return withLogo(h(href ? "a" : "span", {class: "tag" + (size ? " " + size : ""), style: `--th:${hue(name)}`, title: name, href, "aria-hidden": href ? null : "true"}, t), [name, t], name);
+}
+/* team logos (web/logos/index.json by tools/fetch_logos.py; Leaguepedia, CC BY-SA 3.0): "lookup" maps Leaguepedia, short and
+   OE names to a 96 px file; loaded once alongside pro.json. A badge with a logo keeps the tag box size; no hit or a failed
+   image -> the text tag */
+let LOGO = {}, LOGOP = null;
+function loadLogos(){
+  if (!LOGOP) LOGOP = (PAGE.inline ? Promise.resolve(null) : fetch("logos/index.json").then(r => r.ok ? r.json() : null).catch(() => null))
+    .then(J => { LOGO = (J && J.lookup) || {}; return LOGO; });
+  return LOGOP;
+}
+function withLogo(e, names, label){
+  const f = names.map(n => n && Object.prototype.hasOwnProperty.call(LOGO, n) ? LOGO[n] : null).find(Boolean);
+  if (!f) return e;
+  const t = e.textContent;
+  e.classList.add("logo"); e.textContent = "";
+  if (e.tagName === "A") e.setAttribute("aria-label", label);
+  e.append(h("img", {onerror: () => { e.classList.remove("logo"); e.removeAttribute("aria-label"); e.textContent = t; }, src: "logos/" + f, alt: "", loading: "lazy", decoding: "async"}));
+  return e;
 }
 function portrait(ci, cls){
   const id = typeof ci === "number" ? CH[ci] : ci;
@@ -1635,7 +1711,8 @@ function lpBadge(lp, cy, n){
   const oe = lpOE(lp, n);
   if (oe && teamEntry(lp.year, oe)) return tagBadge(oe, null, teamLink(cy, oe));
   const t = n && lp.S.teams[n];
-  return h("span", {class: "tag" + (n ? "" : " tbd"), style: `--th:${n ? hue(n) : 0}`, title: n ? lpName(lp, n) : "To be decided", "aria-hidden": "true"}, n ? (t && t.short) || lpName(lp, n).slice(0, 3).toUpperCase() : "TBD");
+  const b = h("span", {class: "tag" + (n ? "" : " tbd"), style: `--th:${n ? hue(n) : 0}`, title: n ? lpName(lp, n) : "To be decided", "aria-hidden": "true"}, n ? (t && t.short) || lpName(lp, n).slice(0, 3).toUpperCase() : "TBD");
+  return n ? withLogo(b, [n, lpName(lp, n), oe], lpName(lp, n)) : b;
 }
 const lpCtx = (lp, c) => c.year === lp.year ? c : {...c, year: lp.year, split: "all"};
 /* a series card: both teams, the score, stage and best-of; played: a link per game; upcoming: the stream */
@@ -2706,7 +2783,7 @@ function start(d){
   lastW = window.innerWidth;
   window.addEventListener("resize", () => { clearTimeout(start.t); start.t = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 120){ lastW = window.innerWidth; render(); } }, 250); });
 }
-const ready = PAGE.inline ? Promise.resolve(PAGE.inline.index) : fetch("pro.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+const ready = Promise.all([PAGE.inline ? Promise.resolve(PAGE.inline.index) : fetch("pro.json").then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }), loadLogos()]).then(([d]) => d);
 window.__pro = {ready: ready.then(d => { start(d); return IDLE.then(() => true); }, e => { $("main").textContent = ""; $("main").append(h("div", {class: "notice err"}, `The pro data (pro.json) could not be loaded: ${e.message}. Reload to try again.`)); throw e; }),
   idle: () => IDLE, render, league: (y, L) => loadLeague(y, L), lp: () => loadLP().then(lp => linkAll(lp).then(() => lp)), standings, teamAgg, teamGames, pAgg, playerRows, gamesSel, ctx: () => CTX};
 })();
