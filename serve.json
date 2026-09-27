@@ -246,6 +246,24 @@
           "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'sha256-RH5rc/AgYnN0mMrO3hJu4Ljns074W9iHrC4qVoxeAYg=' 'sha256-hq+U1MZCE3EIeUZBSm6rB1yQMEb+TdjOcEqg74PrkW8=' 'sha256-u78ap2Bx8J3Md4E83HstDnXWe0jslz6RRrq6lxAmcHI='"
         }
       ]
+    },
+    {
+      "source": "champions/**/*.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'none'"
+        }
+      ]
+    },
+    {
+      "source": "pro/**/*.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'none'"
+        }
+      ]
     }
   ]
 }
