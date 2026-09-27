@@ -1,7 +1,31 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>[hidden]{display:none!important}</style></head><body>
-<title>Rift Logic Pro</title>
-<meta name="description" content="Tier-1 pro League of Legends (LCK, LPL, LEC, LCS): standings, Elo, teams, rosters, players, drafts and win probability, from Oracle's Elixir.">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LoL Pro Stats: LCK, LPL, LEC and LCS Standings, Schedule and Players | Rift Logic</title>
+<meta name="description" content="League of Legends pro play stats for the LCK, LPL, LEC and LCS: standings, schedule, rosters, team and player ratings, and every game&#x27;s draft with win probability.">
+<link rel="canonical" href="https://www.riftlogic.dev/pro">
+<meta name="theme-color" content="#07080A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:site_name" content="Rift Logic">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="LoL Pro Stats: LCK, LPL, LEC and LCS Standings, Schedule and Players | Rift Logic">
+<meta property="og:description" content="League of Legends pro play stats for the LCK, LPL, LEC and LCS: standings, schedule, rosters, team and player ratings, and every game&#x27;s draft with win probability.">
+<meta property="og:url" content="https://www.riftlogic.dev/pro">
+<meta property="og:image" content="https://www.riftlogic.dev/og/pro.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Rift Logic pro league standings">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LoL Pro Stats: LCK, LPL, LEC and LCS Standings, Schedule and Players | Rift Logic">
+<meta name="twitter:description" content="League of Legends pro play stats for the LCK, LPL, LEC and LCS: standings, schedule, rosters, team and player ratings, and every game&#x27;s draft with win probability.">
+<meta name="twitter:image" content="https://www.riftlogic.dev/og/pro.jpg">
+<meta name="twitter:image:alt" content="Rift Logic pro league standings">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://www.riftlogic.dev/#website","name":"Rift Logic","url":"https://www.riftlogic.dev/","inLanguage":"en","description":"League of Legends stats and tools: a damage calculator language, a draft tool, champion tier lists and pro league stats."},{"@type":"WebApplication","name":"LoL Pro Stats: LCK, LPL, LEC and LCS Standings, Schedule and Players","url":"https://www.riftlogic.dev/pro","description":"League of Legends pro play stats for the LCK, LPL, LEC and LCS: standings, schedule, rosters, team and player ratings, and every game's draft with win probability.","applicationCategory":"GameApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"image":"https://www.riftlogic.dev/og/pro.jpg","isPartOf":{"@id":"https://www.riftlogic.dev/#website"}}]}</script>
+<style>[hidden]{display:none!important}</style></head><body>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
@@ -1002,6 +1026,7 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
 </div>
 <div id="tip" role="tooltip" hidden></div>
 <script>
+const PRO_BASE_TITLE = document.title;
 (() => {
 "use strict";
 const PAGE = {"names":{"Aatrox":"Aatrox","Ahri":"Ahri","Akali":"Akali","Akshan":"Akshan","Alistar":"Alistar","Ambessa":"Ambessa","Amumu":"Amumu","Anivia":"Anivia","Annie":"Annie","Aphelios":"Aphelios","Ashe":"Ashe","AurelionSol":"Aurelion Sol","Aurora":"Aurora","Azir":"Azir","Bard":"Bard","Belveth":"Bel'Veth","Blitzcrank":"Blitzcrank","Brand":"Brand","Braum":"Braum","Briar":"Briar","Caitlyn":"Caitlyn","Camille":"Camille","Cassiopeia":"Cassiopeia","Chogath":"Cho'Gath","Corki":"Corki","Darius":"Darius","Diana":"Diana","DrMundo":"Dr. Mundo","Draven":"Draven","Ekko":"Ekko","Elise":"Elise","Evelynn":"Evelynn","Ezreal":"Ezreal","Fiddlesticks":"Fiddlesticks","Fiora":"Fiora","Fizz":"Fizz","Galio":"Galio","Gangplank":"Gangplank","Garen":"Garen","Gnar":"Gnar","Gragas":"Gragas","Graves":"Graves","Gwen":"Gwen","Hecarim":"Hecarim","Heimerdinger":"Heimerdinger","Hwei":"Hwei","Illaoi":"Illaoi","Irelia":"Irelia","Ivern":"Ivern","Janna":"Janna","JarvanIV":"Jarvan IV","Jax":"Jax","Jayce":"Jayce","Jhin":"Jhin","Jinx":"Jinx","KSante":"K'Sante","Kaisa":"Kai'Sa","Kalista":"Kalista","Karma":"Karma","Karthus":"Karthus","Kassadin":"Kassadin","Katarina":"Katarina","Kayle":"Kayle","Kayn":"Kayn","Kennen":"Kennen","Khazix":"Kha'Zix","Kindred":"Kindred","Kled":"Kled","KogMaw":"Kog'Maw","Leblanc":"LeBlanc","LeeSin":"Lee Sin","Leona":"Leona","Lillia":"Lillia","Lissandra":"Lissandra","Locke":"Locke","Lucian":"Lucian","Lulu":"Lulu","Lux":"Lux","Malphite":"Malphite","Malzahar":"Malzahar","Maokai":"Maokai","MasterYi":"Master Yi","Mel":"Mel","Milio":"Milio","MissFortune":"Miss Fortune","MonkeyKing":"Wukong","Mordekaiser":"Mordekaiser","Morgana":"Morgana","Naafiri":"Naafiri","Nami":"Nami","Nasus":"Nasus","Nautilus":"Nautilus","Neeko":"Neeko","Nidalee":"Nidalee","Nilah":"Nilah","Nocturne":"Nocturne","Nunu":"Nunu & Willump","Olaf":"Olaf","Orianna":"Orianna","Ornn":"Ornn","Pantheon":"Pantheon","Poppy":"Poppy","Pyke":"Pyke","Qiyana":"Qiyana","Quinn":"Quinn","Rakan":"Rakan","Rammus":"Rammus","RekSai":"Rek'Sai","Rell":"Rell","Renata":"Renata Glasc","Renekton":"Renekton","Rengar":"Rengar","Riven":"Riven","Rumble":"Rumble","Ryze":"Ryze","Samira":"Samira","Sejuani":"Sejuani","Senna":"Senna","Seraphine":"Seraphine","Sett":"Sett","Shaco":"Shaco","Shen":"Shen","Shyvana":"Shyvana","Singed":"Singed","Sion":"Sion","Sivir":"Sivir","Skarner":"Skarner","Smolder":"Smolder","Sona":"Sona","Soraka":"Soraka","Swain":"Swain","Sylas":"Sylas","Syndra":"Syndra","TahmKench":"Tahm Kench","Taliyah":"Taliyah","Talon":"Talon","Taric":"Taric","Teemo":"Teemo","Thresh":"Thresh","Tristana":"Tristana","Trundle":"Trundle","Tryndamere":"Tryndamere","TwistedFate":"Twisted Fate","Twitch":"Twitch","Udyr":"Udyr","Urgot":"Urgot","Varus":"Varus","Vayne":"Vayne","Veigar":"Veigar","Velkoz":"Vel'Koz","Vex":"Vex","Vi":"Vi","Viego":"Viego","Viktor":"Viktor","Vladimir":"Vladimir","Volibear":"Volibear","Warwick":"Warwick","Xayah":"Xayah","Xerath":"Xerath","XinZhao":"Xin Zhao","Yasuo":"Yasuo","Yone":"Yone","Yorick":"Yorick","Yunara":"Yunara","Yuumi":"Yuumi","Zaahen":"Zaahen","Zac":"Zac","Zed":"Zed","Zeri":"Zeri","Ziggs":"Ziggs","Zilean":"Zilean","Zoe":"Zoe","Zyra":"Zyra"},"standalone":true,"inline":null};
@@ -2781,7 +2806,8 @@ function render(){
     if (tok !== RTOK) return;
     main.textContent = ""; main.append(...nodes);
     main.querySelectorAll("nav.tabs").forEach(dragScroll);   // tab rows overflow on phones: drag like the card rows (no visible slider)
-    document.title = ({home: "Pro leagues", league: (r.args[0] || "").toUpperCase(), team: r.args[0], player: r.args[0], game: "Game", drafts: "Drafts " + (r.args[0] || "").toUpperCase(), "draft-search": "Draft search", schedule: "Schedule"}[r.view] || "Pro leagues") + " · Rift Logic Pro";
+    // home is the landing view: keep the page's own <title> (what search engines index; set by src/seo.py)
+    document.title = r.view === "home" ? PRO_BASE_TITLE : ({home: "Pro leagues", league: (r.args[0] || "").toUpperCase(), team: r.args[0], player: r.args[0], game: "Game", drafts: "Drafts " + (r.args[0] || "").toUpperCase(), "draft-search": "Draft search", schedule: "Schedule"}[r.view] || "Pro leagues") + " · Rift Logic Pro";
   }).catch(e => { if (tok !== RTOK) return; main.textContent = ""; main.append(h("div", {class: "notice err"}, `Something went wrong: ${e.message}`)); console.error(e); });
   return IDLE;
 }
@@ -2802,4 +2828,5 @@ window.__pro = {ready: ready.then(d => { start(d); return IDLE.then(() => true);
 })();
 </script>
 
+<p class="rl-legal" style="margin:28px auto 12px;max-width:900px;padding:0 16px;font:11px/1.5 system-ui,sans-serif;color:var(--faint,#8a8f98);text-align:center">Rift Logic isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
 </body></html>
