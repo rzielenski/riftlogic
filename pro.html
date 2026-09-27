@@ -278,6 +278,26 @@ tbody th a:hover{color:var(--accent)}
 tr.sep td,tr.sep th{border-top:2px solid var(--line-strong)}
 #tip{position:fixed;z-index:100;pointer-events:none;max-width:280px;background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;box-shadow:var(--shadow);padding:6px 9px;font-size:12px;line-height:1.4;color:var(--ink);white-space:pre-line}
 
+/* drafts: heat strips, heat map, whiskers, stacked role bars */
+.hstrip{display:grid;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.hstrip::-webkit-scrollbar{display:none}
+.hsr{display:grid;grid-template-columns:52px repeat(8,minmax(62px,1fr));gap:3px;min-width:560px}
+.hsl{display:grid;align-items:center;font:600 11px/1 var(--mono);color:var(--ink-2)}
+.hc{display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:color-mix(in srgb,var(--accent) calc(var(--a,0) * 70%),var(--surface-2));min-width:0}
+.hc b{font:500 10.5px/1 var(--mono);color:var(--ink)}
+.chart rect.hm{fill:var(--accent)}
+.chart text.hmv{font:600 9.5px var(--mono);fill:var(--ink-2)}
+.chart text.hmv.on{fill:var(--accent-ink)}
+.chart .whisk{stroke:var(--ink-2);stroke-width:2;stroke-linecap:round}
+.chart .pt.b{fill:var(--side1)}.chart .pt.r{fill:var(--side2)}
+.stk{display:flex;height:16px;border-radius:5px;overflow:hidden;background:var(--inset)}
+.stk i{display:block;background:var(--c);font:600 9.5px/16px var(--sans);color:#fff;font-style:normal;text-align:center;overflow:hidden;white-space:nowrap}
+.rrow{display:flex;gap:1px}.rrow .ri,.rrow .ri svg{width:13px;height:13px}
+.tile .rrow{position:static}.tile .rrow .ri{position:static}
+.pick .rg{font:500 10.5px/1 var(--mono);color:var(--faint)}
+.pick .rg.big{color:var(--no)}
+#dsform .cb{flex:1 1 220px}
+#dsform .cb input{padding-left:10px}
 @media (max-width:1000px){.cards6{grid-template-columns:repeat(2,minmax(0,1fr))}.mults{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){
   .bar{position:static}
@@ -419,7 +439,7 @@ function prepare(D, y, L, info){
   D.ti = Object.fromEntries(D.teams.map((t, i) => [t, i]));
   D.pi = Object.fromEntries(D.players.map((p, i) => [p, i]));
   D.byId = new Map();
-  D.games.forEach((g, i) => { g.i = i; g.t0 = tms(g.dt); g.min = g.len / 60; D.byId.set(g.id, g); g.seq = pickSeq(g); });
+  D.games.forEach((g, i) => { g.D = D; g.i = i; g.t0 = tms(g.dt); g.min = g.len / 60; D.byId.set(g.id, g); g.seq = pickSeq(g); });
   D.latestSp = D.games.length ? D.games[D.games.length - 1].sp : 0;
   return D;
 }
@@ -824,9 +844,12 @@ function drawChrome(r, c, L, D){
   const lg = $("lg"); lg.textContent = "";
   const Ls = Object.keys(IX.years[c.year]);
   const keepSplit = (L2) => c.split === "all" || c.split === "latest" || (IX.years[c.year][L2] && IX.years[c.year][L2].splits.includes(c.split)) ? c.split : "all";
-  lg.append(h("button", {type: "button", "aria-pressed": String(r.view === "home"), onclick: () => { location.hash = link("home", [], base({...c, split: c.split === "latest" ? "latest" : "all"})); }}, "All"));
+  const dv = r.view === "drafts", sv = r.view === "draft-search", allOn = r.view === "home" || ((dv || sv) && !L);
+  lg.append(h("button", {type: "button", "aria-pressed": String(allOn), onclick: () => { const c2 = base({...c, split: c.split === "latest" ? "latest" : "all"});
+    location.hash = dv ? link("drafts", ["all", ...r.args.slice(1)], {...r.q, ...c2}) : sv ? link("draft-search", [], {...r.q, lg: null, ...c2}) : link("home", [], c2); }}, "All"));
   for (const L2 of Ls) lg.append(h("button", {type: "button", "aria-pressed": String(L === L2), title: IX.years[c.year][L2].label + ` · ${IX.years[c.year][L2].games} games`,
-    onclick: () => { location.hash = leagueLink({...c, split: keepSplit(L2)}, L2, r.view === "league" ? r.args[1] : null); }}, L2));
+    onclick: () => { const c2 = {...c, split: keepSplit(L2)};
+      location.hash = dv ? link("drafts", [L2, ...r.args.slice(1)], {...r.q, ...base(c2), team: null}) : sv ? link("draft-search", [], {...r.q, ...base(c2), lg: L2, team: null}) : leagueLink(c2, L2, r.view === "league" ? r.args[1] : null); }}, L2));
   const y = $("year"); y.textContent = "";
   for (const k of Object.keys(IX.years).sort().reverse()) y.append(h("option", {value: k, selected: k === c.year ? true : null}, "Season " + k));
   y.onchange = () => { const q = {...r.q, year: y.value === IX.defaultYear ? null : y.value}; if (q.split && q.split !== "latest") q.split = null; location.hash = link(r.view, r.args, q); };
@@ -842,6 +865,8 @@ function drawChrome(r, c, L, D){
   const cr = $("crumbs"); cr.textContent = "";
   const items = [["Pro", r.view === "home" ? null : link("home", [], base(c))]];
   if (L) items.push([IX.years[c.year][L] ? IX.years[c.year][L].label : L, r.view === "league" ? null : leagueLink(c, L)]);
+  if (r.view === "drafts") items.push(["Drafts", null]);
+  if (r.view === "draft-search") items.push(["Drafts", link("drafts", [L || "all"], base(c))], ["Search", null]);
   if (r.view === "team") items.push([r.args[0], null]);
   if (r.view === "player"){ const e = playerEntry(c.year, r.args[0], r.q.lg); if (e) items.push([e[2], teamLink(c, e[2])]); items.push([r.args[0], null]); }
   if (r.view === "game") items.push(["Game", null]);
@@ -904,7 +929,7 @@ async function viewHome(r, c){
   const Ls = Object.keys(IX.years[c.year]);
   const Ds = await Promise.all(Ls.map(L => loadLeague(c.year, L)));
   drawChrome(r, c, null, null);
-  const out = [h("div", {class: "head"}, h("h1", {}, `Pro leagues · ${c.year}`))];
+  const out = [h("div", {class: "head"}, h("h1", {}, `Pro leagues · ${c.year}`), h("a", {class: "btn", href: link("drafts", ["all"], base(c)), id: "drafts-link"}, "Drafts"), h("a", {class: "btn", href: link("draft-search", [], base(c))}, "Draft search"))];
   Ds.forEach((D, k) => {
     const games = gamesSel(D, c), st = rankStandings(standings(D, games));
     const s = h("section", {class: "sec", "data-league": D.L},
@@ -922,9 +947,10 @@ async function viewLeague(r, c){
   const L = r.args[0] && IX.years[c.year][r.args[0].toUpperCase()] ? r.args[0].toUpperCase() : null;
   if (!L){ drawChrome(r, c, null, null); return [notice("No such league this season", `${r.args[0] || ""} isn't one of the tier-1 leagues in ${c.year}.`, link("home", [], base(c)), "All leagues")]; }
   const D = await loadLeague(c.year, L), games = gamesSel(D, c), tab = r.args[1] === "players" ? "players" : "overview";
+  if (r.args[1] === "drafts") return viewDrafts({...r, view: "drafts", args: [L, ...r.args.slice(2)]}, c);
   drawChrome(r, c, L, D);
   const out = [h("div", {class: "head"}, h("div", {}, h("h1", {}, `${D.label} · ${splitLabel(D, c)}`), h("div", {class: "sub"}, `${games.length} games · ${games.length ? games[0].dt.slice(0, 10) + " to " + games[games.length - 1].dt.slice(0, 10) : ""}`))),
-    h("nav", {class: "tabs", "aria-label": "League sections"}, [["overview", "Overview"], ["players", "Players"]].map(([k, t]) => h("a", {href: leagueLink(c, L, k === "overview" ? null : k), "aria-selected": String(tab === k)}, t)))];
+    h("nav", {class: "tabs", "aria-label": "League sections"}, [["overview", "Overview"], ["players", "Players"], ["drafts", "Drafts"]].map(([k, t]) => h("a", {href: k === "drafts" ? link("drafts", [L], base(c)) : leagueLink(c, L, k === "overview" ? null : k), "aria-selected": String(tab === k)}, t)))];
   if (!games.length){ out.push(notice("No games", "No games in this split.", leagueLink({...c, split: "all"}, L), "Whole season")); return out; }
   if (tab === "players"){ out.push(...leaguePlayers(r, c, D, games)); return out; }
   const st = rankStandings(standings(D, games));
@@ -1013,7 +1039,24 @@ async function viewTeam(r, c){
   const out = [h("div", {class: "head", id: "thead"}, tagBadge(name, "lg"), h("div", {}, h("h1", {}, name),
     h("div", {class: "chips"}, h("a", {class: "chip", href: leagueLink(c, L)}, D.label), h("span", {class: "chip"}, splitLabel(D, c)),
       me ? h("span", {class: "chip", id: "rec"}, `${me.w}–${me.l} · #${place} of ${st.length}`) : null, me && me.elo != null ? h("span", {class: "chip"}, `Elo ${Math.round(me.elo)}`) : null)))];
+  const ttab = r.args[1] === "draft" ? "draft" : "overview";
+  out.push(h("nav", {class: "tabs", id: "ttabs", "aria-label": "Team sections"}, [["overview", "Overview"], ["draft", "Draft"]].map(([k, t]) => h("a", {href: link("team", k === "draft" ? [name, "draft"] : [name], base(c)), "aria-selected": String(ttab === k)}, t))));
   if (!rows.length){ out.push(notice("No games", "No games for this team in this split.", teamLink({...c, split: "all"}, name), "Whole season")); return out; }
+  if (ttab === "draft"){
+    const T = teamDraft(games, name), n = T.rows.length, sp = T.split, rt = regretTeams(games).filter(x => x.n >= 3).sort((x, y) => x.avg - y.avg), ri = rt.findIndex(x => x.name === name);
+    const dw = mean(T.rows.map(({g, s}) => g.dwp ? (s ? 1 - g.dwp[0] : g.dwp[0]) : null)), rec = k => `${sp[k][1]}–${sp[k][0] - sp[k][1]}`;
+    out.push(h("div", {class: "cards6", id: "cards"},
+      card("With first pick", rec("fp"), `${sp.fp[0]} of ${n} games · ${pct(sp.fp[0] ? sp.fp[1] / sp.fp[0] : null)}`),
+      card("Without first pick", rec("nofp"), `${pct(sp.nofp[0] ? sp.nofp[1] / sp.nofp[0] : null)} win rate`),
+      card("Draft win chance", pct(dw, 1), "the model's average at equal teams", dw > 0.5 ? "up" : dw < 0.5 ? "dn" : ""),
+      card(h("span", {"data-tip": regretTip()}, "Model regret"), T.regs.length ? f1(mean(T.regs)) : "–", ri >= 0 ? `pp per draft · #${ri + 1} lowest of ${rt.length}` : "pp per draft"),
+      card("Favourite ban", T.bans[0] ? nameOf(CH[T.bans[0].c]) : "–", T.bans[0] ? `${T.bans[0].n} of ${n} games` : ""),
+      card("Banned against", T.vs[0] ? nameOf(CH[T.vs[0].c]) : "–", T.vs[0] ? `${T.vs[0].n} of ${n} games` : "")));
+    out.push(...teamDraftBody(c, name, T));
+    const wp = worstPicks(T.rows.map(x => x.g), 400).filter(x => x.g.D.teams[x.g.t[x.s]] === name).slice(0, 12);
+    if (wp.length) out.push(rowSec(h("span", {"data-tip": regretTip()}, "Biggest regrets"), `${name}'s picks with the most model regret`, wp.map(x => regretCard(c, x))));
+    return out;
+  }
   const a = teamAgg(D, rows), la = teamAgg(D, games.flatMap(g => [{g, s: 0}, {g, s: 1}]));
   const gdR = st.map(x => teamAgg(D, teamGames(games, x.t)).gdm[1]).filter(v => v != null).sort((x, y) => y - x);
   out.push(h("div", {class: "cards6", id: "cards"},
@@ -1185,9 +1228,20 @@ async function viewGame(r, c){
   const dside = s => h("div", {class: "dside" + (s ? " red" : ""), "data-side": s ? "red" : "blue"},
     h("div", {class: "dh"}, tagBadge(TN(s)), h("a", {href: teamLink(c2, TN(s)), style: "color:inherit;text-decoration:none"}, TN(s)), h("span", {class: "note"}, (s ? "red" : "blue") + (g.fp === s ? " · first pick" : "")), h("span", {class: "res " + (g.w === s ? "up" : "dn")}, g.w === s ? "WIN" : "LOSS")),
     g.pk[s].map((ro, i) => ro == null ? null : h("div", {class: "pick", "data-order": seqOf(s, "pick", i)}, h("span", {class: "o", title: "Draft action " + seqOf(s, "pick", i)}, "#" + seqOf(s, "pick", i)), portrait(g.ch[s][ro], "sm"),
-      h("span", {}, nameOf(CH[g.ch[s][ro]])), roleIcon(ro), h("a", {href: playerLink(c2, D.players[g.pl[s][ro]], D.L)}, D.players[g.pl[s][ro]]))),
+      h("span", {}, nameOf(CH[g.ch[s][ro]])), roleIcon(ro), h("a", {href: playerLink(c2, D.players[g.pl[s][ro]], D.L)}, D.players[g.pl[s][ro]]),
+      g.rg && g.rg[s][i] != null ? h("span", {class: "rg" + (g.rg[s][i] >= 30 ? " big" : ""), "data-regret": g.rg[s][i] / 10,
+        "data-tip": `Model regret ${f1(g.rg[s][i] / 10)} pp` + (g.ra[s][i] != null && g.ra[s][i] !== g.ch[s][ro] ? `: best available ${nameOf(CH[g.ra[s][i]])}` : ": the model's own choice")}, f1(g.rg[s][i] / 10)) : null)),
     h("div", {class: "bans", "aria-label": "Bans"}, h("span", {class: "note"}, "Bans"), g.bn[s].map((ci, i) => h("span", {title: `Ban ${i + 1} (draft action ${seqOf(s, "ban", i)}): ${ci == null ? "none" : nameOf(CH[ci])}`}, ci == null ? h("span", {class: "ph xs"}) : portrait(ci, "xs bn"), "#" + seqOf(s, "ban", i)))));
   out.push(sec("Draft", h("div", {class: "draft", id: "draft"}, dside(0), dside(1))));
+  if (g.rg){
+    const worst = [0, 1].map(s => { let b = null; g.rg[s].forEach((v, i) => { if (v != null && g.pk[s][i] != null && (!b || v > b.v * 10)) b = {g, s, i, v: v / 10, ro: g.pk[s][i], c: g.ch[s][g.pk[s][i]], alt: g.ra[s][i]}; }); return b; });
+    const rows = [0, 1].flatMap(s => g.pk[s].map((ro, i) => ro == null || g.rg[s][i] == null ? null : {s, i, ro, v: g.rg[s][i] / 10, a: (s === g.fp ? SEQ_F : SEQ_S).pick[i]})).filter(Boolean).sort((x, y) => x.a - y.a);
+    out.push(h("div", {class: "two", id: "gregret"},
+      panel(h("span", {"data-tip": regretTip()}, "Biggest regret per team"), h("div", {class: "hs-row", style: "grid-auto-columns:minmax(0,1fr);overflow:visible"}, worst.filter(Boolean).map(x => regretCard(c2, x)))),
+      panel(h("span", {"data-tip": regretTip()}, "Model regret per pick ", h("small", {}, `${TN(0)} ${f1(regOf(g, 0))} · ${TN(1)} ${f1(regOf(g, 1))} pp`)),
+        bars(rows.map(x => ({label: h("span", {class: "hl"}, h("span", {class: "o", style: "font:600 10.5px/1 var(--mono);width:22px;color:var(--faint)"}, slotLabel(x.a)), portrait(g.ch[x.s][x.ro], "xs"), nameOf(CH[g.ch[x.s][x.ro]])), v: x.v, txt: f1(x.v), c: x.s ? "var(--side2)" : "var(--side1)",
+          tip: `${TN(x.s)} ${slotLabel(x.a)} ${nameOf(CH[g.ch[x.s][x.ro]])} (${ROLE_L[x.ro]}): ${f1(x.v)} pp` + (g.ra[x.s][x.i] !== g.ch[x.s][x.ro] ? `; best available ${nameOf(CH[g.ra[x.s][x.i]])}` : "; the model's own choice")})), {lw: 150}))));
+  }
   // pre-game and in-game win probability
   const splitBar = (p, lab) => h("div", {"data-tip": `${lab}: ${TN(0)} ${pct(p, 1)}, ${TN(1)} ${pct(1 - p, 1)}`}, h("div", {class: "note"}, lab),
     h("div", {class: "split", role: "img", "aria-label": `${lab}: ${TN(0)} ${pct(p, 1)}, ${TN(1)} ${pct(1 - p, 1)}`}, h("i", {class: "b", style: `width:${100 * p}%`}, `${IX.tags[TN(0)] || ""} ${pct(p)}`), h("i", {class: "r", style: `width:${100 * (1 - p)}%`}, `${pct(1 - p)} ${IX.tags[TN(1)] || ""}`)));
@@ -1226,19 +1280,430 @@ async function viewGame(r, c){
   return out;
 }
 
+/* ---------- drafts: pick / ban priority, draft phases, flex picks, blind vs counter, team tendencies, model regret, search ---------- */
+/* draft actions of a game in order (0-19): {a, s, k: "p" | "b", i (the side's pick / ban number), ro, c} */
+const PICK_ACTS = [6, 7, 8, 9, 10, 11, 16, 17, 18, 19], FIRST_PICK_PHASE = 11, FIRST_BAN_PHASE = 5;
+function acts(g){
+  if (g._acts) return g._acts;
+  const out = [];
+  for (const s of [0, 1]){ const S = s === g.fp ? SEQ_F : SEQ_S;
+    g.pk[s].forEach((ro, i) => out.push({a: S.pick[i], s, k: "p", i, ro, c: ro == null ? null : g.ch[s][ro]}));
+    g.bn[s].forEach((c, i) => out.push({a: S.ban[i], s, k: "b", i, c})); }
+  return (g._acts = out.sort((x, y) => x.a - y.a));
+}
+const slotLabel = a => { const f = SEQ_F.pick.indexOf(a), s = SEQ_S.pick.indexOf(a), fb = SEQ_F.ban.indexOf(a), sb = SEQ_S.ban.indexOf(a);
+  return f >= 0 ? "F" + (f + 1) : s >= 0 ? "S" + (s + 1) : "Ban " + ([...SEQ_F.ban, ...SEQ_S.ban].sort((x, y) => x - y).indexOf(a) + 1) + (fb >= 0 ? " F" : sb >= 0 ? " S" : ""); };
+const slotTip = a => { const l = slotLabel(a); return `Draft action ${a + 1}: ${/^F/.test(l) ? "pick " + l.slice(1) + " of the first-pick team" : /^S/.test(l) ? "pick " + l.slice(1) + " of the other team" : l.replace(/ F$/, ", first-pick team").replace(/ S$/, ", other team")}`; };
+const patchKey = p => String(p).split(".").map(x => String(+x || 0).padStart(3, "0")).join(".");
+const patchesOf = games => [...new Set(games.map(g => g.pt))].sort((a, b) => patchKey(a) < patchKey(b) ? -1 : 1);
+const regOf = (g, s) => g.rg && g.rg[s] && g.rg[s].every(v => v != null) ? g.rg[s].reduce((a, b) => a + b, 0) / 10 : null;
+function wilson(w, n, z = 1.96){ if (!n) return [null, null]; const p = w / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, e = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return [Math.max(0, c - e), Math.min(1, c + e)]; }
+const ciTxt = (w, n) => { const [lo, hi] = wilson(w, n); return lo == null ? "" : `95% CI ${pct(lo)}–${pct(hi)}`; };
+
+/* per champion over the games: presence, first-phase pick / ban rates, blind / counter picks, roles, per-patch presence */
+function draftChamps(games){
+  const m = new Map(), pats = patchesOf(games), pi = new Map(pats.map((p, k) => [p, k])), pn = pats.map(() => 0);
+  const get = c => { if (!m.has(c)) m.set(c, {c, pick: 0, ban: 0, fpP: 0, fpB: 0, blind: 0, counter: 0, bw: 0, cw: 0, w: 0, roles: [0, 0, 0, 0, 0], pp: pats.map(() => 0), first: 0}); return m.get(c); };
+  for (const g of games){
+    const k = pi.get(g.pt); pn[k]++;
+    for (const x of acts(g)){
+      if (x.c == null) continue;
+      const e = get(x.c); e.pp[k]++;
+      if (x.k === "b"){ e.ban++; if (x.a <= FIRST_BAN_PHASE) e.fpB++; continue; }
+      const won = g.w === x.s; e.pick++; if (won) e.w++; if (x.ro != null) e.roles[x.ro]++;
+      if (x.a <= FIRST_PICK_PHASE) e.fpP++;
+      if (x.a === 6) e.first++;
+      const op = x.ro == null ? null : g.seq[1 - x.s][x.ro];
+      if (op != null){ if (x.a < op){ e.blind++; if (won) e.bw++; } else { e.counter++; if (won) e.cw++; } }
+    }
+  }
+  const n = games.length || 1;
+  return {pats, pn, rows: [...m.values()].map(e => ({...e, n, pres: (e.pick + e.ban) / n, fpPR: e.fpP / n, fpBR: e.fpB / n, blindSh: e.blind + e.counter ? e.blind / (e.blind + e.counter) : null,
+    wr: e.pick ? e.w / e.pick : null, trend: e.pp.map((v, k) => pn[k] >= 3 ? v / pn[k] : null)}))};
+}
+const champHref = c => "stats.html#/champ/" + encodeURIComponent(CH[c]) + "?mode=pro";
+function champTile(e, big, small, tip, extra){
+  return h("a", {class: "tile" + (e.tier ? " t-" + e.tier : " small"), href: champHref(e.c), "data-champ": CH[e.c], title: tip},
+    e.rank ? h("span", {class: "tb", "aria-hidden": "true"}, "#" + e.rank) : null, portrait(e.c), h("b", {}, nameOf(CH[e.c])), h("span", {class: "wr"}, big), h("small", {}, small), extra || null);
+}
+const champLabel = c => h("span", {class: "hl"}, portrait(c, "xs"), nameOf(CH[c]));
+
+/* SVG heat map: rows x cols of shares (0-1), row / column labels, a tooltip per cell */
+function heatMap({title, rows, cols, vals, tips, w = chartW(0.5), cell = 26}){
+  const L = 64, T = 22, cw = Math.max(18, (w - L - 6) / cols.length), hh = T + rows.length * cell + 4, mx = Math.max(1e-9, ...vals.flat());
+  let g = "";
+  cols.forEach((c, j) => { g += `<text x="${(L + cw * j + cw / 2).toFixed(1)}" y="14" text-anchor="middle">${esc(c)}</text>`; });
+  rows.forEach((r, i) => {
+    g += `<text x="${L - 6}" y="${(T + i * cell + cell / 2 + 3.5).toFixed(1)}" text-anchor="end">${esc(r)}</text>`;
+    cols.forEach((c, j) => { const v = vals[i][j] || 0;
+      g += `<rect class="hm" x="${(L + cw * j + 1).toFixed(1)}" y="${(T + i * cell + 1).toFixed(1)}" width="${(cw - 2).toFixed(1)}" height="${cell - 2}" rx="3" style="fill-opacity:${(0.06 + 0.94 * v / mx).toFixed(3)}" data-tip="${esc(tips[i][j])}"/>`;
+      if (v >= 0.1 && cw >= 30) g += `<text class="hmv${v / mx > 0.55 ? " on" : ""}" x="${(L + cw * j + cw / 2).toFixed(1)}" y="${(T + i * cell + cell / 2 + 3.5).toFixed(1)}" text-anchor="middle">${Math.round(100 * v)}</text>`; }); });
+  const svg = svgNode(`<svg class="chart" viewBox="0 0 ${w} ${hh}" role="img" aria-label="${esc(title)}"><title>${esc(title)}</title><desc>Heat map, ${rows.length} rows by ${cols.length} columns; darker = a larger share. Hover a cell for its value; the values are in the table that follows.</desc>${g}</svg>`);
+  return h("div", {class: "fig"}, svg, srTable(title, ["Row", ...cols], rows.map((r, i) => [r, ...cols.map((_, j) => pct(vals[i][j] || 0))])));
+}
+/* dot-and-whisker chart: items {label, v, lo, hi, tip, cls}; x from 0 to 1 with a reference line */
+function ciChart({title, items, ref = 0.5, lo = 0.3, hi = 0.7, w = chartW(0.5)}){
+  const L = 110, R = 16, T = 8, rowH = 24, hh = T + items.length * rowH + 22;
+  const X = v => L + (w - L - R) * (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo);
+  let g = "";
+  for (const t of niceTicks(lo, hi, 4)) g += `<line class="gl" x1="${X(t).toFixed(1)}" x2="${X(t).toFixed(1)}" y1="${T}" y2="${hh - 20}"/><text x="${X(t).toFixed(1)}" y="${hh - 6}" text-anchor="middle">${pct(t)}</text>`;
+  g += `<line class="ref" x1="${X(ref).toFixed(1)}" x2="${X(ref).toFixed(1)}" y1="${T}" y2="${hh - 20}"/>`;
+  items.forEach((it, i) => { const y = T + i * rowH + rowH / 2;
+    g += `<text x="${L - 8}" y="${(y + 3.5).toFixed(1)}" text-anchor="end">${esc(it.label)}</text>`;
+    if (it.v == null) return;
+    g += `<g data-tip="${esc(it.tip)}"><line class="whisk ${it.cls || ""}" x1="${X(it.lo).toFixed(1)}" x2="${X(it.hi).toFixed(1)}" y1="${y}" y2="${y}"/><circle class="pt ${it.cls || "acc"}" r="5" cx="${X(it.v).toFixed(1)}" cy="${y}"/><rect class="hit" x="${L}" y="${y - rowH / 2}" width="${w - L - R}" height="${rowH}"/></g>`; });
+  const svg = svgNode(`<svg class="chart" viewBox="0 0 ${w} ${hh}" role="img" aria-label="${esc(title)}"><title>${esc(title)}</title><desc>Dot-and-whisker chart: each row's win rate with its 95% confidence interval; the dashed line is 50%. Values in the table that follows.</desc>${g}</svg>`);
+  return h("div", {class: "fig"}, svg, srTable(title, ["Row", "Win rate", "95% CI low", "95% CI high"], items.map(it => [it.label, pct(it.v, 1), pct(it.lo, 1), pct(it.hi, 1)])));
+}
+/* stacked horizontal bar (role shares): segs {v (share), label, tip, c} */
+function stack(segs){ return h("div", {class: "stk"}, segs.filter(s => s.v > 0).map(s => h("i", {style: `width:${100 * s.v}%;--c:${s.c}`, "data-tip": s.tip}, s.v >= 0.18 ? s.label : ""))); }
+const ROLE_C = ["hsl(200 55% 50%)", "hsl(140 45% 45%)", "hsl(280 45% 58%)", "hsl(30 70% 52%)", "hsl(340 50% 58%)"];
+
+/* the drafts view's scope: one league or all four of the season */
+async function draftScope(r, c){
+  const a0 = (r.args[0] || "all").toUpperCase(), L = IX.years[c.year][a0] ? a0 : null;
+  const Ls = L ? [L] : Object.keys(IX.years[c.year]);
+  const Ds = (await Promise.all(Ls.map(x => loadLeague(c.year, x)))).filter(Boolean);
+  const games = Ds.flatMap(D => gamesSel(D, c).map(g => g)).sort((x, y) => x.t0 - y.t0);
+  return {L, Ds, games, label: L ? Ds[0].label : "All leagues"};
+}
+const DTABS = [["priority", "Pick / ban priority"], ["phases", "Draft phases"], ["flex", "Flex picks"], ["blind", "Blind vs counter"], ["teams", "Teams"], ["regret", "Model regret"]];
+function regretTip(){
+  const R = IX.regretCheck; if (!R) return "Model regret: the draft model's win chance of the best available champion for the role minus the pick made.";
+  const e = R.elo, d = R.eloDraft;
+  return `Model regret: the pro draft model's win chance (equal teams, fitted on earlier seasons) of the best available champion for the pick's role (not picked, banned or played earlier in the series; 3+ pro games in the role this season), minus the pick made, with the unpicked slots averaged.\n` +
+    `Check (${R.games} games, fitted on one season, scored on the other): Elo alone log loss ${e.ll.toFixed(4)}, Elo + regret ${e.llRegret.toFixed(4)} (z ${e.z}); ` +
+    `beyond Elo and the model's own full-draft win chance: ${d.ll.toFixed(4)} vs ${d.llRegret.toFixed(4)} (z ${d.z}). The side with less regret won ${pct(R.lowerRegretWins, 1)}.` +
+    (R.predictive ? (d.llRegret < d.ll && d.z > 1.96 ? "" : "\nIt adds little beyond the model's own draft score: read it as the model's opinion, not a verdict.") : "\nIt does not predict wins beyond Elo: the model's opinion, not a claim.");
+}
+
+async function viewDrafts(r, c){
+  const S = await draftScope(r, c), {L, games} = S, tab = DTABS.some(([k]) => k === r.args[1]) ? r.args[1] : "priority";
+  drawChrome(r, c, L, L ? S.Ds[0] : null);
+  const dl = (t, q) => link("drafts", [L || "all", ...(t && t !== "priority" ? [t] : [])], {...base(c), ...(q || {})});
+  const out = [h("div", {class: "head"}, h("div", {}, h("h1", {}, `Drafts · ${S.label}`), h("div", {class: "sub"}, `${games.length} games · ${c.split === "all" ? "Season " + c.year : splitLabel(S.Ds[0], c)}`)),
+      h("a", {class: "btn", href: link("draft-search", [], {...base(c), lg: L})}, "Draft search")),
+    h("nav", {class: "tabs", id: "dtabs", "aria-label": "Draft sections"}, DTABS.map(([k, t]) => h("a", {href: dl(k), "aria-selected": String(tab === k), "data-tab": k}, t)))];
+  if (!games.length){ out.push(notice("No games", "No games in this split.", link("drafts", [L || "all"], base({...c, split: "all"})), "Whole season")); return out; }
+  const V = {priority: dPriority, phases: dPhases, flex: dFlex, blind: dBlind, teams: dTeams, regret: dRegret}[tab];
+  out.push(...V(r, c, S, games, dl));
+  return out;
+}
+
+/* 1. pick / ban priority per patch */
+function dPriority(r, c, S, games, dl){
+  const all = draftChamps(games), pats = all.pats, pt = pats.includes(r.q.pt) ? r.q.pt : null;
+  const gs = pt ? games.filter(g => g.pt === pt) : games, st = pt ? draftChamps(gs) : all, n = gs.length;
+  const trend = new Map(all.rows.map(e => [e.c, e.trend]));
+  const psel = h("select", {id: "patch", "aria-label": "Patch", onchange: e => { location.hash = dl("priority", {pt: e.target.value || null}); }},
+    h("option", {value: ""}, "All patches"), pats.slice().reverse().map(p => h("option", {value: p, selected: p === pt ? true : null}, `Patch ${p} · ${games.filter(g => g.pt === p).length} g`)));
+  const ok = st.rows.filter(e => e.pick + e.ban >= Math.max(2, n * 0.04)), rk = assignTiers(ok, e => e.pres, e => e.fpP + e.fpB);
+  const top = rk[0], fb = st.rows.slice().sort((a, b) => b.fpBR - a.fpBR)[0], fpk = st.rows.slice().sort((a, b) => b.fpPR - a.fpPR)[0];
+  const picked = st.rows.filter(e => e.pick).length, banned = st.rows.filter(e => e.ban).length;
+  const out = [h("div", {class: "selbar"}, psel),
+    h("div", {class: "cards6", id: "cards"},
+      card("Games", grp(n), pt ? `patch ${pt}` : `${pats.length} patches`),
+      card("Champions picked", String(picked), `${banned} banned · ${st.rows.length} present`),
+      card("Most present", top ? nameOf(CH[top.c]) : "–", top ? `${pct(top.pres)} · ${top.pick} picks, ${top.ban} bans` : ""),
+      card("First-phase ban", fb ? nameOf(CH[fb.c]) : "–", fb ? `${pct(fb.fpBR)} of games in bans 1–6` : ""),
+      card("First-phase pick", fpk ? nameOf(CH[fpk.c]) : "–", fpk ? `${pct(fpk.fpPR)} of games in picks 1–6` : ""),
+      card("Distinct first picks", String(st.rows.filter(e => e.first).length), (() => { const f = st.rows.slice().sort((a, b) => b.first - a.first)[0]; return f && f.first ? `most: ${nameOf(CH[f.c])} ${f.first}×` : ""; })())),
+    h("section", {class: "sec", id: "prio"}, h("h2", {}, "Priority", h("small", {}, `by presence${pt ? " · patch " + pt : ""}`)),
+      tierBands(rk.slice(0, 60), [], e => champTile(e, pct(e.pres), `P1 ${pct(e.fpPR)} · B1 ${pct(e.fpBR)}`,
+        `${nameOf(CH[e.c])}: presence ${pct(e.pres)} (${e.pick} picks, ${e.ban} bans in ${n} games)\nfirst-phase pick ${pct(e.fpPR)}, first-phase ban ${pct(e.fpBR)}\nblind ${e.blind}, counter ${e.counter}${e.blindSh != null ? ` (${pct(e.blindSh)} blind)` : ""}\n${e.w}–${e.pick - e.w} when picked`,
+        spark(trend.get(e.c) || [])), {unit: ["champion", "champions"], by: "presence (picked or banned)", gridCls: "ch"}))];
+  const t40 = rk.slice(0, 40);
+  out.push(h("div", {class: "two"},
+    panel("First-phase pick vs ban", scatter({title: "First-phase pick rate vs first-phase ban rate", pts: t40.map(e => ({x: e.fpBR, y: e.fpPR, r: 3 + 5 * e.pres, name: nameOf(CH[e.c]), label: e.rank <= 8 ? nameOf(CH[e.c]) : null,
+      tip: `${nameOf(CH[e.c])}: first-phase pick ${pct(e.fpPR)}, first-phase ban ${pct(e.fpBR)}, presence ${pct(e.pres)}`})), x: {label: "first-phase ban rate", fmt: v => pct(v), min: 0}, y: {label: "first-phase pick rate", fmt: v => pct(v), min: 0}})),
+    panel("Blind or counter", bars(t40.filter(e => e.blind + e.counter >= 3).sort((a, b) => b.blindSh - a.blindSh).slice(0, 14).map(e => ({label: champLabel(e.c), v: e.blindSh, txt: pct(e.blindSh), sub: `${e.blind + e.counter} g`,
+      tip: `${nameOf(CH[e.c])}: picked before the lane opponent ${e.blind} times (${e.bw}–${e.blind - e.bw}), after ${e.counter} times (${e.cw}–${e.counter - e.cw})`})), {max: 1, ref: 0.5, lw: 130}))));
+  if (pats.length >= 2){
+    const top8 = all.rows.filter(e => e.pick + e.ban >= 5).sort((a, b) => b.pres - a.pres).slice(0, 8);
+    out.push(sec("Presence by patch", h("div", {class: "panel", id: "ptrend"}, lineChart({title: "Presence of the eight most present champions by patch", hh: 260, y: {min: 0, fmt: v => pct(v)},
+      x: {ticks: pats.map((_, k) => k), fmt: k => pats[k] || ""}, series: top8.map(e => ({key: CH[e.c], label: nameOf(CH[e.c]), short: nameOf(CH[e.c]), th: hue(CH[e.c]), dots: 2.5, gaps: true,
+        pts: e.trend.map((v, k) => v == null ? null : {x: k, y: v, tip: `${nameOf(CH[e.c])}, patch ${pats[k]}: ${pct(v)} of ${all.pn[k]} games`}).filter(Boolean)}))}))));
+  }
+  return out;
+}
+
+/* 2. draft phases: each slot's picks and bans, the role at each pick slot, first-pick priority, first pick and side */
+function dPhases(r, c, S, games){
+  const n = games.length, slot = new Map();
+  for (const g of games) for (const x of acts(g)){ if (!slot.has(x.a)) slot.set(x.a, new Map()); if (x.c != null){ const m = slot.get(x.a); const e = m.get(x.c) || {c: x.c, n: 0, w: 0, ro: [0, 0, 0, 0, 0]}; e.n++; if (g.w === x.s) e.w++; if (x.ro != null) e.ro[x.ro]++; m.set(x.c, e); } }
+  const strip = a => { const xs = [...(slot.get(a) || new Map()).values()].sort((p, q) => q.n - p.n).slice(0, 8), isP = PICK_ACTS.includes(a);
+    return h("div", {class: "hsr", "data-slot": a}, h("span", {class: "hsl", "data-tip": slotTip(a)}, slotLabel(a)), xs.map(e => h("span", {class: "hc", style: `--a:${Math.min(1, 2.5 * e.n / n).toFixed(3)}`,
+      "data-tip": `${slotLabel(a)}: ${nameOf(CH[e.c])} ${e.n} of ${n} games (${pct(e.n / n)})${isP ? `, ${e.w}–${e.n - e.w}` : ""}`}, portrait(e.c, "xs"), h("b", {}, pct(e.n / n))))); };
+  const BANS = [...SEQ_F.ban, ...SEQ_S.ban].sort((x, y) => x - y);
+  const strips = (title, as, id) => panel(title, dragScroll(h("div", {class: "hstrip", id, tabindex: "0", role: "region", "aria-label": title + " (scrolls sideways)"}, as.map(strip))));
+  // role at each pick slot (heat map)
+  const roleAt = PICK_ACTS.map(a => { const ro = [0, 0, 0, 0, 0]; for (const e of (slot.get(a) || new Map()).values()) e.ro.forEach((v, k) => { ro[k] += v; }); const t = ro.reduce((x, y) => x + y, 0) || 1; return ro.map(v => v / t); });
+  // first pick and side (2026: the first pick is chosen separately from the side)
+  const fpB = games.filter(g => g.fp === 0), fpR = games.filter(g => g.fp === 1), wrF = xs => xs.length ? xs.filter(g => g.w === g.fp).length / xs.length : null;
+  const fpW = games.filter(g => g.w === g.fp).length;
+  const firsts = [...(slot.get(6) || new Map()).values()].sort((p, q) => q.n - p.n).slice(0, 12);
+  const byPat = patchesOf(games).map(p => { const xs = games.filter(g => g.pt === p); return {p, n: xs.length, red: xs.filter(g => g.fp === 1).length / xs.length, wr: wrF(xs)}; }).filter(x => x.n >= 3);
+  const out = [h("div", {class: "cards6", id: "cards"},
+    card("First-pick team wins", pct(fpW / n, 1), `${fpW}–${n - fpW} · ${ciTxt(fpW, n)}`),
+    card("First pick on red", pct(fpR.length / n), `${fpR.length} of ${n} games`),
+    card("First pick + blue", pct(wrF(fpB)), `${fpB.length} games`),
+    card("First pick + red", pct(wrF(fpR)), `${fpR.length} games`),
+    card("Most common first pick", firsts[0] ? nameOf(CH[firsts[0].c]) : "–", firsts[0] ? `${pct(firsts[0].n / n)} of games · ${firsts[0].w}–${firsts[0].n - firsts[0].w}` : ""),
+    card("Most common first ban", (() => { const b = [...(slot.get(0) || new Map()).values()].sort((p, q) => q.n - p.n)[0]; return b ? nameOf(CH[b.c]) : "–"; })(), "ban 1 of the first-pick team")),
+    h("section", {class: "sec", id: "phases"}, h("h2", {}, "Every slot", h("small", {}, "top 8 per slot")),
+      h("div", {class: "two"}, strips("Picks", PICK_ACTS, "pstrip"), strips("Bans", BANS, "bstrip"))),
+    h("div", {class: "two"},
+      panel("Role at each pick slot", heatMap({title: "Role picked at each pick slot (share of the slot's picks)", rows: ROLE_L, cols: PICK_ACTS.map(slotLabel), vals: ROLE_L.map((_, k) => roleAt.map(v => v[k])),
+        tips: ROLE_L.map((rl, k) => PICK_ACTS.map((a, j) => `${slotLabel(a)}: ${rl} ${pct(roleAt[j][k])} of the picks`))})),
+      panel("First-pick priority", bars(firsts.map(e => ({label: champLabel(e.c), v: e.n / n, txt: pct(e.n / n), sub: `${e.w}–${e.n - e.w}`, tip: `${nameOf(CH[e.c])}: first pick in ${e.n} of ${n} games, ${e.w}–${e.n - e.w}`})), {lw: 130}))),
+    h("div", {class: "two"},
+      panel("First pick and side", ciChart({title: "Win rate of the first-pick team by its side", items: [
+        {label: "All games", v: fpW / n, ...(([lo, hi]) => ({lo, hi}))(wilson(fpW, n)), tip: `First-pick team: ${fpW}–${n - fpW} (${pct(fpW / n, 1)}), ${ciTxt(fpW, n)}`},
+        ...[[fpB, "On blue", "var(--side1)"], [fpR, "On red", "var(--side2)"]].map(([xs, lab]) => { const w = xs.filter(g => g.w === g.fp).length; const [lo, hi] = wilson(w, xs.length);
+          return {label: `${lab} (${xs.length})`, v: xs.length ? w / xs.length : null, lo, hi, cls: lab === "On blue" ? "b" : "r", tip: `First-pick team ${lab.toLowerCase()} side: ${w}–${xs.length - w}${xs.length ? ` (${pct(w / xs.length, 1)}), ${ciTxt(w, xs.length)}` : ""}`}; })]})),
+      panel("First pick by patch", byPat.length >= 2 ? lineChart({title: "Share of games where the first-pick team took red side, and its win rate, by patch", w: chartW(0.5), hh: 220, y: {min: 0, max: 1, ref: 0.5, fmt: v => pct(v)},
+        x: {ticks: byPat.map((_, k) => k), fmt: k => byPat[k] ? byPat[k].p : ""}, series: [
+          {key: "red", label: "First pick on red", short: "on red", th: 5, dots: 2.5, pts: byPat.map((x, k) => ({x: k, y: x.red, tip: `Patch ${x.p}: first pick on red in ${pct(x.red)} of ${x.n} games`}))},
+          {key: "wr", label: "First-pick team win rate", short: "win rate", cls: "acc", dots: 2.5, pts: byPat.map((x, k) => ({x: k, y: x.wr, tip: `Patch ${x.p}: first-pick team won ${pct(x.wr)} of ${x.n} games`}))}]}) : h("p", {class: "note"}, "One patch in this selection.")))];
+  return out;
+}
+
+/* 3. flex picks: champions played in 2+ roles; "resolved late" = picked in the first phase while another of its roles was still open
+   for the team until the second phase */
+function flexStats(games){
+  const st = draftChamps(games).rows, roles = new Map(st.map(e => [e.c, e.roles.map((v, k) => v >= 2 && v >= 0.1 * e.pick ? k : null).filter(k => k != null)]));
+  const out = new Map();
+  for (const g of games) for (const x of acts(g)){
+    if (x.k !== "p" || x.c == null) continue;
+    const rs = roles.get(x.c); if (!rs || rs.length < 2) continue;
+    const e = out.get(x.c) || {c: x.c, n: 0, w: 0, p1: 0, late: 0, roles: st.find(y => y.c === x.c).roles}; e.n++; if (g.w === x.s) e.w++;
+    if (x.a <= FIRST_PICK_PHASE){ e.p1++;
+      const filled = new Set(acts(g).filter(y => y.k === "p" && y.s === x.s && y.a <= FIRST_PICK_PHASE && y !== x).map(y => y.ro));
+      if (rs.some(k => k !== x.ro && !filled.has(k))) e.late++; }
+    out.set(x.c, e);
+  }
+  return [...out.values()].map(e => ({...e, flex: 1 - Math.max(...e.roles) / e.roles.reduce((a, b) => a + b, 0), lateR: e.p1 ? e.late / e.p1 : null}));
+}
+function dFlex(r, c, S, games){
+  const fx = flexStats(games).filter(e => e.n >= 3), rk = assignTiers(fx, e => e.n, e => e.flex);
+  const n = games.length, flexPicks = fx.reduce((s, e) => s + e.n, 0), late = fx.reduce((s, e) => s + e.late, 0), p1 = fx.reduce((s, e) => s + e.p1, 0);
+  const rolesTxt = e => e.roles.map((v, k) => v ? `${ROLE_L[k]} ${v}` : null).filter(Boolean).join(", ");
+  const most = fx.slice().sort((a, b) => b.flex - a.flex)[0];
+  return [h("div", {class: "cards6", id: "cards"},
+    card("Flex champions", String(fx.length), "played in 2+ roles"),
+    card("Flex picks per game", f1(flexPicks / Math.max(1, n)), `${flexPicks} picks in ${n} games`),
+    card("Picked in phase 1", pct(flexPicks ? p1 / flexPicks : null), `${p1} of the flex picks`),
+    card("Resolved late", pct(p1 ? late / p1 : null), "role still open after phase 1"),
+    card("Most even split", most ? nameOf(CH[most.c]) : "–", most ? rolesTxt(most) : ""),
+    card("Flex win rate", pct(flexPicks ? fx.reduce((s, e) => s + e.w, 0) / flexPicks : null), ciTxt(fx.reduce((s, e) => s + e.w, 0), flexPicks))),
+    h("section", {class: "sec", id: "flex"}, h("h2", {}, "Flex picks", h("small", {}, "by picks")),
+      tierBands(rk, [], e => champTile(e, String(e.n), `${pct(e.lateR)} late · ${e.w}–${e.n - e.w}`, `${nameOf(CH[e.c])}: ${e.n} flex picks (${rolesTxt(e)}), ${e.w}–${e.n - e.w}\npicked in phase 1 ${e.p1} times; the role stayed open after phase 1 in ${e.late} (${pct(e.lateR)})`,
+        h("span", {class: "rrow", "aria-hidden": "true"}, e.roles.map((v, k) => v ? roleIcon(k) : null))), {unit: ["champion", "champions"], by: "flex picks", gridCls: "ch"})),
+    h("div", {class: "two"},
+      panel("Role split", h("div", {class: "bars", id: "fsplit"}, rk.slice(0, 16).map(e => { const t = e.roles.reduce((a, b) => a + b, 0);
+        return h("div", {class: "hb"}, champLabel(e.c), stack(e.roles.map((v, k) => ({v: v / t, label: ROLE_L[k], c: ROLE_C[k], tip: `${nameOf(CH[e.c])}: ${ROLE_L[k]} ${v} of ${t} picks (${pct(v / t)})`}))), h("span", {class: "hv"}, String(t))); }))),
+      panel("Resolved late", bars(rk.filter(e => e.p1 >= 2).sort((a, b) => b.lateR - a.lateR).slice(0, 14).map(e => ({label: champLabel(e.c), v: e.lateR, txt: pct(e.lateR), sub: `${e.p1} g`,
+        tip: `${nameOf(CH[e.c])}: in ${e.late} of its ${e.p1} first-phase picks the team left another of its roles (${rolesTxt(e)}) open until phase 2`})), {max: 1, lw: 130}))),
+    sec("Early or late", h("div", {class: "panel", id: "fscatter"}, scatter({title: "Flex champions: share picked in phase 1 vs win rate", w: chartW(1), pts: rk.map(e => ({x: e.p1 / e.n, y: e.w / e.n, r: 3 + Math.min(7, e.n / 4), name: nameOf(CH[e.c]), label: e.rank <= 10 ? nameOf(CH[e.c]) : null,
+      tip: `${nameOf(CH[e.c])}: ${e.p1} of ${e.n} picks in phase 1 (${pct(e.p1 / e.n)}), ${e.w}–${e.n - e.w}`})), x: {label: "picked in phase 1", fmt: v => pct(v)}, y: {label: "win rate", fmt: v => pct(v)}})))];
+}
+
+/* 4. blind vs counter: win rate by role of the side that picked before its lane opponent (the other side is the counter pick) */
+function blindAgg(games){
+  const R = ROLES.map(() => ({n: 0, bw: 0, early: 0, ew: 0}));
+  for (const g of games) for (let ro = 0; ro < 5; ro++){ const a = g.seq[0][ro], b = g.seq[1][ro]; if (a == null || b == null) continue;
+    const bs = a < b ? 0 : 1, x = R[ro]; x.n++; if (g.w === bs) x.bw++;
+    const ba = Math.min(a, b); if (ba <= FIRST_PICK_PHASE && Math.max(a, b) >= 16){ x.early++; if (g.w === bs) x.ew++; } }
+  return R;
+}
+function dBlind(r, c, S, games){
+  const R = blindAgg(games), tot = R.reduce((a, x) => ({n: a.n + x.n, bw: a.bw + x.bw}), {n: 0, bw: 0});
+  const item = (lab, w, n, extra) => { const [lo, hi] = wilson(w, n); return {label: lab, v: n ? w / n : null, lo, hi, tip: `${lab}: blind picks ${w}–${n - w} (${pct(n ? w / n : null, 1)}), ${ciTxt(w, n)}; counter picks ${n - w}–${w}${extra || ""}`}; };
+  const pats = patchesOf(games), byP = pats.map(p => { const x = blindAgg(games.filter(g => g.pt === p)); const s = x.reduce((a, y) => ({n: a.n + y.n, bw: a.bw + y.bw}), {n: 0, bw: 0}); return {p, ...s}; }).filter(x => x.n >= 20);
+  const st = draftChamps(games).rows.filter(e => e.blind >= 3 && e.counter >= 3);
+  const diff = st.map(e => ({...e, d: e.cw / e.counter - e.bw / e.blind})).sort((a, b) => b.d - a.d);
+  return [h("div", {class: "cards6", id: "cards"},
+      ROLE_L.map((rl, k) => card(`${rl} blind`, pct(R[k].n ? R[k].bw / R[k].n : null, 1), `${R[k].bw}–${R[k].n - R[k].bw} · ${ciTxt(R[k].bw, R[k].n)}`, R[k].n && R[k].bw / R[k].n > 0.5 ? "up" : "dn")),
+      card("All roles blind", pct(tot.n ? tot.bw / tot.n : null, 1), `${tot.bw}–${tot.n - tot.bw} · ${ciTxt(tot.bw, tot.n)}`)),
+    h("div", {class: "two", id: "blind"},
+      panel("Blind pick win rate by role", ciChart({title: "Win rate of the blind pick (picked before the lane opponent) by role, 95% CI", items: [...ROLE_L.map((rl, k) => item(rl, R[k].bw, R[k].n)), item("All roles", tot.bw, tot.n)]})),
+      panel("Phase 1 blind vs phase 2 counter", ciChart({title: "Blind picks in phase 1 against counters in phase 2, win rate by role, 95% CI", items: ROLE_L.map((rl, k) => item(rl, R[k].ew, R[k].early, " (phase 1 blind vs phase 2 counter)"))}))),
+    h("div", {class: "two"},
+      panel("Blind win rate by patch", byP.length >= 2 ? lineChart({title: "Blind pick win rate by patch (all roles)", w: chartW(0.5), hh: 220, y: {min: 0.35, max: 0.65, ref: 0.5, fmt: v => pct(v)}, x: {ticks: byP.map((_, k) => k), fmt: k => byP[k] ? byP[k].p : ""},
+        band: byP.map((x, k) => { const [lo, hi] = wilson(x.bw, x.n); return {x: k, lo: Math.max(0.35, lo), hi: Math.min(0.65, hi)}; }),
+        series: [{key: "b", label: "Blind win rate", short: "blind", cls: "acc", emph: true, dots: 3, pts: byP.map((x, k) => ({x: k, y: x.bw / x.n, tip: `Patch ${x.p}: blind ${x.bw}–${x.n - x.bw} (${pct(x.bw / x.n, 1)}), ${ciTxt(x.bw, x.n)}`}))}]}) : h("p", {class: "note"}, "One patch in this selection.")),
+      panel("Champions: counter minus blind win rate", bars(diff.slice(0, 7).concat(diff.slice(-7)).filter((e, k, xs) => xs.indexOf(e) === k).map(e => ({label: champLabel(e.c), v: e.d, txt: sgn(100 * e.d) + " pp", sub: `${e.blind}/${e.counter}`,
+        tip: `${nameOf(CH[e.c])}: blind ${e.bw}–${e.blind - e.bw} (${pct(e.bw / e.blind)}), counter ${e.cw}–${e.counter - e.cw} (${pct(e.cw / e.counter)})`, c: e.d > 0 ? "var(--ok)" : "var(--no)"})), {min: -1, max: 1, lw: 130})))];
+}
+
+/* 5. team draft tendencies */
+function teamDraft(games, name){
+  const rows = []; for (const g of games) for (const s of [0, 1]) if (g.D.teams[g.t[s]] === name) rows.push({g, s});
+  const inc = (m, k, won) => { if (k == null) return; const e = m.get(k) || {c: k, n: 0, w: 0}; e.n++; if (won) e.w++; m.set(k, e); };
+  const p1 = new Map(), bans = new Map(), vs = new Map(), arch = [0, 0, 0, 0, 0, 0, 0];
+  const split = {fp: [0, 0], nofp: [0, 0], blue: [0, 0], red: [0, 0], fav: [0, 0], unf: [0, 0], lowR: [0, 0], highR: [0, 0]};
+  const regs = rows.map(({g, s}) => regOf(g, s)).filter(v => v != null).sort((a, b) => a - b), med = regs.length ? regs[Math.floor(regs.length / 2)] : null;
+  const add = (k, won) => { split[k][0]++; if (won) split[k][1]++; };
+  for (const {g, s} of rows){ const won = g.w === s;
+    for (const x of acts(g)){ if (x.c == null) continue;
+      if (x.k === "p" && x.s === s && x.a <= FIRST_PICK_PHASE) inc(p1, x.c, won);
+      if (x.k === "b" && x.s === s) inc(bans, x.c, won);
+      if (x.k === "b" && x.s !== s) inc(vs, x.c, won); }
+    g.ch[s].forEach(ci => { const a = ci == null ? null : IX.arch[ci]; if (a != null) arch[a]++; });
+    add(g.fp === s ? "fp" : "nofp", won); add(s ? "red" : "blue", won);
+    if (g.dwp){ const p = s ? 1 - g.dwp[0] : g.dwp[0]; add(p >= 0.5 ? "fav" : "unf", won); }
+    const rg = regOf(g, s); if (rg != null && med != null) add(rg <= med ? "lowR" : "highR", won);
+  }
+  const top = (m, k) => [...m.values()].sort((x, y) => y.n - x.n || y.w - x.w).slice(0, k);
+  return {rows, p1: top(p1, 10), bans: top(bans, 10), vs: top(vs, 10), arch, split, regs, med};
+}
+const cbar = (xs, n, tipf) => xs.length ? bars(xs.map(e => ({label: champLabel(e.c), v: e.n / n, txt: pct(e.n / n), sub: `${e.n}`, tip: tipf(e)})), {lw: 130}) : h("p", {class: "note"}, "None.");
+function teamDraftBody(c, name, T){
+  const n = T.rows.length, sp = T.split, at = T.arch.reduce((a, b) => a + b, 0) || 1;
+  const wr = k => sp[k][0] ? sp[k][1] / sp[k][0] : null, sb = (lab, k, cls) => { const [lo, hi] = wilson(sp[k][1], sp[k][0]); return {label: `${lab} (${sp[k][0]})`, v: wr(k), lo, hi, cls, tip: `${lab}: ${sp[k][1]}–${sp[k][0] - sp[k][1]}${sp[k][0] ? ` (${pct(wr(k), 1)}), ${ciTxt(sp[k][1], sp[k][0])}` : ""}`}; };
+  return [h("div", {class: "two", id: "tdraft"},
+      panel("First-phase priorities", cbar(T.p1, n, e => `${nameOf(CH[e.c])}: picked in the first phase in ${e.n} of ${n} games, ${e.w}–${e.n - e.w}`)),
+      panel("Favourite bans", cbar(T.bans, n, e => `${nameOf(CH[e.c])}: banned by ${name} in ${e.n} of ${n} games`)),
+      panel("Banned against them", cbar(T.vs, n, e => `${nameOf(CH[e.c])}: banned by the opponents in ${e.n} of ${n} games (${name} ${e.w}–${e.n - e.w})`)),
+      panel("Comp archetypes", bars(IX.archNames.map((a, k) => ({label: a[0].toUpperCase() + a.slice(1), v: T.arch[k] / at, txt: pct(T.arch[k] / at), tip: `${a}: ${T.arch[k]} of ${at} picks have it as their main archetype`})).sort((x, y) => y.v - x.v), {max: 1, lw: 90}))),
+    h("div", {class: "two"},
+      panel("Draft win-rate splits", ciChart({title: `${name} win rate by draft situation, 95% CI`, lo: 0, hi: 1, items: [sb("First pick", "fp"), sb("No first pick", "nofp"), sb("Blue side", "blue", "b"), sb("Red side", "red", "r"),
+        sb("Draft favoured", "fav"), sb("Draft unfavoured", "unf"), sb("Low regret", "lowR"), sb("High regret", "highR")]})),
+      panel(h("span", {"data-tip": regretTip()}, "Model regret per draft"), T.regs.length ? lineChart({title: `${name} model regret per draft, game by game`, w: chartW(0.5), hh: 220, y: {min: 0, fmt: v => f1(v)}, x: {fmt: v => "G" + v},
+        series: [{key: "rg", label: "Regret (pp)", short: "regret", cls: "acc", emph: true, dots: 2.5, pts: T.rows.map(({g, s}, k) => { const v = regOf(g, s); return v == null ? null : {x: k + 1, y: v, cls: g.w === s ? "w" : "l", tip: `${g.dt.slice(0, 10)} vs ${g.D.teams[g.t[1 - s]]} (${g.w === s ? "win" : "loss"}): ${f1(v)} pp`}; }).filter(Boolean)}]}) : h("p", {class: "note"}, "No regret values.")))];
+}
+function dTeams(r, c, S, games){
+  const names = [...new Set(games.flatMap(g => [g.D.teams[g.t[0]], g.D.teams[g.t[1]]]))];
+  const rows = names.map(name => { let n = 0, fav = 0, fp = 0, fpw = 0, w = 0, dw = []; for (const g of games) for (const s of [0, 1]) if (g.D.teams[g.t[s]] === name){ n++; if (g.w === s) w++; if (g.fp === s){ fp++; if (g.w === s) fpw++; } if (g.dwp) dw.push(s ? 1 - g.dwp[0] : g.dwp[0]); }
+    return {name, n, w, fp, fpw, dwp: mean(dw)}; }).filter(x => x.n >= 3);
+  const rk = assignTiers(rows.filter(x => x.dwp != null), x => x.dwp, x => x.w);
+  const tile = x => h("a", {class: "tile t-" + x.tier, href: link("team", [x.name, "draft"], base(c)), "data-team": x.name, title: `${x.name}: average draft win chance ${pct(x.dwp, 1)} (the model at equal teams), ${x.w}–${x.n - x.w}; first pick in ${x.fp} games (${x.fpw}–${x.fp - x.fpw})`},
+    h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank), tagBadge(x.name, "md"), h("b", {}, x.name), h("span", {class: "wr"}, pct(x.dwp, 1)), h("small", {}, `${x.w}–${x.n - x.w} · FP ${x.fp}`));
+  return [h("section", {class: "sec", id: "dteams"}, h("h2", {}, "Draft strength", h("small", {}, "the model's average draft win chance at equal teams")), tierBands(rk, [], tile, {by: "the draft model's win chance at equal teams"})),
+    h("div", {class: "two"},
+      panel("Draft vs results", scatter({title: "Average draft win chance vs win rate, per team", pts: rk.map(x => ({x: x.dwp, y: x.w / x.n, name: x.name, label: IX.tags[x.name] || x.name, tip: `${x.name}: draft ${pct(x.dwp, 1)}, record ${x.w}–${x.n - x.w} (${pct(x.w / x.n)})`})), x: {label: "average draft win chance", fmt: v => pct(v)}, y: {label: "win rate", fmt: v => pct(v)}})),
+      panel("With first pick", bars(rows.filter(x => x.fp).sort((a, b) => b.fpw / b.fp - a.fpw / a.fp).map(x => ({label: h("span", {class: "hl"}, tagBadge(x.name), x.name), v: x.fpw / x.fp, txt: pct(x.fpw / x.fp), sub: `${x.fp} g`, tip: `${x.name} with first pick: ${x.fpw}–${x.fp - x.fpw} (${ciTxt(x.fpw, x.fp)})`})), {max: 1, ref: 0.5, lw: 150})))];
+}
+
+/* 6. model regret: teams by lowest average regret per draft; the biggest-regret picks */
+function regretTeams(games){
+  const m = new Map();
+  for (const g of games) for (const s of [0, 1]){ const v = regOf(g, s); if (v == null) continue; const name = g.D.teams[g.t[s]];
+    const e = m.get(name) || {name, n: 0, sum: 0, w: 0, path: []}; e.n++; e.sum += v; if (g.w === s) e.w++; e.path.push(v); m.set(name, e); }
+  return [...m.values()].map(e => ({...e, avg: e.sum / e.n}));
+}
+function worstPicks(games, k){
+  const xs = [];
+  for (const g of games) for (const s of [0, 1]) if (g.rg) g.rg[s].forEach((v, i) => { if (v != null && g.pk[s][i] != null) xs.push({g, s, i, v: v / 10, ro: g.pk[s][i], c: g.ch[s][g.pk[s][i]], alt: g.ra[s][i]}); });
+  return xs.sort((a, b) => b.v - a.v).slice(0, k);
+}
+function regretCard(c, x){
+  const g = x.g, D = g.D;
+  return h("a", {class: "gc " + (g.w === x.s ? "w" : "l"), href: gameLink(c, g, D), "data-game": g.id, "data-regret": x.v},
+    h("div", {class: "top"}, h("time", {datetime: g.dt.slice(0, 10)}, fmtDate(g.dt)), h("span", {}, `${D.L} · patch ${g.pt}`), h("span", {class: "res"}, g.w === x.s ? "WIN" : "LOSS")),
+    h("div", {class: "tm"}, tagBadge(D.teams[g.t[x.s]]), h("b", {}, D.teams[g.t[x.s]]), h("span", {class: "x"}, h("small", {}, "vs "), tagBadge(D.teams[g.t[1 - x.s]]))),
+    h("div", {class: "tm"}, roleIcon(x.ro), portrait(x.c, "sm"), h("b", {}, nameOf(CH[x.c])), h("span", {class: "x"}, h("small", {}, "→ "), portrait(x.alt, "sm"), h("small", {}, nameOf(CH[x.alt])))),
+    h("div", {class: "ft"}, h("span", {}, slotLabel((x.s === g.fp ? SEQ_F : SEQ_S).pick[x.i])), h("span", {style: "margin-left:auto", class: "dn"}, `${f1(x.v)} pp`)));
+}
+function dRegret(r, c, S, games){
+  const tr = regretTeams(games).filter(x => x.n >= 3), rk = assignTiers(tr, x => -x.avg, x => x.n);
+  const tip = regretTip(), all = [];
+  for (const g of games) for (const s of [0, 1]){ const v = regOf(g, s); if (v != null) all.push({v, won: g.w === s}); }
+  const bySlot = PICK_ACTS.map(a => { const xs = []; for (const g of games) for (const s of [0, 1]){ const Q = s === g.fp ? SEQ_F : SEQ_S, i = Q.pick.indexOf(a); if (i >= 0 && g.rg && g.rg[s][i] != null) xs.push(g.rg[s][i] / 10); } return {a, v: mean(xs), n: xs.length, zero: xs.filter(v => v === 0).length}; });
+  const byRole = ROLE_L.map((rl, ro) => { const xs = []; for (const g of games) for (const s of [0, 1]) if (g.rg) g.pk[s].forEach((r2, i) => { if (r2 === ro && g.rg[s][i] != null) xs.push(g.rg[s][i] / 10); }); return {rl, v: mean(xs), n: xs.length}; });
+  const edges = [0, 3, 5, 7, 9, 11, 13, 15, 99], labs = ["<3", "3–5", "5–7", "7–9", "9–11", "11–13", "13–15", "15+"];
+  const hist = labs.map((lab, k) => { const xs = all.filter(x => x.v >= edges[k] && x.v < edges[k + 1]), w = xs.filter(x => x.won).length; return {label: lab, v: xs.length / Math.max(1, all.length), txt: String(xs.length), tip: `${lab} pp: ${xs.length} drafts, ${w}–${xs.length - w} (${xs.length ? pct(w / xs.length) : "–"})`}; });
+  const best = rk[0], R = IX.regretCheck;
+  const lowWins = (() => { let n = 0, w = 0; for (const g of games){ const a = regOf(g, 0), b = regOf(g, 1); if (a == null || b == null || a === b) continue; n++; if ((a < b ? 0 : 1) === g.w) w++; } return [w, n]; })();
+  const zero = all.length ? bySlot.reduce((s, x) => s + x.zero, 0) / bySlot.reduce((s, x) => s + x.n, 0) : null;
+  return [h("div", {class: "cards6", id: "cards"},
+      card(h("span", {"data-tip": tip}, "Regret per draft"), f1(mean(all.map(x => x.v))), "pp of model win chance, 5 picks"),
+      card("Lower regret won", pct(lowWins[1] ? lowWins[0] / lowWins[1] : null, 1), `${lowWins[0]}–${lowWins[1] - lowWins[0]} · ${ciTxt(lowWins[0], lowWins[1])}`),
+      card("Model's best pick made", pct(zero), "of picks with zero regret"),
+      card("Lowest-regret team", best ? best.name : "–", best ? `${f1(best.avg)} pp per draft · ${best.n} games` : ""),
+      card("Beyond Elo", R ? `${sgn((R.elo.ll - R.elo.llRegret) * 1000, 1)}` : "–", R ? `log loss ×1000, held out · z ${R.elo.z}` : "", R && R.predictive ? "up" : ""),
+      card("Beyond Elo + draft", R ? `${sgn((R.eloDraft.ll - R.eloDraft.llRegret) * 1000, 1)}` : "–", R ? `log loss ×1000, held out · z ${R.eloDraft.z}` : "", R && R.eloDraft.llRegret < R.eloDraft.ll && R.eloDraft.z > 1.96 ? "up" : "")),
+    h("section", {class: "sec", id: "regret"}, h("h2", {}, h("span", {"data-tip": tip}, "Model regret"), h("small", {"data-tip": tip}, "lowest average per draft first")),
+      tierBands(rk, [], x => h("a", {class: "tile t-" + x.tier, href: link("team", [x.name, "draft"], base(c)), "data-team": x.name, "data-regret": x.avg.toFixed(3), title: `${x.name}: ${f1(x.avg)} pp model regret per draft over ${x.n} games, ${x.w}–${x.n - x.w}`},
+        h("span", {class: "tb", "aria-hidden": "true"}, "#" + x.rank), tagBadge(x.name, "md"), h("b", {}, x.name), h("span", {class: "wr"}, f1(x.avg)), h("small", {}, `${x.w}–${x.n - x.w} · ${x.n} g`), spark(x.path.slice(-20))), {by: "lowest model regret per draft"})),
+    h("div", {class: "two"},
+      panel("Regret vs win rate", scatter({title: "Average model regret per draft vs win rate, per team", pts: rk.map(x => ({x: x.avg, y: x.w / x.n, name: x.name, label: IX.tags[x.name] || x.name, tip: `${x.name}: ${f1(x.avg)} pp per draft, ${x.w}–${x.n - x.w}`})), x: {label: "regret per draft (pp)", fmt: v => f1(v)}, y: {label: "win rate", fmt: v => pct(v)}})),
+      panel("Drafts by regret", columns(hist), h("h3", {}, "By pick slot"), bars(bySlot.map(x => ({label: h("span", {"data-tip": slotTip(x.a)}, slotLabel(x.a)), v: x.v, txt: f1(x.v), sub: `${x.n}`, tip: `${slotLabel(x.a)}: ${f1(x.v)} pp average regret, ${x.zero} of ${x.n} picks were the model's choice`})), {lw: 50}),
+        h("h3", {}, "By role"), bars(byRole.map(x => ({label: x.rl, v: x.v, txt: f1(x.v), sub: `${x.n}`, tip: `${x.rl}: ${f1(x.v)} pp average regret per pick`})), {lw: 70}))),
+    rowSec("Biggest regrets", "Picks with the most model regret", worstPicks(games, 24).map(x => regretCard(c, x)))];
+}
+
+/* 7. draft search: games by champions, team, patch and result */
+async function viewSearch(r, c){
+  const q = r.q, L = q.lg && IX.years[c.year][q.lg] ? q.lg : null;
+  const Ls = L ? [L] : Object.keys(IX.years[c.year]);
+  const Ds = (await Promise.all(Ls.map(x => loadLeague(c.year, x)))).filter(Boolean);
+  drawChrome(r, c, L, L ? Ds[0] : null);
+  const all = Ds.flatMap(D => gamesSel(D, c)).sort((a, b) => b.t0 - a.t0);
+  const chs = (q.ch || "").split(",").filter(x => CH.includes(x)), team = q.team || "", pt = q.pt || "", res = q.res === "w" || q.res === "l" ? q.res : "";
+  const hits = searchGames(all, {chs, team, pt, res});
+  const go = patch => { const nq = {...q, ...patch}; Object.keys(nq).forEach(k => { if (nq[k] == null || nq[k] === "") delete nq[k]; }); location.hash = link("draft-search", [], nq); };
+  const teams = [...new Set(all.flatMap(g => [g.D.teams[g.t[0]], g.D.teams[g.t[1]]]))].sort((a, b) => a.localeCompare(b));
+  const present = new Set(all.flatMap(g => [...g.ch[0], ...g.ch[1]]).filter(x => x != null).map(x => CH[x]));
+  const dlId = "chl" + (++cbSeq);
+  const inp = h("input", {type: "text", id: "chsearch", list: dlId, placeholder: "Add a champion", "aria-label": "Add a champion", autocomplete: "off",
+    onchange: e => { const v = norm(e.target.value), id = [...present].find(x => norm(nameOf(x)) === v || norm(x) === v); if (id && !chs.includes(id)) go({ch: [...chs, id].join(",")}); }});
+  const form = h("div", {class: "selbar", id: "dsform", role: "search", "aria-label": "Draft search"},
+    h("div", {class: "cb"}, inp, h("datalist", {id: dlId}, [...present].sort((a, b) => nameOf(a).localeCompare(nameOf(b))).map(x => h("option", {value: nameOf(x)})))),
+    h("select", {id: "dsteam", "aria-label": "Team", onchange: e => go({team: e.target.value})}, h("option", {value: ""}, "Any team"), teams.map(t => h("option", {value: t, selected: t === team ? true : null}, t))),
+    h("select", {id: "dspatch", "aria-label": "Patch", onchange: e => go({pt: e.target.value})}, h("option", {value: ""}, "Any patch"), patchesOf(all).reverse().map(p => h("option", {value: p, selected: p === pt ? true : null}, "Patch " + p))),
+    h("div", {class: "seg", id: "dsres", role: "group", "aria-label": "Result"}, [["", "Any"], ["w", "Won"], ["l", "Lost"]].map(([k, t]) => h("button", {type: "button", "aria-pressed": String(res === k), onclick: () => go({res: k})}, t))));
+  const chips = h("div", {class: "chips", id: "dschips"}, chs.map(id => h("button", {type: "button", class: "chip", "data-champ": id, "aria-label": `Remove ${nameOf(id)}`, onclick: () => go({ch: chs.filter(x => x !== id).join(",")})}, portrait(id, "xs"), nameOf(id), " ×")));
+  const side = g => searchSide(g, chs, team);
+  const w = hits.filter(g => { const s = side(g); return s != null && g.w === s; }).length, ns = hits.filter(g => side(g) != null).length;
+  const out = [h("div", {class: "head"}, h("h1", {}, "Draft search"), h("div", {class: "sub"}, `${L ? IX.years[c.year][L].label : "All leagues"} · ${c.year}`)), form, chips,
+    h("div", {class: "cards6", id: "cards"},
+      card("Games", String(hits.length), `of ${all.length}`),
+      card("Record", ns ? `${w}–${ns - w}` : "–", ns ? `${pct(w / ns)} · ${ciTxt(w, ns)}` : "pick a team or champions"),
+      card("Patches", String(new Set(hits.map(g => g.pt)).size), hits.length ? `latest ${hits[0].pt}` : ""),
+      card("Leagues", String(new Set(hits.map(g => g.D.L)).size), [...new Set(hits.map(g => g.D.L))].join(" · ")),
+      card("Average length", hits.length ? mmss(60 * mean(hits.map(g => g.min))) : "–", ""),
+      card("Blue side", hits.length ? pct(hits.filter(g => g.w === 0).length / hits.length) : "–", "blue-side win rate"))];
+  const cr = carousel("Matching games, newest first", hits.slice(0, 200).map(g => gameCard(c, g.D, g, side(g))));
+  out.push(h("section", {class: "sec", id: "dsres-row"}, h("h2", {}, "Games", h("small", {}, hits.length > 200 ? "newest 200" : `${hits.length}`), cr.nav), hits.length ? cr.wrap : h("p", {class: "note"}, "No games match.")));
+  if (hits.length && chs.length){
+    const co = new Map(); for (const g of hits){ const s = side(g); if (s == null) continue; g.ch[s].forEach(ci => { if (ci == null || chs.includes(CH[ci])) return; const e = co.get(ci) || {c: ci, n: 0, w: 0}; e.n++; if (g.w === s) e.w++; co.set(ci, e); }); }
+    const xs = [...co.values()].sort((a, b) => b.n - a.n).slice(0, 10);
+    if (xs.length) out.push(panel("Played alongside", bars(xs.map(e => ({label: champLabel(e.c), v: e.n / ns, txt: String(e.n), sub: `${e.w}–${e.n - e.w}`, tip: `${nameOf(CH[e.c])}: with them in ${e.n} games, ${e.w}–${e.n - e.w}`})), {lw: 130})));
+  }
+  return out;
+}
+/* the side of interest: the team's side, else the side with every searched champion (null: none) */
+function searchSide(g, chs, team){
+  if (team) return g.D.teams[g.t[0]] === team ? 0 : g.D.teams[g.t[1]] === team ? 1 : null;
+  if (!chs.length) return null;
+  for (const s of [0, 1]) if (chs.every(id => g.ch[s].some(ci => CH[ci] === id))) return s;
+  return null;
+}
+function searchGames(games, {chs, team, pt, res}){
+  return games.filter(g => {
+    if (pt && g.pt !== pt) return false;
+    if (team && g.D.teams[g.t[0]] !== team && g.D.teams[g.t[1]] !== team) return false;
+    const picked = new Set([...g.ch[0], ...g.ch[1]].filter(x => x != null).map(x => CH[x]));
+    if (!chs.every(id => picked.has(id))) return false;
+    if (res){ const s = searchSide(g, chs, team); if (s == null) return false; if ((g.w === s) !== (res === "w")) return false; }
+    return true;
+  });
+}
+
 /* ---------- boot ---------- */
 let RTOK = 0, IDLE = Promise.resolve();
 function render(){
   if (!IX) return IDLE;
   const tok = ++RTOK, r = parseHash(), c = ctx(r.q);
   CTX = c;
-  const V = {home: viewHome, league: viewLeague, team: viewTeam, player: viewPlayer, game: viewGame}[r.view] || viewHome;
+  const V = {home: viewHome, league: viewLeague, team: viewTeam, player: viewPlayer, game: viewGame, drafts: viewDrafts, "draft-search": viewSearch}[r.view] || viewHome;
   const main = $("main");
   if (!main.firstElementChild || !main.querySelector(".loading")){ /* keep the old view until the new one is ready */ }
   IDLE = Promise.resolve().then(() => V(r, c)).then(nodes => {
     if (tok !== RTOK) return;
     main.textContent = ""; main.append(...nodes);
-    document.title = ({home: "Pro leagues", league: (r.args[0] || "").toUpperCase(), team: r.args[0], player: r.args[0], game: "Game"}[r.view] || "Pro leagues") + " · Rift Logic Pro";
+    document.title = ({home: "Pro leagues", league: (r.args[0] || "").toUpperCase(), team: r.args[0], player: r.args[0], game: "Game", drafts: "Drafts " + (r.args[0] || "").toUpperCase(), "draft-search": "Draft search"}[r.view] || "Pro leagues") + " · Rift Logic Pro";
   }).catch(e => { if (tok !== RTOK) return; main.textContent = ""; main.append(h("div", {class: "notice err"}, `Something went wrong: ${e.message}`)); console.error(e); });
   return IDLE;
 }
