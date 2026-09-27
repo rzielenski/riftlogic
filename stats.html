@@ -1,7 +1,31 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>[hidden]{display:none!important}</style></head><body>
-<title>Rift Logic Stats</title>
-<meta name="description" content="Champion win rates, win probability added (WPA) and matchups from ranked solo queue and pro play, with confidence intervals.">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LoL Champion Tier List and Stats: Solo Queue and Pro Play | Rift Logic</title>
+<meta name="description" content="League of Legends champion tier list by role from high-rank solo queue and pro games: win rate, pick and ban rate, win probability added, matchups and builds, with confidence intervals.">
+<link rel="canonical" href="https://www.riftlogic.dev/stats">
+<meta name="theme-color" content="#07080A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:site_name" content="Rift Logic">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="LoL Champion Tier List and Stats: Solo Queue and Pro Play | Rift Logic">
+<meta property="og:description" content="League of Legends champion tier list by role from high-rank solo queue and pro games: win rate, pick and ban rate, win probability added, matchups and builds, with confidence intervals.">
+<meta property="og:url" content="https://www.riftlogic.dev/stats">
+<meta property="og:image" content="https://www.riftlogic.dev/og/champions.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Rift Logic champion tier list, by role">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LoL Champion Tier List and Stats: Solo Queue and Pro Play | Rift Logic">
+<meta name="twitter:description" content="League of Legends champion tier list by role from high-rank solo queue and pro games: win rate, pick and ban rate, win probability added, matchups and builds, with confidence intervals.">
+<meta name="twitter:image" content="https://www.riftlogic.dev/og/champions.jpg">
+<meta name="twitter:image:alt" content="The Rift Logic champion tier list, by role">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://www.riftlogic.dev/#website","name":"Rift Logic","url":"https://www.riftlogic.dev/","inLanguage":"en","description":"League of Legends stats and tools: a damage calculator language, a draft tool, champion tier lists and pro league stats."},{"@type":"WebApplication","name":"LoL Champion Tier List and Stats: Solo Queue and Pro Play","url":"https://www.riftlogic.dev/stats","description":"League of Legends champion tier list by role from high-rank solo queue and pro games: win rate, pick and ban rate, win probability added, matchups and builds, with confidence intervals.","applicationCategory":"GameApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"image":"https://www.riftlogic.dev/og/champions.jpg","isPartOf":{"@id":"https://www.riftlogic.dev/#website"}}]}</script>
+<style>[hidden]{display:none!important}</style></head><body>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
@@ -2350,10 +2374,12 @@ function render(){
   const c = ctx(r.q);
   if (r.q.mode) MODE = c.mode;
   drawChrome(r, c);
-  const V = {tier: viewTier, champ: viewChamp, matchup: viewMatchup, about: viewAbout}[r.view] || viewTier;
+  const V = V0[r.view] || viewTier;
   try { V(r, c); } catch (e) { $("main").textContent = ""; $("main").append(h("div", {class: "card err"}, `Something went wrong: ${e.message}`)); throw e; }
-  document.title = ({tier: "Tier list", champ: nameOf(champId(r.args[0]) || "") + (r.args[1] && tabOf(r.args[1]) !== "overview" ? " " + TABS.find(t => t[0] === tabOf(r.args[1]))[1].toLowerCase() : ""), matchup: "Matchup", about: "Methods"}[r.view] || "Tier list") + " · Rift Logic Stats";
+  // the tier list is the landing view: keep the page's own <title> there (it is what search engines index)
+  document.title = r.view === "tier" || !V0[r.view] ? BASE_TITLE : ({champ: nameOf(champId(r.args[0]) || "") + (r.args[1] && tabOf(r.args[1]) !== "overview" ? " " + TABS.find(t => t[0] === tabOf(r.args[1]))[1].toLowerCase() : ""), matchup: "Matchup", about: "Methods"}[r.view]) + " · Rift Logic Stats";
 }
+const BASE_TITLE = document.title, V0 = {tier: viewTier, champ: viewChamp, matchup: viewMatchup, about: viewAbout};
 function start(d){
   ST = d; POS = Object.create(null); ST.champs.forEach((id, i) => { POS[id] = i; });
   loadIcons(); render();

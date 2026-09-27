@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+# duplicate builds of the same pages (claude.ai artifact copies, the editor's second copy, the dev log)
+Disallow: /*.artifact
+Disallow: /riftlogic
+Disallow: /log$
+Disallow: /log.html
+Disallow: /api/
+
+Sitemap: https://www.riftlogic.dev/sitemap.xml

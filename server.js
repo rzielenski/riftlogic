@@ -79,7 +79,7 @@ async function api(req, res, url){
 // ---- compression: brotli / gzip for text files, precompressed once per (path, mtime, size) and held in memory ----
 // serve-handler still does routing, headers (serve.json: CSP, nosniff, …), ETag/304, Range and HEAD; we swap in the
 // compressed bytes through its createReadStream hook and fix the headers in writeHead. Range requests get identity bytes.
-const COMPRESSIBLE = /\.(html|js|json|css|svg|txt)$/i, MIN_SIZE = 1024;
+const COMPRESSIBLE = /\.(html|js|json|css|svg|txt|xml|webmanifest|ico)$/i, MIN_SIZE = 1024;
 const SKIP = /(^|\/)(\.|node_modules(\/|$)|reasoning(\/|$))|\.template(\.html)?$|^(package(-lock)?|railway|serve|links)\.json$|^server\.js$/;
 const packs = new Map();   // absolute path → {key, gz: Promise<Buffer>, br: Buffer|null, brJob: Promise|null}
 const brOpts = size => ({params: {[zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: size}});
