@@ -1299,7 +1299,7 @@ function simulate(sidesIn, T, simNotes, fo){
   }
   function makeUnit(c, side){
     const st=stats(c), o=c.opts||{}, stk=o.stacks||{};
-    const u={c, side, name:label(c), st, base:st, hp:st.hp, max:st.hp, alive:true, deathAt:null, shields:[], cd:{}, nextAct:0, nextAA:0,
+    const u={c, side, name:label(c), st, base:st, hp:st.hp*(o.hpNow ?? 1), max:st.hp, alive:true, deathAt:null, shields:[], cd:{}, nextAct:0, nextAA:0,
       dealt:0, taken:0, healDone:0, shieldDone:0, healRecv:0, grievUntil:-1, grievBy:0, combatAt:null, champCombatAt:null, dmgIn:[], aa:0,
       rcd:{}, stasisUntil:-1, dots:[], cleaver:{n:0,until:-1}, after:{until:-1,armor:0,mr:0}, plating:null,
       sb:{ready:false, until:-1, cd:-1}, lt:{n:0,until:-1}, conq:{n:0,until:-1}, hob:{n:0,until:-1}, ptaCount:{}, ptaOn:new Set(), ecl:{},
@@ -9409,7 +9409,7 @@ function Interpreter(ast, emitRaw){
         if (c.dummy && ["with","stacks","perform","combo","proc","closeGap","addClass","removeClass","is","has","cdOf","cdmaxOf","rangeOf","threatRange","gapClose"].includes(name))
           throw new LangError(`the Target Dummy can't use .${name}: it has no items, runes or abilities and never attacks or moves. Use it as the target: x.Q.damage(vs: d), x.proc(Item, vs: d), x.perform(combo, vs: d)`, ln);
         if (c.dummy && name==="resists"){ line(`Target Dummy armor ${fmt(c.dummy.armor)}, MR ${fmt(c.dummy.mr)}`); if (c.dummy.armor!==c.dummy.mr) throw new LangError(`this dummy's armor (${fmt(c.dummy.armor)}) and MR (${fmt(c.dummy.mr)}) differ; read .armor and .mr`, ln); return c.dummy.armor; }
-        if (["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt","skill"].includes(name)){ const o=c.opts||{}; const d={target:null, healPolicy:"lowest", passive:false, rotation:"RQEW", souls:0, skillOrder:"QEW", role:stats(c).ranged?"kite":"dive", stasis:"low", exhaustAt:"default", skill:SKILL_DEFAULT}; return o[name] ?? d[name]; }
+        if (["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt","skill","hpNow"].includes(name)){ const o=c.opts||{}; const d={target:null, healPolicy:"lowest", passive:false, rotation:"RQEW", souls:0, skillOrder:"QEW", role:stats(c).ranged?"kite":"dive", stasis:"low", exhaustAt:"default", skill:SKILL_DEFAULT, hpNow:1}; return o[name] ?? d[name]; }
         if (name==="oathsworn"){ if (c.champ!=="Kalista") throw new LangError(`only Kalista has an Oathsworn`, ln); const o=(c.opts||{}).oathsworn||null;
           line(`${label(c)}.oathsworn = ${o ? label(o) : "not set (fight() default: the Support-class ally, else the ally with the least AD + AP)"}`); return o; }
         if (name==="evolved"){ const k=KIT[c.champ]; if (!k || !k.evolved) throw new LangError(`${champName(c)} has no evolved or augmented abilities`, ln);
@@ -9974,7 +9974,10 @@ function Interpreter(ast, emitRaw){
       env.set(target.name, target.name==="defaultLevel" ? Math.round(v) : v); if (target.name==="defaultLevel") statMemo.clear(); if (target.name==="gameMinute"){ GAME.minute=v; statMemo.clear(); } return; }
     if (target.k==="member"){
       const obj=evalE(target.obj, env);
-      if (obj&&obj.t==="champ" && ["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt","skill"].includes(target.name)){
+      if (obj&&obj.t==="champ" && ["target","healPolicy","passive","rotation","souls","skillOrder","role","stasis","exhaustAt","skill","hpNow"].includes(target.name)){
+        // current health at the start of a fight(), as a fraction of max health (fight loop round 2: fights between real players
+        // rarely start at full health; buying happens only in the fountain, which heals to full)
+        if (target.name==="hpNow" && !(typeof v==="number" && v>0 && v<=1)) throw new LangError(`hpNow is the current health at the start of a fight, as a fraction of max health (above 0, at most 1)`, ln);
         if (target.name==="skill" && !(typeof v==="number" && v>=0 && v<=100)) throw new LangError(`skill is a player skill level from 0 to 100 (fight(): its reaction time for walking out of skillshots and areas; 100 → 0.10 s, 70 → 0.25 s, 0 → never)`, ln);
         if (target.name==="exhaustAt" && !(typeof v==="number" && v>=0 && Number.isFinite(v)) && !(typeof v==="string" && /^(arrival(\+[0-9]*\.?[0-9]+)?|never|default)$/.test(v))) throw new LangError(`exhaustAt (when Exhaust is pressed) is "arrival" (the first step an enemy is targetable in range), "arrival+0.25" (that much later), a time in seconds, "never", or "default" (on its target once it fights)`, ln);
         if (target.name==="exhaustAt" && v==="default") v=null;
@@ -10008,7 +10011,7 @@ function Interpreter(ast, emitRaw){
         if (!H) throw new LangError(`${champName(obj.owner)}.${obj.slot} has no hold time (only a held charge has one: Vladimir E)`, ln);
         if (typeof v!=="number" || !(v>=H.min && v<=H.max)) throw new LangError(`${champName(obj.owner)}.${obj.slot}.hold is a number of seconds from ${fmt(H.min)} to ${fmt(H.max)}`, ln);
         const o=obj.owner.opts||{}; obj.owner.opts={...o, hold:{...(o.hold||{}), [obj.slot]:v}}; return; }
-      throw new LangError(`you can set a champion's level, skillOrder, target, healPolicy, passive, rotation, role, stasis, exhaustAt, skill and souls, and an ability's rank (and hold, for Vladimir E); “${target.name}” is calculated.${hint(target.name, ["level","rank","hold","skillOrder","target","healPolicy","passive","rotation","souls","stasis","exhaustAt","skill"])}`, ln);
+      throw new LangError(`you can set a champion's level, skillOrder, target, healPolicy, passive, rotation, role, stasis, exhaustAt, skill, hpNow and souls, and an ability's rank (and hold, for Vladimir E); “${target.name}” is calculated.${hint(target.name, ["level","rank","hold","skillOrder","target","healPolicy","passive","rotation","souls","stasis","exhaustAt","skill","hpNow"])}`, ln);
     }
     if (target.k==="index"){ const o=evalE(target.obj,env), i=evalE(target.i,env); const arr=o&&o.t==="comp"?o.champs:o&&o.t==="list"?o.items:null; if(!arr) throw new LangError("can't assign into that", ln);
       if (typeof i!=="number" || !Number.isInteger(i) || i<0 || i>=arr.length) throw new LangError(`index ${typeof i==="number"?fmt(i):show(i)} is out of range (size ${arr.length}; use .add(…) to grow a list)`, ln);

@@ -343,6 +343,7 @@ while (x &lt; 10) { … }             <span class="c">// break and continue work
         <tr><td>a.passive = true;</td><td>Only heals and shields; never attacks.</td></tr>
         <tr><td>a.rotation = "QEWR";</td><td>Ability priority (default R, Q, E, W).</td></tr>
         <tr><td>a.souls = 10;</td><td>Dark Harvest souls.</td></tr>
+        <tr><td>a.hpNow = 0.6;</td><td>a's current health when a <code>fight()</code> starts, as a fraction of its maximum health: above 0, at most 1 (default 1, full health). Real fights rarely start at full health; a champion who bought an item since recalling was in the fountain and is full. Only <code>fight()</code> and <code>fights()</code> use it; <code>a.hp</code> stays the maximum.</td></tr>
         <tr><td>a.role = "peel";</td><td>How a fights (see <a href="#cc">Crowd control and positions</a>): <code>"kite"</code> (default for ranged champions), <code>"dive"</code> (default for melee), <code>"peel"</code>, <code>"engage"</code> or <code>"fight"</code>.</td></tr>
         <tr><td>a.tenacity  a.slowresist</td><td>Tenacity and slow resist from items, elixirs and the rune shard, stacking multiplicatively: Mercury's Treads + Sterak's Gage = 1 − 0.7 × 0.8 = 44%.</td></tr>
       </tbody></table></div>
