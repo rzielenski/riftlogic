@@ -93,7 +93,8 @@ dialog.dlg .dlgbtns{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end
 .splitter:hover::after,.splitter.drag::after,.splitter:focus-visible::after{background:var(--accent)}
 .splitter:focus-visible{outline:none}
 @media (max-width:899px){
-  .app{height:auto;gap:10px}
+  html,body{height:auto;min-height:100%}   /* phones: the page scrolls, so the results get their full height under the editor */
+  .app{height:auto;gap:10px;flex:none}
   .ide{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;gap:10px}
   .splitter{display:none}
   .pane-ed{height:56vh;min-height:300px}
@@ -308,6 +309,33 @@ ul.conds li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px;font-s
 .fields{font:11px/1.6 var(--mono);color:var(--muted);overflow-wrap:anywhere}
 .evbox{font-size:12.5px;color:var(--ink-2);min-height:1.4em}
 .why{color:var(--muted)}
+/* first-visit hint (one line, dismissible; riftlogic.hint in localStorage) */
+.hintbar{flex:1 1 100%;order:5;display:flex;align-items:flex-start;flex-wrap:nowrap;gap:4px 10px;padding:6px 8px 6px 12px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;background:var(--surface);font-size:13px;color:var(--ink-2)}
+.hintbar .ht{flex:1 1 auto;min-width:0}
+.hintbar b.ok{color:var(--ok)}.hintbar b.no{color:var(--no)}
+.hintbar .hx{border:0;background:none;color:var(--muted);font-size:16px;line-height:1;padding:4px 6px;border-radius:4px;cursor:pointer}
+.hintbar .hx:hover{background:var(--inset);color:var(--ink)}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent);font:600 13px var(--sans);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+/* examples menu: groups in two columns when there is room */
+#exmenu{width:min(560px,calc(100vw - 32px))}
+.exg{break-inside:avoid;padding-bottom:4px}
+@media (min-width:640px){ #exmenu .excols{column-count:2;column-gap:6px} }
+/* inline error lens: the message at the end of the line that failed */
+.lens{color:var(--no);font:italic 11.5px var(--sans);opacity:.9}
+/* results: one chip per assert / prove / error, jumps to it */
+.sumrow{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px 8px calc(2.9em + 10px);border-bottom:1px solid var(--line)}
+.sc{border:1px solid transparent;border-radius:4px;padding:3px 6px;font:600 11px/1 var(--mono);cursor:pointer;background:var(--inset);color:var(--ink-2)}
+.sc.ok{background:var(--ok-soft);color:var(--ok)}.sc.no{background:var(--no-soft);color:var(--no)}.sc.warn{background:var(--warn-soft);color:var(--warn)}.sc.err{background:var(--no);color:var(--surface)}
+.sc:hover{border-color:currentColor}
+/* print() of number lists: a line chart */
+.chart{padding:4px 12px 10px calc(2.9em + 10px);min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .gl{stroke:var(--line);stroke-width:1}.chart .zl{stroke:var(--line-strong);stroke-width:1}
+.chart text{font:10.5px var(--mono);fill:var(--muted)}
+.chart text.sl{font-weight:600;fill:var(--ink-2)}
+.chart path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart circle{stroke:var(--surface);stroke-width:2}
+.chart .hit{fill:transparent}.chart .hit:hover{fill:color-mix(in srgb,var(--accent) 10%,transparent)}
 .exdraft{display:flex;align-items:stretch;gap:2px}.exdraft>button:first-child{flex:1;min-width:0}.exdel{flex:none;width:auto!important;min-width:28px;text-align:center!important;opacity:.55;padding-inline:8px!important;font-size:12px}.exdel:hover,.exdel:focus-visible{opacity:1}
 </style>
 
@@ -419,7 +447,7 @@ html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
 .rlnav-set svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rlnav-set:hover,.rlnav-set[aria-expanded="true"]{color:var(--ink);background:var(--inset)}
 #rlset-pop[hidden]{display:none}#rlset-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;padding:10px 12px;border-radius:10px;background:var(--surface,#0E1014);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap}
-.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}
+.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}.rlset-row+.rlset-row{margin-top:8px}.rlset-rev{border:0;background:none;color:var(--accent);font:500 12px/1 inherit;padding:6px 4px;cursor:pointer}
 #rlset-pop .seg{display:inline-flex;flex-direction:row;flex-wrap:nowrap;width:auto;border:0;gap:2px;padding:2px;border-radius:8px;background:var(--inset)}#rlset-pop .seg>button{display:inline-block;width:auto;min-height:0;margin:0;border:0;background:none;color:var(--muted);font:500 12px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}#rlset-pop .seg>button[aria-pressed="true"]{background:var(--inset);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .rlnav-docs{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;color:var(--muted);text-decoration:none;font:500 13px/1 var(--sans)}
 .rlnav-docs svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -758,6 +786,9 @@ st.running = true; if (!rq) { last = 0; rq = W.requestAnimationFrame(frame); }
 else { stop(); if (st.hidden) idle(); else if (!st.typing) still(); }
 }
 const sync = () => { if (pop) pop.querySelectorAll("[data-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === mode))); };
+function syncSpoil() { if (!pop) return; let v = null; try { v = W.localStorage.getItem("riftlogic.spoilers"); } catch (_) {}
+pop.querySelectorAll("[data-spoil]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-spoil") === (v === "shown" ? "shown" : "hidden")))); }
+syncSpoil();
 function setMode(m) {
 if (!/^(anim|still|off)$/.test(m)) return;
 mode = st.mode = m; st.paused = m !== "anim"; st.off = m === "off";
@@ -775,7 +806,13 @@ const pause = v => setMode(v ? "still" : "anim");
 if (btn && pop) {
 const open = v => { pop.hidden = !v; btn.setAttribute("aria-expanded", String(v)); };
 on(btn, "click", e => { e.stopPropagation(); open(pop.hidden); });
-on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg")); });
+on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg"));
+const sp = e.target.closest && e.target.closest("[data-spoil],[data-spoil-reveal]");
+if (sp) {
+try { if (sp.hasAttribute("data-spoil-reveal")) W.localStorage.setItem("riftlogic.spoilers.at", String(Date.now()));
+else if (sp.getAttribute("data-spoil") === "shown") W.localStorage.setItem("riftlogic.spoilers", "shown"); else W.localStorage.removeItem("riftlogic.spoilers"); } catch (_) {}
+syncSpoil(); try { W.dispatchEvent(new W.CustomEvent("rl:spoilers")); } catch (_) {}
+} });
 on(D, "click", () => open(false));
 on(D, "keydown", e => { if (e.key === "Escape" && !pop.hidden) { open(false); btn.focus(); } });
 }
@@ -998,10 +1035,15 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
       </div>
       <span class="filestate" id="filestate" role="status" aria-live="polite" hidden></span>
       <input type="file" id="fileinput" accept=".rl,.txt,text/plain" hidden>
+      <button type="button" class="btn ghost" id="sharebtn" title="Copy a link that opens and runs this program">Copy link</button>
       <button type="button" class="btn ghost" id="bugbtn" title="Send this program and its output to the developer">Report bug</button>
       <button type="button" class="btn ghost" id="vimbtn" aria-pressed="false" title="Vim keys in the editor">Vim</button>
       <button type="button" class="btn ghost" id="reset" title="Reload the example as written (your edits stay under Your code)">Reset</button>
       <button type="button" class="btn primary" id="run" title="Run (Ctrl/⌘ + Enter). Also runs as you type.">Run <kbd>⌘↵</kbd></button>
+    </div>
+    <div class="hintbar" id="hintbar" role="note" hidden>
+      <span class="ht">Ask League questions in code: each <code>assert</code> comes back <b class="ok">PROVED</b> or <b class="no">REFUTED</b> from game data. Pick one of the <button type="button" class="linkbtn" id="hintex">Examples</button>, then Run <kbd class="runkey">Ctrl↵</kbd>.</span>
+      <button type="button" class="hx" id="hintx" title="Dismiss" aria-label="Dismiss the hint">×</button>
     </div>
   </header>
   <dialog class="dlg" id="unsaved" aria-labelledby="unsavedT">
@@ -10906,8 +10948,26 @@ const [KB, CALC] = await Promise.resolve(window.RL_DATA()).catch(e => {
 });
 const RL = createRiftLogic(KB, CALC);
 const {ITEMS, ITEMKEYS, CLASSES, SLOTS, IDX, TAGS, KEYWORDS, TYPES, STATLABEL, norm, fmt, fmtc, show, label, findItem} = RL;
+// the examples gallery: each one is also a test, tests/examples/<file>.rl (tools/code_page_test.js checks they match)
 const EXAMPLES = {
-"Luden's vs Cosmic Drive": `// Which item makes Syndra hit harder: Luden's Echo (burst) or Cosmic Drive (haste)?
+"Which item hits harder?": `// Which item makes Syndra's all-in hit Jinx harder at level 11?
+// perform() plays the combo in real time, so item procs (Luden's echo, Stormsurge) count.
+Champion ludens = Syndra(11).with(Ludens, Sorc);
+Champion storm  = Syndra(11).with(Stormsurge, Sorc);
+Champion flame  = Syndra(11).with(Shadowflame, Sorc);
+Champion jinx   = Jinx(11).with(Infinity);
+
+Combo allIn = {Q, W, E, R};
+assert(storm.perform(allIn, vs: jinx).damage > ludens.perform(allIn, vs: jinx).damage, "Stormsurge beats Luden's");
+assert(storm.perform(allIn, vs: jinx).damage > flame.perform(allIn, vs: jinx).damage, "...and Shadowflame");
+assert(storm.gold < flame.gold, "and costs less than Shadowflame");
+
+// Raw ability damage alone (no procs) tells a different story: Shadowflame's AP wins
+assert(flame.combo(Q, W, E, R, vs: jinx) > storm.combo(Q, W, E, R, vs: jinx));
+
+print(ludens.perform(allIn, vs: jinx), storm.perform(allIn, vs: jinx), flame.perform(allIn, vs: jinx));`,
+
+"Luden's or Cosmic Drive?": `// Which item makes Syndra hit harder: Luden's Echo (burst) or Cosmic Drive (haste)?
 // Does it survive cooldowns, a tanky target, and her real kill combo?
 ItemSet burst = {Ludens, Sorc};
 ItemSet haste = {CosmicDrive, Sorc};
@@ -10940,67 +11000,162 @@ assert(!a.perform({Q, W, Q, E, R}, vs: jinx).killed, "Q-W-Q-E-R alone leaves Jin
 print(ra, rb.hpLeft);
 print(a.ap, b.ap, a.Q.cd, b.Q.cd, a.gold, b.gold);`,
 
-"Fizz into Syndra": `// Is Fizz good into Syndra? Logic first, then numbers.
-Syndra.R.addTag(targeted);   // the data can't always tell; say it, and it's listed as an assumption
-defaultLevel = 6;
+"Does Zhonya's stop Zed?": `// Does Zhonya's Hourglass save Syndra from Zed?
+Champion zed    = Zed(11).with(Youmuu, EdgeOfNight, Electrocute);
+Champion glass  = Syndra(11).with(Ludens, Sorc);            // no defence
+Champion safe   = Syndra(11).with(Ludens, Zhonya);          // Zhonya's instead of boots
 
-// 1. General: a diver beats an immobile mage
-rule dive(Champion x, Champion y) -> beats(x, y) [1] {
-    return x.is(Assassin) && x.has(mobile) && y.is(Mage) && !y.has(mobile);
-}
-// 2. ...unless the mage can stop the dive
-rule stunTheDive(Champion x, Champion y) -> !beats(x, y) [2] {
-    return x.has(mobile) && y.has(stun);
-}
-// 3. Going untargetable dodges that answer, if it's up as often as the stun
-rule dodgeTheStun(Champion x, Champion y) -> beats(x, y) [3] {
-    return x.has(untargetable) && y.has(stun) && x.cdmaxOf(untargetable) <= y.cdmaxOf(stun);
-}
-// 4. None of it matters if the all-in can't kill
-rule noKill(Champion x, Champion y) -> !beats(x, y) [4] {
-    return x.combo(Q, W, E, R, vs: y) < y.hp;
-}
+assert(canKill(zed, glass, 4), "Zed kills a glass Syndra within 4 s");
+assert(!canKill(zed, safe, 4), "with Zhonya's she is still alive at 4 s");
+assert(timeToKill(zed, safe) > 2 * timeToKill(zed, glass), "Zhonya's more than doubles the time Zed needs");
 
-prove beats(Fizz, Syndra);
-prove beats(Fizz(6).with(Ludens), Syndra);   // same claim, with one item
-prove beats(Zed, Syndra);`,
+print(timeToKill(zed, glass), timeToKill(zed, safe));
+// Open a result to see the step table: when Zed's R lands and when stasis starts
+print(zed.perform({R, E, Q, AA, W, Q, AA}, vs: glass), zed.perform({R, E, Q, AA, W, Q, AA}, vs: safe));`,
 
-"Team comp burst": `// Functions and loops over a TeamComp.
-TeamComp blue = {Ornn(11), Vi(11), Syndra(11).with(Ludens), Jinx(11).with(Infinity), Lulu(11)};
-TeamComp red  = {Garen(11), LeeSin(11), Ahri(11).with(Ludens), Caitlyn(11).with(Infinity), Nautilus(11)};
-
-double teamBurst(TeamComp team, Champion target) {
-    double total = 0;
-    for (Champion c : team) total += c.combo(Q, W, E, R, vs: target);
-    return total;
+"Most AP per gold": `// Which finished item gives the most AP per gold?
+double best = 0;
+string bestName = "";
+for (Item i : items()) {
+    if (i.gold >= 2500 && i.ap > 0 && i.ap / i.gold > best) {   // 2,500 g and up: finished items
+        best = i.ap / i.gold;
+        bestName = i.name;
+    }
 }
+print(bestName, best * 1000);   // AP per 1,000 gold
+assert(bestName == "Rabadon's Deathcap");
+assert(Rabadon.ap / Rabadon.gold * 1000 > Ludens.ap / Ludens.gold * 1000, "Rabadon's beats Luden's per gold");
+assert(Ludens.ap / Ludens.gold * 1000 > Shadowflame.ap / Shadowflame.gold * 1000, "Luden's beats Shadowflame per gold");`,
 
-// Can each team delete the other's carry with one rotation?
-assert(teamBurst(blue, red[3]) >= red[3].hp, "blue one-shots Caitlyn");
-assert(teamBurst(red, blue[3]) >= blue[3].hp, "red one-shots Jinx");
+"Custom combos": `// Write the exact sequence: abilities and auto attacks (AA), in order.
+Champion zed = Zed(11).with(Youmuu, EdgeOfNight, Electrocute);
+Champion jax = Jax(11).with(Trinity, BladeOfTheRuinedKing);
+Champion lux = Lux(11).with(Ludens, Sorc);
+Champion garen = Garen(11).with(Plated);
 
-double magicShare(TeamComp team) {
-    int mages = 0;
-    for (Champion c : team) if (c.is(Mage)) mages++;
-    return mages / team.size();
-}
-print(magicShare(blue), magicShare(red));`,
+Combo burst = {R, E, Q, AA};
+Combo full = burst + W + Q;              // extend a combo
+
+ComboResult r = zed.perform(burst, vs: lux);
+print(r);                                // open it for the step table
+print(r.damage, r.time, r.killed, r.hpLeft);
+assert(!r.killed && zed.perform(full, vs: lux).killed, "R-E-Q-AA leaves Lux alive; adding W and Q kills");
+
+// Waiting for cooldowns (default) vs skipping abilities that aren't ready
+print(zed.perform(full, vs: lux).time, zed.perform(full, vs: lux, wait: false).damage);
+
+// Autos between abilities trigger spellblade (Trinity Force) and on-hit items
+assert(jax.perform({Q, AA, W, AA, E, AA, AA}, vs: garen).damage > jax.combo(Q, W, E, vs: garen),
+       "weaving autos beats Jax's abilities alone");`,
 
 "Kill in N seconds": `// Given a few seconds, can Zed kill Syndra, and does a healer change that?
 Champion zed = Zed(11).with(Youmuu, EdgeOfNight, Electrocute, SuddenImpact, EyeballCollection, AdaptiveForce, AdaptiveForce);
-Champion syndra = Syndra(11).with(Ludens, Sorc, Zhonya);
+Champion syndra = Syndra(11).with(Ludens, Sorc, Rabadon);
 Champion soraka = Soraka(11).with(Moonstone, Redemption);
 
-assert(canKill(zed, syndra, 3), "Zed kills Syndra within 3 seconds");
-assert(canKill(zed, syndra, 10, healers: soraka), "Zed kills Syndra within 10s through Soraka's healing");
+assert(canKill(zed, syndra, 2), "Zed kills Syndra within 2 seconds");
+assert(!canKill(zed, syndra, 2, healers: soraka), "...not with Soraka healing her");
+assert(timeToKill(zed, syndra, healers: soraka) > 2 * timeToKill(zed, syndra), "Soraka more than doubles the time it takes");
 
-// How long does it take, alone and with Soraka? And if Syndra fights back?
+// How long does it take, alone, with Soraka, and if Syndra fights back?
 print(timeToKill(zed, syndra), timeToKill(zed, syndra, healers: soraka), timeToKill(zed, syndra, fightBack: true));
 
 // Static numbers: how much does Soraka's W heal Syndra?
-print(soraka.W.heal(target: syndra), soraka.W.healTarget, soraka.R.heal);`,
+print(soraka.W.heal(target: syndra), soraka.R.heal);`,
 
-"Team fight with healers": `// A 10-second 5v5. Who survives, and does smarter healing change it?
+"Practice dummy": `// Practice tool: compare with the numbers floating over the dummy.
+Champion jinx = Jinx(11).with(Infinity, Kraken, Electrocute);
+Dummy d = Dummy(hp: 3000, resists: 50);
+ComboResult r = jinx.perform({AA, AA, W, AA, AA, AA}, vs: d);
+print(r);
+print(r.floatingText);                    // every hit: exact, floor and round
+print(r.bySource("Kraken Slayer"), r.bySource("Electrocute"), r.stepDamage(3));
+assert(r.bySource("Kraken Slayer") > 0, "Kraken Slayer procs on the third attack");
+assert(!r.killed, "3000 HP is more than six hits");`,
+
+"Riven vs Renekton by level": `// A 1v1 at every stage of the game: Riven vs Renekton, same items and keystone.
+// hpPercent(a) - hpPercent(b) after a 30 s duel: above 0 Riven wins, below 0 Renekton does.
+List levels = {3, 6, 9, 11, 13, 16, 18};
+List margin = {};
+for (int L : levels) {
+    Champion riven = Riven(L).with(Eclipse, Sterak, Conqueror);
+    Champion renek = Renekton(L).with(Eclipse, Sterak, Conqueror);
+    Fight f = fight(riven, renek, 30);
+    margin.add(f.hpPercent(riven) - f.hpPercent(renek));
+}
+print(levels, margin);                    // a chart: margin by level
+
+Fight early = fight(Riven(6).with(Eclipse, Sterak, Conqueror), Renekton(6).with(Eclipse, Sterak, Conqueror), 30);
+Fight late  = fight(Riven(16).with(Eclipse, Sterak, Conqueror), Renekton(16).with(Eclipse, Sterak, Conqueror), 30);
+assert(early.winner == 1, "Riven wins the level-6 duel");
+assert(late.winner == 2, "Renekton wins at 16");
+print(early, late);                       // open one for the timeline`,
+
+"Conqueror or Electrocute?": `// Runes over time: which keystone kills a tank faster, and which heals more?
+Champion conq  = Darius(11).with(Stridebreaker, Sterak, Conqueror, AdaptiveForce, AdaptiveForce);
+Champion elec  = Darius(11).with(Stridebreaker, Sterak, Electrocute, AdaptiveForce, AdaptiveForce);
+Champion garen = Garen(11).with(Plated, Sterak, Conqueror);
+
+print(timeToKill(conq, garen), timeToKill(elec, garen));
+assert(timeToKill(elec, garen) < timeToKill(conq, garen), "Electrocute's burst kills a passive Garen sooner");
+
+// In a real duel Garen hits back
+Fight a = fight(conq, garen, 30);
+Fight b = fight(elec, garen, 30);
+print(a.winner, b.winner, a.healed(conq), b.healed(elec));
+assert(a.winner == 1 && b.winner == 1, "Darius wins either way");
+assert(a.healed(conq) > b.healed(elec), "only Conqueror heals him");`,
+
+"Dodging and range": `// Perfect-play mechanics: can the defender get out of the way?
+Champion syndra = Syndra(11), fizz = Fizz(11), ezreal = Ezreal(11), morgana = Morgana(11);
+
+// Instant reactions vs a human 0.25 s
+assert(canDodge(ezreal, morgana.Q, distance: 900), "Ezreal walks out of Morgana's Q at 900 units");
+assert(!canDodge(ezreal, morgana.Q, distance: 400, reaction: 0.25), "...but walking fails at 400 units with human reactions");
+assert(canDodge(ezreal, morgana.Q, distance: 400, reaction: 0.25, using: ezreal.E), "...unless he spends his E");
+
+// Point-and-click: only untargetability helps
+assert(canDodge(fizz, syndra.R, distance: 500, using: fizz.E), "Fizz's E dodges Syndra's ult");
+
+// Range and gap-closing
+print(syndra.threatRange, fizz.threatRange, fizz.gapClose, fizz.closeGap(syndra.threatRange - fizz.hitbox));
+
+// Data gaps can be filled in, and are listed as assumptions
+Syndra.Q.setPhysics(speed: 0, delay: 0.6);   // the sphere appears after a delay; it doesn't fly
+print(syndra.Q.arrival(distance: 700));`,
+
+"Wombo: spread and ult timing": `// Wombo combo: does an engage comp need the enemy stacked up?
+// spread: how far apart each side stands sideways (default 350; 0 = one line, every area ability hits all five)
+// rHold:  seconds before ultimates in a team fight (default 5; 0 = ults at once)
+TeamComp wombo = {Malphite(13).with(Sunfire, Thornmail), Amumu(13).with(Sunfire, Liandry), Orianna(13).with(Ludens, Shadowflame),
+                  MissFortune(13).with(Eclipse, Collector), Leona(13).with(Locket, Thornmail)};
+TeamComp split = {Fiora(13).with(Ravenous, Trinity, Conqueror), Graves(13).with(Eclipse, Collector), Viktor(13).with(Ludens, Shadowflame),
+                  Jinx(13).with(Infinity, Kraken), Lulu(13).with(Moonstone, Redemption)};
+
+Fight real    = fight(wombo, split, 20);                        // spread out, ults held
+Fight stacked = fight(wombo, split, 20, spread: 0, rHold: 0);   // everyone in a line, ults at once
+print(real, stacked);
+
+assert(stacked.winner == 1, "stacked up, the wombo wipes them");
+assert(stacked.duration < real.duration, "...and the fight ends sooner");
+assert(stacked.survivors(2) < real.survivors(2), "spread out, more of the split comp lives");
+print(real.dealt(wombo[2]), stacked.dealt(wombo[2]));           // Orianna's damage`,
+
+"Fight sweeps": `// One fight is one cell: move the start by 200 units or change the level and the winner can flip.
+// fights() runs every start x level (x both sides) and gives the share with a 95% interval.
+TeamComp wombo = {Malphite(13).with(Sunfire, Thornmail), Amumu(13).with(Sunfire, Liandry), Orianna(13).with(Ludens, Shadowflame),
+                  MissFortune(13).with(Eclipse, Collector), Leona(13).with(Locket, Thornmail)};
+TeamComp split = {Fiora(13).with(Ravenous, Trinity, Conqueror), Graves(13).with(Eclipse, Collector), Viktor(13).with(Ludens, Shadowflame),
+                  Jinx(13).with(Infinity, Kraken), Lulu(13).with(Moonstone, Redemption)};
+
+Fights s = fights(wombo, split, 30, starts: range(0, 1000, 200), levels: {9, 13, 16}, bothSides: true);
+print(s);                                 // open it for the grid: one square per start
+print(s.share, s.low, s.high, s.byLevel(9).share, s.byLevel(16).share);
+assert(s.byLevel(9).share > s.byLevel(16).share, "the engage comp is stronger early than late");
+assert(s.sideMismatches == 0, "swapping sides never changes a result");
+assert(s.low <= s.share && s.share <= s.high, "the interval contains the share");`,
+
+"Healers and focus fire": `// A 10-second 5v5. Who survives, and does smarter healing change it?
 TeamComp blue = {Ornn(13).with(Sunfire, Thornmail), Vi(13).with(BlackCleaver, Sterak, Conqueror),
                  Syndra(13).with(Ludens, Shadowflame, Electrocute), Jinx(13).with(Infinity, Kraken, Bloodthirster, LethalTempo),
                  Soraka(13).with(Moonstone, Redemption)};
@@ -11011,39 +11166,54 @@ TeamComp red  = {Garen(13).with(Stridebreaker, Sterak, Conqueror), LeeSin(13).wi
 Fight lowest = fight(blue, red, 10);            // Soraka heals whoever is lowest (default)
 blue[4].healPolicy = "save";                     // heal whoever will die soonest
 Fight triage = fight(blue, red, 10);
-blue[4].healPolicy = blue[3];                    // pocket Jinx
-Fight pocket = fight(blue, red, 10);
-
-print(lowest.survivors(1), triage.survivors(1), pocket.survivors(1), pocket.alive(blue[3]), pocket.healed(blue[4]));
+print(lowest, triage);                           // open one for the timeline
+print(lowest.survivors(1), triage.survivors(1), triage.healed(blue[4]));
 assert(triage.survivors(1) >= lowest.survivors(1), "triage healing keeps at least as many alive");
 
 // Focus fire: everyone on red dives Jinx
 for (Champion& c : red) c.target = blue[3];
 Fight dive = fight(blue, red, 10);
-print(dive.deathTime(blue[3]), dive.survivors(1), dive.survivors(2));`,
+print(dive.deathTime(blue[3]), dive.survivors(1), dive.survivors(2));
+assert(dive.deathTime(blue[3]) < 3, "a five-man dive kills Jinx in under 3 s");`,
 
-"Fight sweeps": `// One fight is one cell: move the start by 100 units and the winner can flip.
-// fights() runs every start x level x role set and gives the share with an interval.
-TeamComp poke = {Kennen(13).with(Stormsurge, Shadowflame, Electrocute), Karthus(13).with(Liandry, Zhonya, DarkHarvest),
-                 Xerath(13).with(Ludens, Shadowflame, ArcaneComet), Varus(13).with(BladeOfTheRuinedKing, Kraken, LethalTempo),
-                 Lux(13).with(Ludens, Zhonya, ArcaneComet)};
-TeamComp red  = {Renekton(13).with(Eclipse, Sterak, Conqueror), JarvanIV(13).with(Eclipse, Sterak, Conqueror),
-                 Annie(13).with(Ludens, Shadowflame, Electrocute), Kalista(13).with(Kraken, Guinsoo, LethalTempo),
-                 Rakan(13).with(Locket, Redemption, Guardian)};
+"Team burst with functions": `// Functions and loops over a TeamComp: can each team delete the other's carry in one rotation?
+TeamComp blue = {Ornn(11), Vi(11), Syndra(11).with(Ludens), Jinx(11).with(Infinity), Lulu(11)};
+TeamComp red  = {Garen(11), LeeSin(11), Ahri(11).with(Ludens), Caitlyn(11).with(Infinity), Nautilus(11)};
 
-// A role set: gets each team at each level (a copy), returns it ready to fight
-TeamComp engage(TeamComp t, int level) {
-    for (Champion& c : t) if (c.name == "Renekton" || c.name == "Jarvan IV" || c.name == "Rakan") c.role = "engage";
-    return t;
+double teamBurst(TeamComp team, Champion target) {
+    double total = 0;
+    for (Champion c : team) total += c.combo(Q, W, E, R, vs: target);
+    return total;
 }
+assert(teamBurst(blue, red[3]) >= red[3].hp, "blue one-shots Caitlyn");
+assert(teamBurst(red, blue[3]) >= blue[3].hp, "red one-shots Jinx");
 
-for (double d : {400, 500, 600, 700}) print(fight(engage(poke, 13), engage(red, 13), 40, start: d).winner);   // single cells
+double magicShare(TeamComp team) {
+    int mages = 0;
+    for (Champion c : team) if (c.is(Mage)) mages++;
+    return mages / team.size();
+}
+print(magicShare(blue), magicShare(red));`,
 
-Fights s = fights(poke, red, 40, starts: range(0, 1200, 100), levels: {9, 13, 16}, roles: engage, bothSides: true);
-print(s);                                     // one line; open it for the grid (one square per start)
-print(s.share, s.low, s.high, s.byLevel(9).share, s.byLevel(16).share, s.byStart(400).wins);
-assert(s.sideMismatches == 0, "swapping sides never changes a result");
-assert(s.low <= s.share && s.share <= s.high, "the interval contains the share");`,
+"Draft win chance: pro vs solo": `// Who wins from the draft alone? Pro play and solo queue have separate models.
+auto blue = {Ornn, LeeSin, Ahri, Jinx, Leona};
+auto red  = {Sion, Vi, Orianna, Kaisa, Nautilus};
+print(draftwp(blue: blue, red: red, pro: true), draftwp(blue: blue, red: red));   // blue's win chance
+
+// The empty draft is the side prior: blue side wins more in pro, red side in solo queue
+assert(draftwp(blue: {}, red: {}, pro: true) > 0.5, "pro: blue side is favoured");
+assert(draftwp(blue: {}, red: {}) < 0.5, "solo queue: red side is favoured");
+
+// A troll pick costs more in solo queue: Kassadin as blue's support
+auto troll = {Ornn, LeeSin, Ahri, Jinx, Kassadin};
+assert(draftwp(blue: troll, red: red, byRole: true) < draftwp(blue: blue, red: red), "Kassadin support lowers blue's chance");
+
+// In pro, the teams matter far more than the picks
+assert(draftwp(blue: blue, red: red, pro: true, blueRating: "T1", redRating: "Gen.G") < 0.45, "T1 on blue vs Gen.G: under 45%");
+
+// What one pick adds, and the best supports for this draft
+print(pickwpa(Rakan, role: "support", side: "blue", blue: {Ornn, LeeSin, Ahri, Jinx}, red: {Sion, Vi, Orianna}, pro: true));
+print(topPicks(by: "draftwpa", side: "blue", role: "support", blue: {Ornn, LeeSin, Ahri, Jinx}, red: {Sion, Vi, Orianna}, n: 5, pro: true));`,
 
 "Real-game stats": `// Win rates, pick and ban rates and laning numbers from real games: ranked solo queue (patch 16.x, the default)
 // and pro play (pro: true; Oracle's Elixir, 2026 by default, year: 2025 or "2025+"). Every result has its game count
@@ -11067,79 +11237,67 @@ print(s.n, s.wins, s.low, s.high);
 if (s.enough) assert(s.low < 0.5 && s.high > 0.5, "pro: no clear edge either way (the interval includes 50%)");
 print(winrate(Syndra, vs: Rammus, pro: true));               // too little data`,
 
-"Conqueror vs Electrocute": `// Runes over time: which keystone kills a tank faster, and which survives a duel?
-Champion conq  = Darius(11).with(Stridebreaker, Sterak, Conqueror, AdaptiveForce, AdaptiveForce);
-Champion elec  = Darius(11).with(Stridebreaker, Sterak, Electrocute, AdaptiveForce, AdaptiveForce);
-Champion garen = Garen(11).with(Plated, Sterak, Conqueror);
+"Lethality or armor pen?": `// Lethality or armor pen? Zed's Q-E-R on targets from 0 to 250 armor.
+Champion leth = Zed(13).with(Youmuu, Hubris, EdgeOfNight);   // 51 lethality
+Champion pen  = Zed(13).with(Youmuu, Hubris, Serylda);       // 36 lethality + 35% armor pen
+assert(leth.gold == pen.gold, "same gold");
 
-print(timeToKill(conq, garen), timeToKill(elec, garen));
-// In a real duel Garen hits back, so Conqueror's healing matters
-Fight a = fight(conq, garen, 30);
-Fight b = fight(elec, garen, 30);
-print(a.winner, a.healed(conq), b.winner, b.healed(elec));
-assert(a.hpPercent(conq) > b.hpPercent(elec), "Conqueror Darius ends the duel healthier");`,
-
-"Dodging and range": `// Perfect-play mechanics: can the defender get out of the way?
-Champion syndra = Syndra(11), fizz = Fizz(11), ezreal = Ezreal(11), morgana = Morgana(11);
-
-// Instant reactions vs a human 0.25s
-assert(canDodge(ezreal, morgana.Q, distance: 900), "Ezreal walks out of Morgana's Q at 900 units");
-assert(!canDodge(ezreal, morgana.Q, distance: 400, reaction: 0.25), "...but walking fails at 400 units with human reactions");
-assert(canDodge(ezreal, morgana.Q, distance: 400, reaction: 0.25, using: ezreal.E), "...unless he spends his E");
-
-// Point-and-click: only untargetability helps
-assert(canDodge(fizz, syndra.R, distance: 500, using: fizz.E), "Fizz's E dodges Syndra's ult");
-
-// Range and gap-closing
-print(syndra.threatRange, fizz.threatRange, fizz.gapClose, fizz.closeGap(syndra.threatRange - fizz.hitbox));
-
-// Data gaps can be filled in, and are listed as assumptions
-Syndra.Q.setPhysics(speed: 0, delay: 0.6);   // the sphere appears after a delay; it doesn't fly
-print(syndra.Q.arrival(distance: 700));`,
-
-"Custom combos": `// Write the exact sequence: abilities and auto attacks (AA), in order.
-Champion zed = Zed(11).with(Youmuu, EdgeOfNight, Electrocute);
-Champion jax = Jax(11).with(Trinity, BladeOfTheRuinedKing);
-Champion lux = Lux(11).with(Ludens, Sorc);
-Champion garen = Garen(11).with(Plated);
-
-Combo burst = {R, E, Q, AA};
-Combo full = burst + W + Q;              // extend a combo
-
-ComboResult r = zed.perform(burst, vs: lux);
-print(r);                                // expand for the step table
-print(r.damage, r.time, r.killed, r.hpLeft);
-
-// Waiting for cooldowns (default) vs skipping abilities that aren't ready
-print(zed.perform(full, vs: lux).time, zed.perform(full, vs: lux, wait: false).damage);
-
-// Autos between abilities trigger spellblade (Trinity Force) and on-hit items
-assert(jax.perform({Q, AA, W, AA, E, AA, AA}, vs: garen).damage > jax.combo(Q, W, E, vs: garen),
-       "weaving autos beats Jax's abilities alone");
-
-// Does the target's healer save them?
-Champion soraka = Soraka(11).with(Moonstone);
-print(zed.perform(full, vs: lux, healers: soraka).killed);`,
-
-"Practice dummy": `// Practice tool: compare with the numbers floating over the dummy.
-Champion jinx = Jinx(11).with(Infinity, Kraken, Electrocute);
-Dummy d = Dummy(hp: 3000, resists: 50);
-ComboResult r = jinx.perform({AA, AA, W, AA, AA, AA}, vs: d);
-print(r);
-print(r.floatingText);
-print(r.bySource("Kraken"), r.stepDamage(3));`,
-
-"AP per gold": `// Which finished items give the most AP per gold?
-double best = 0;
-string bestName = "";
-for (Item i : items()) {
-    if (i.ap > 0 && i.ap / i.gold > best) {
-        best = i.ap / i.gold;
-        bestName = i.name;
-    }
+List armor = range(0, 250, 25);
+List lethality = {};
+List armorPen = {};
+for (double x : armor) {
+    Dummy d = Dummy(hp: 5000, armor: x);
+    lethality.add(leth.combo(Q, E, R, vs: d));
+    armorPen.add(pen.combo(Q, E, R, vs: d));
 }
-print(bestName, best * 1000);   // AP per 1,000 gold
-assert(Rabadon.ap / Rabadon.gold > Ludens.ap / Ludens.gold);`,
+print(armor, lethality, armorPen);        // a chart: damage by target armor
+
+assert(leth.combo(Q, E, R, vs: Dummy(hp: 5000, armor: 40)) > pen.combo(Q, E, R, vs: Dummy(hp: 5000, armor: 40)), "lethality wins vs squishies (40 armor)");
+assert(pen.combo(Q, E, R, vs: Dummy(hp: 5000, armor: 150)) > leth.combo(Q, E, R, vs: Dummy(hp: 5000, armor: 150)), "armor pen wins vs tanks (150 armor)");`,
+
+"Kill window by level": `// A fixed 2-item Syndra vs a 1-item Jinx at every level: when does the full combo stop killing?
+Combo full = {Q, W, Q, E, R, Q};
+List levels = range(6, 18, 1);
+List damage = {};
+List jinxHp = {};
+int lastKill = 0;
+for (int L : levels) {
+    Champion s = Syndra(L).with(Ludens, Sorc);
+    Champion j = Jinx(L).with(Infinity);
+    ComboResult r = s.perform(full, vs: j);
+    damage.add(r.damage);
+    jinxHp.add(j.hp);
+    if (r.killed) lastKill = L;
+}
+print(levels, damage, jinxHp);            // a chart: damage vs Jinx's health by level
+print(lastKill);
+assert(lastKill >= 11, "the combo still kills at 11");
+assert(!Syndra(18).with(Ludens, Sorc).perform(full, vs: Jinx(18).with(Infinity)).killed, "at 18 she needs more items");`,
+
+"Fizz into Syndra": `// Is Fizz good into Syndra? Write the lane logic as rules; the strongest argument wins.
+Syndra.R.addTag(targeted);   // the data can't always tell; say it, and it's listed as an assumption
+defaultLevel = 6;
+
+// 1. General: a diver beats an immobile mage
+rule dive(Champion x, Champion y) -> beats(x, y) [1] {
+    return x.is(Assassin) && x.has(mobile) && y.is(Mage) && !y.has(mobile);
+}
+// 2. ...unless the mage can stop the dive
+rule stunTheDive(Champion x, Champion y) -> !beats(x, y) [2] {
+    return x.has(mobile) && y.has(stun);
+}
+// 3. Going untargetable dodges that answer, if it's up as often as the stun
+rule dodgeTheStun(Champion x, Champion y) -> beats(x, y) [3] {
+    return x.has(untargetable) && y.has(stun) && x.cdmaxOf(untargetable) <= y.cdmaxOf(stun);
+}
+// 4. None of it matters if one all-in can't take half her health
+rule noThreat(Champion x, Champion y) -> !beats(x, y) [4] {
+    return x.combo(Q, W, E, R, vs: y) < y.hp / 2;
+}
+
+prove beats(Fizz(6).with(Ludens), Syndra);   // E dodges the stun, and one item makes the all-in a threat
+// The same rules for three divers, grouped by verdict (click one to see its argument)
+prove forall (Champion c : {Fizz(6).with(Ludens), Zed(6).with(Youmuu), Ekko(6).with(Ludens)}) beats(c, Syndra);`,
 
 "Who beats Syndra?": `// Generalise: which assassins do these rules say beat Syndra at level 6?
 defaultLevel = 6;
@@ -11154,6 +11312,8 @@ rule dodgeTheStun(Champion x, Champion y) -> beats(x, y) [3] {
 }
 prove forall (Champion c : champions(Assassin)) beats(c, Syndra);`
 };
+const EX_FILES = {"Which item hits harder?":"item_which_hits_harder", "Luden's or Cosmic Drive?":"item_ludens_vs_cosmic_drive", "Does Zhonya's stop Zed?":"item_zhonya_vs_zed", "Most AP per gold":"item_ap_per_gold", "Custom combos":"combo_custom", "Kill in N seconds":"combo_kill_in_n_seconds", "Practice dummy":"combo_practice_dummy", "Riven vs Renekton by level":"duel_riven_renekton", "Conqueror or Electrocute?":"duel_conqueror_electrocute", "Dodging and range":"duel_dodging_range", "Wombo: spread and ult timing":"team_wombo_spread", "Fight sweeps":"team_fight_sweeps", "Healers and focus fire":"team_healers", "Team burst with functions":"team_comp_burst", "Draft win chance: pro vs solo":"draft_pro_vs_solo", "Real-game stats":"stats_real_games", "Lethality or armor pen?":"scaling_lethality_armor", "Kill window by level":"scaling_kill_window", "Fizz into Syndra":"proof_fizz_syndra", "Who beats Syndra?":"proof_who_beats_syndra"};
+const EX_GROUPS = [["Items",["Which item hits harder?","Luden's or Cosmic Drive?","Does Zhonya's stop Zed?","Most AP per gold"]],["Combos & kills",["Custom combos","Kill in N seconds","Practice dummy"]],["1v1 duels",["Riven vs Renekton by level","Conqueror or Electrocute?","Dodging and range"]],["Teamfights",["Wombo: spread and ult timing","Fight sweeps","Healers and focus fire","Team burst with functions"]],["Draft & stats",["Draft win chance: pro vs solo","Real-game stats"]],["Scaling",["Lethality or armor pen?","Kill window by level"]],["Proofs",["Fizz into Syndra","Who beats Syndra?"]]];
 
 const $ = id => document.getElementById(id);
 const src = $("src"), hl = $("hl");
@@ -11187,7 +11347,9 @@ function paintSquiggles(){
   sq.innerHTML = src.value.split("\n").map((ln, i) => {
     if (!errorLines.has(i + 1)) return esc2(ln);
     const lead = ln.match(/^\s*/)[0], body = ln.slice(lead.length) || " ";
-    return esc2(lead) + `<span class="squiggle">${esc2(body)}</span>`;
+    // the message itself at the end of the line (first sentence, short), like an error lens
+    const m = String(errorLines.get(i + 1) || "").split(/(?<=[.?!])\s|\n/)[0], short = m.length > 90 ? m.slice(0, 89) + "…" : m;
+    return esc2(lead) + `<span class="squiggle">${esc2(body)}</span>` + (short ? `<span class="lens">   ◂ ${esc2(short)}</span>` : "");
   }).join("\n") + "\n";
   sq.scrollTop = src.scrollTop;
 }
@@ -11210,7 +11372,7 @@ const AC = (() => {
   for (const [k,R] of Object.entries(CALC.runes)) base.push(C(ident(R.name), "rune", R.name));
   for (const t of TYPES) base.push(C(t, "type", ""));
   for (const k of ["if","else","for","while","return","break","continue","true","false","rule","prove","forall"]) base.push(C(k, "keyword", ""));
-  for (const [f,d] of [["assert","assert(cond, \"title\")"],["print","print(a, b, …)"],["fight","fight(side1, side2, seconds, start:, skill:, perfectAim:, levelGap:, goldGap:)"],["fights","fights(team1, team2, seconds, starts:, levels:, roles:, bothSides:, skill:, levelGaps:, goldGaps:)"],["crossover","crossover(team1, team2, seconds, axis: \"level\" | \"gold\", starts:, bothSides:) team 1's lead where its share crosses 50%"],["range","range(from, to, step) both ends included"],["winrate","winrate(champ, vs:, with:, role:, lane:, patch:, league:, length:, pro:, year:) real games: a Stat with n and 95% CI"],["pickrate","pickrate(champ, role:, patch:, league:, pro:, year:) share of games it was picked in"],["banrate","banrate(champ, pro:, year:) share of games it was banned in"],["presence","presence(champ, pro:, year:) picks + bans"],["games","games(champ, vs:, with:, role:, lane:, pro:, …) number of games"],["stat","stat(champ, \"gd15\", role:, pro:, year:) per-game average: gd10 gd15 xpd10 xpd15 csd10 csd15 (pro), kills deaths assists kda dmgshare dpm cspm"],["matchups","matchups(champ, lane:, role:, min:, pro:, year:, by: \"winrate\" | \"wpa\", phase:) win rate (or WPA) vs every opponent with enough games, best first"],["topPicks","topPicks(role:, by: \"pickrate\" | \"winrate\" | \"banrate\" | \"presence\" | \"wpa\" | \"draftwpa\", n:, min:, pro:, year:, patch:, league:; draftwpa: blue:, red:, side:)"],["wpa","wpa(champ, pro: true, phase: \"total\" | \"draft\" | \"lane\" | \"team\", role:, vs:, year:) win probability added, percentage points per game (pro only): a Stat with n and 95% CI"],["winprob","winprob(goldDiff:, at: 10–25, xpDiff:, killDiff:, side: \"blue\" | \"red\") pro win probability model: P(win) for a team lead at a minute"],["draftwp","draftwp(blue: {…}, red: {…}, pro:, byRole:, blueRating:, redRating:) draft win probability for blue (separate pro and solo models; open slots = a typical pick)"],["pickwpa","pickwpa(champ, role:, side: \"blue\" | \"red\", blue: {…}, red: {…}, pro:) the pick's win probability added, percentage points"],["canKill","canKill(a, t, seconds, healers:, fightBack:)"],["timeToKill","timeToKill(a, t, healers:, fightBack:)"],["canDodge","canDodge(b, a.Q, distance:, using:, reaction:)"],["champions","champions(Class?)"],["items","items()"],["runes","runes()"],["min","min(a, b)"],["max","max(a, b)"],["abs","abs(x)"],["floor","floor(x)"],["ceil","ceil(x)"],["round","round(x)"],["sqrt","sqrt(x)"],["pow","pow(x, y)"],["defaultLevel","global, default 11"],["gameMinute","global, default 20"],["Dummy","Dummy(hp:, armor:, mr:) practice-tool target dummy"]])
+  for (const [f,d] of [["assert","assert(cond, \"title\")"],["print","print(a, b, …)"],["fight","fight(side1, side2, seconds, start:, spread:, rHold:, skill:, perfectAim:, levelGap:, goldGap:)"],["fights","fights(team1, team2, seconds, starts:, levels:, roles:, bothSides:, spread:, rHold:, skill:, levelGaps:, goldGaps:)"],["crossover","crossover(team1, team2, seconds, axis: \"level\" | \"gold\", starts:, bothSides:) team 1's lead where its share crosses 50%"],["range","range(from, to, step) both ends included"],["winrate","winrate(champ, vs:, with:, role:, lane:, patch:, league:, length:, pro:, year:) real games: a Stat with n and 95% CI"],["pickrate","pickrate(champ, role:, patch:, league:, pro:, year:) share of games it was picked in"],["banrate","banrate(champ, pro:, year:) share of games it was banned in"],["presence","presence(champ, pro:, year:) picks + bans"],["games","games(champ, vs:, with:, role:, lane:, pro:, …) number of games"],["stat","stat(champ, \"gd15\", role:, pro:, year:) per-game average: gd10 gd15 xpd10 xpd15 csd10 csd15 (pro), kills deaths assists kda dmgshare dpm cspm"],["matchups","matchups(champ, lane:, role:, min:, pro:, year:, by: \"winrate\" | \"wpa\", phase:) win rate (or WPA) vs every opponent with enough games, best first"],["topPicks","topPicks(role:, by: \"pickrate\" | \"winrate\" | \"banrate\" | \"presence\" | \"wpa\" | \"draftwpa\", n:, min:, pro:, year:, patch:, league:; draftwpa: blue:, red:, side:)"],["wpa","wpa(champ, pro: true, phase: \"total\" | \"draft\" | \"lane\" | \"team\", role:, vs:, year:) win probability added, percentage points per game (pro only): a Stat with n and 95% CI"],["winprob","winprob(goldDiff:, at: 10–25, xpDiff:, killDiff:, side: \"blue\" | \"red\") pro win probability model: P(win) for a team lead at a minute"],["draftwp","draftwp(blue: {…}, red: {…}, pro:, byRole:, blueRating:, redRating:) draft win probability for blue (separate pro and solo models; open slots = a typical pick)"],["pickwpa","pickwpa(champ, role:, side: \"blue\" | \"red\", blue: {…}, red: {…}, pro:) the pick's win probability added, percentage points"],["canKill","canKill(a, t, seconds, healers:, fightBack:)"],["timeToKill","timeToKill(a, t, healers:, fightBack:)"],["canDodge","canDodge(b, a.Q, distance:, using:, reaction:)"],["champions","champions(Class?)"],["items","items()"],["runes","runes()"],["min","min(a, b)"],["max","max(a, b)"],["abs","abs(x)"],["floor","floor(x)"],["ceil","ceil(x)"],["round","round(x)"],["sqrt","sqrt(x)"],["pow","pow(x, y)"],["defaultLevel","global, default 11"],["gameMinute","global, default 20"],["Dummy","Dummy(hp:, armor:, mr:) practice-tool target dummy"]])
     base.push(C(f, "builtin", d));
   for (const c of CLASSES) base.push(C(c, "class", "champion class"));
   base.push(C("AA", "slot", "auto attack, for combos"));
@@ -11242,6 +11404,31 @@ const AC = (() => {
     ["floatingText","every damage instance, exact + floor + round"],["hitCount","number of damage instances"],["hit(","hit(i): instance i, from 1"],["stepDamage(","stepDamage(i): step i, from 1"]].map(([l,d]) => M(l,d));
   const dummyMembers = [["hp","health (1000 + bonus)"],["armor","armor (bonus)"],["mr","magic resist (bonus)"],["bonushp","health above 1000"],["bonusarmor","armor from the cheat"],["bonusmr","MR from the cheat"],["resists","armor = MR"],["hitbox","gameplay radius, 65 to 130"],["level","always 1"],["name","Target Dummy"]].map(([l,d]) => M(l,d));
   const listMembers = [["size(","count"],["add(","add"],["contains(","contains(x)"]].map(([l,d]) => M(l,d));
+  const fightsMembers = [["share","(wins + draws/2) / total"],["low","95% interval, low"],["high","95% interval, high"],["wins","team 1 wins"],["draws","draws"],["losses","team 1 losses"],["total","fights run"],
+    ["meanTime","mean end time"],["margin","mean alive margin"],["sideMismatches","cells that changed with sides swapped"],["byStart(","byStart(d)"],["byLevel(","byLevel(L)"],["byRoles(","byRoles(i)"],["bySide(","bySide(1|2)"],["byLevelGap(","byLevelGap(g)"],["byGoldGap(","byGoldGap(g)"]].map(([l,d]) => M(l,d));
+  const statMembers = [["n","games"],["wins","wins"],["low","95% CI low"],["high","95% CI high"],["enough","enough games for a number"],["value","the number"],["what","what it measures"],["source","dataset"]].map(([l,d]) => M(l,d));
+  // named arguments, offered inside the call's brackets
+  const ARGS = {
+    fight: ["start","spread","rHold","skill","perfectAim","levelGap","goldGap","kite","room","formation"],
+    fights: ["starts","levels","roles","bothSides","spread","rHold","skill","perfectAim","levelGaps","goldGaps","kite","room","formation"],
+    crossover: ["axis","starts","bothSides","levels","roles","step","max","skill"],
+    perform: ["vs","wait","healers"], combo: ["vs"], damage: ["vs"], proc: ["vs"], heal: ["target"], shield: ["target"], value: ["vs"], arrival: ["distance"],
+    canKill: ["healers","fightBack"], timeToKill: ["healers","fightBack","within"], canDodge: ["distance","using","reaction"],
+    draftwp: ["blue","red","pro","byRole","blueRating","redRating"], pickwpa: ["role","side","blue","red","pro"],
+    topPicks: ["role","by","n","min","pro","year","patch","league","blue","red","side"],
+    winrate: ["vs","with","role","lane","patch","league","length","pro","year"], pickrate: ["role","patch","league","pro","year"], banrate: ["pro","year"], presence: ["pro","year"],
+    games: ["vs","with","role","lane","pro","year"], stat: ["role","pro","year"], matchups: ["lane","role","min","pro","year","by","phase"],
+    wpa: ["pro","phase","role","vs","year"], winprob: ["goldDiff","at","xpDiff","killDiff","side"], Dummy: ["hp","armor","mr","resists"], setPhysics: ["speed","width","delay","radius"]};
+  function openCall(text){                 // the function whose brackets the cursor is inside, if any
+    let depth = 0;
+    for (let i = text.length - 1; i >= 0; i--){
+      const ch = text[i];
+      if (ch === ")" || ch === "}" || ch === "]") depth++;
+      else if (ch === "(" || ch === "{" || ch === "["){ if (depth){ depth--; continue; } if (ch !== "(") return null; const m = text.slice(0, i).match(/([A-Za-z_]\w*)\s*$/); return m ? m[1] : null; }
+      else if (ch === ";" && depth === 0) return null;
+    }
+    return null;
+  }
 
   const editor = src.parentElement;
   const box = document.createElement("div"); box.className = "ac"; box.hidden = true; box.setAttribute("role","listbox"); box.id = "ac-list";
@@ -11253,7 +11440,7 @@ const AC = (() => {
 
   function declaredVars(text){
     const out = new Map();
-    const re = /\b(auto|int|double|float|bool|string|Champion|Item|ItemSet|TeamComp|Ability|Rune|Fight|List|Combo|ComboResult|Dummy)\s*&?\s+([A-Za-z_]\w*)/g; let m;
+    const re = /\b(auto|int|double|float|bool|string|Champion|Item|ItemSet|TeamComp|Ability|Rune|Fights|Fight|Stat|List|Combo|ComboResult|Dummy)\s*&?\s+([A-Za-z_]\w*)/g; let m;
     while ((m = re.exec(text))) out.set(m[2], m[1]);
     const re2 = /,\s*([A-Za-z_]\w*)\s*=/g; while ((m = re2.exec(text))) if (!out.has(m[1])) out.set(m[1], "auto");
     return out;
@@ -11282,6 +11469,8 @@ const AC = (() => {
       if (/^[PQWER]$/.test(owner)) return abilityMembers;
       const t = vars.get(owner.replace(/[\[(].*$/,""));
       if (t === "Fight") return fightMembers;
+      if (t === "Fights") return fightsMembers;
+      if (t === "Stat") return statMembers;
       if (t === "Combo") return comboMembers;
       if (t === "ComboResult") return resultMembers;
       if (t === "Dummy") return dummyMembers;
@@ -11291,7 +11480,8 @@ const AC = (() => {
       return champMembers;
     }
     const varItems = [...vars.entries()].map(([n,t]) => C(n, "variable", t));
-    return [...varItems, ...base];
+    const fn = openCall(src.value.slice(0, ctx.pos)), named = fn && ARGS[fn] ? ARGS[fn].map(a => ({...C(a, "arg", `${fn}(…, ${a}: …)`, a + ": "), rank: -3})) : [];
+    return [...named, ...varItems, ...base];
   }
   function score(c, q){
     if (!q) return 1;
@@ -11302,7 +11492,7 @@ const AC = (() => {
     if (c.alt && c.alt.includes(qn)) return 40;
     return 0;
   }
-  const order = {variable:0, champ:1, item:2, rune:3, member:0, builtin:4, type:5, keyword:6, class:7, tag:8};
+  const order = {arg:0, variable:0, champ:1, item:2, rune:3, member:0, builtin:4, type:5, keyword:6, class:7, tag:8};
   function show(force){
     const ctx = context();
     if (!ctx.dot && !ctx.comboOwner && ctx.word.length < 2 && !force){ close(); return; }
@@ -11643,7 +11833,46 @@ function renderPrint(item){
     g.append(row({line: i === 0 ? item.line : null, name: h("span",{class:"n"}, r.text ?? "{…}", asmMark(asm.length)), val: val.node, right: val.right, open: val.open,
       detail: has ? () => [val.detail ? val.detail() : null, working(lines, val.detail ? "Working" : null), subs.map(subProof), footnotes(asm, notes)] : null}));
   });
+  const ch = seriesChart(item.rows); if (ch) g.append(ch);
   return g;
+}
+/* print() of lists of numbers draws a line chart: print(levels, a, b) plots a and b against levels (the first list, when it
+   increases and the others have its length); a single list is plotted against 1…n. At most 4 lines, each labelled at its end. */
+const SERIES_COL = ["var(--accent)", "var(--gold)", "var(--magic)", "var(--side2)"];
+function numList(r){ const v = r.v; return v && v.t === "list" && v.items.length >= 3 && v.items.length <= 500 && v.items.every(x => typeof x === "number" && Number.isFinite(x)) ? v.items : null; }
+function seriesChart(rows){
+  const L = rows.map(r => ({text: String(r.text ?? ""), xs: numList(r)})).filter(r => r.xs);
+  if (!L.length) return null;
+  let x = null, ys = L;
+  const n = L[0].xs.length, inc = L[0].xs.every((v, i, a) => !i || v > a[i - 1]), same = L.slice(1).filter(r => r.xs.length === n);
+  if (inc && same.length){ x = L[0]; ys = same; } else ys = L.filter(r => r.xs.length === n);
+  ys = ys.slice(0, 4);
+  const X = x ? x.xs : ys[0].xs.map((_, i) => i + 1);
+  const all = ys.flatMap(r => r.xs); let lo = Math.min(...all), hi = Math.max(...all);
+  if (lo > 0 && lo < hi * 0.5) lo = 0;                     // start at 0 unless that flattens the lines
+  if (hi === lo){ hi += 1; lo -= 1; }
+  const step = (() => { const raw = (hi - lo) / 4, p = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= raw); })();
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const W = Math.max(280, Math.min(900, ($("out").clientWidth || 560) - 60)), H = 180, ml = 44, mr = 96, mt = 10, mb = 24;
+  const px = v => ml + (X.length > 1 ? (v - X[0]) / (X[X.length - 1] - X[0]) : 0.5) * (W - ml - mr), py = v => mt + (1 - (v - lo) / (hi - lo)) * (H - mt - mb);
+  const NS = "http://www.w3.org/2000/svg", s = (tag, a, txt) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
+  const svg = s("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${ys.map(r => r.text).join(", ")}${x ? ` by ${x.text}` : ""}`});
+  for (let v = lo; v <= hi + step / 2; v += step){ const y = py(v); svg.append(s("line", {class: Math.abs(v) < step / 1e6 && lo < 0 ? "zl" : "gl", x1: ml, x2: W - mr, y1: y, y2: y}), s("text", {x: ml - 6, y: y + 3.5, "text-anchor": "end"}, show(Math.round(v * 1e6) / 1e6))); }
+  const every = Math.max(1, Math.ceil(X.length / Math.max(2, Math.floor((W - ml - mr) / 36))));   // about 36 px per tick label
+  const ticks = X.map((_, i) => i).filter(i => i % every === 0 || i === X.length - 1 && (X.length - 1) % every >= every / 2);
+  for (const i of ticks) svg.append(s("text", {x: px(X[i]), y: H - 6, "text-anchor": "middle"}, show(X[i])));
+  // lines, dots and the end labels (nudged apart so they don't overlap)
+  const ends = ys.map((r, k) => ({k, y: py(r.xs[r.xs.length - 1]), text: r.text.length > 14 ? r.text.slice(0, 13) + "…" : r.text})).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) ends[i].y = Math.max(ends[i].y, ends[i - 1].y + 12);
+  ys.forEach((r, k) => {
+    svg.append(s("path", {d: r.xs.map((v, i) => `${i ? "L" : "M"}${px(X[i]).toFixed(1)},${py(v).toFixed(1)}`).join(""), style: `stroke:${SERIES_COL[k]}`}));
+    if (r.xs.length <= 40) r.xs.forEach((v, i) => svg.append(s("circle", {cx: px(X[i]), cy: py(v), r: 3, style: `fill:${SERIES_COL[k]}`})));
+  });
+  for (const e of ends) svg.append(s("text", {class: "sl", x: W - mr + 8, y: e.y + 3.5}, e.text));
+  // hover: one column per x, its values in the tooltip
+  X.forEach((xv, i) => { const x0 = i ? (px(X[i - 1]) + px(xv)) / 2 : ml, x1 = i < X.length - 1 ? (px(xv) + px(X[i + 1])) / 2 : W - mr;
+    const r = s("rect", {class: "hit", x: x0, y: mt, width: Math.max(1, x1 - x0), height: H - mt - mb}); r.append(s("title", {}, `${x ? x.text : "#"} ${show(xv)}: ${ys.map(y => `${y.text} ${show(y.xs[i])}`).join(" · ")}`)); svg.append(r); });
+  return h("div", {class: "chart"}, svg);
 }
 const brief = v => typeof v === "number" ? show(v) : typeof v === "boolean" ? String(v) : (s => s.length > 40 ? s.slice(0, 39) + "…" : s)(show(v));
 
@@ -11761,7 +11990,7 @@ function run(why){
   if (statsState && statsState !== "ok" && statsState !== "loading") for (const it of res.items) if (it.kind === "error" && /stats aren't loaded/.test(it.msg)) it.msg += ` (${statsState})`;
   if (typing) for (const it of res.items) if (it.kind === "error" && /\(time limit\)/.test(it.msg)) it.msg += " While you type the editor stops programs after 3 s; press Ctrl/⌘ + Enter or Run to allow 10 s.";
   errorLines = new Map();
-  const n = {ok:0, no:0, warn:0, err:0}; let firstErr = null;
+  const n = {ok:0, no:0, warn:0, err:0}; let firstErr = null; const sum = [];
   for (const item of res.items){
     let el;
     try {
@@ -11773,14 +12002,29 @@ function run(why){
       else continue;
     } catch (e) { el = renderError({line:item.line, msg:`could not display this result (${e.message})`}); }
     out.append(el);
+    // the summary row: one chip per assert / prove / error
+    const tone = item.kind === "error" ? "err" : item.kind === "assert" ? (item.ok ? "ok" : "no") : item.kind === "prove" ? (item.q.status === "holds" ? "ok" : item.q.status === "fails" ? "no" : "warn") : null;
+    if (tone) sum.push({el, tone, line: item.line, what: item.kind === "error" ? String(item.msg) : item.kind === "assert" ? show(item.title) : claimOf(item.q)});
   }
   if (!out.children.length) out.append(h("div",{class:"empty"}, "No output. Add ", h("code",{},"print(…)"), ", ", h("code",{},"assert(…)"), " or ", h("code",{},"prove …;")));
+  if (sum.length > 1 || sum.some(s => s.tone !== "ok")){
+    const mark = {ok:"✓", no:"✗", warn:"≈", err:"!"}, word = {ok:"proved", no:"refuted", warn:"contested", err:"error"};
+    out.prepend(h("div",{class:"sumrow", role:"list", "aria-label":"Results at a glance"}, sum.map(s => h("button",{type:"button", role:"listitem", class:"sc "+s.tone,
+      title:`${word[s.tone]}${s.line != null ? `, line ${s.line}` : ""}: ${s.what.length > 120 ? s.what.slice(0, 119) + "…" : s.what}`,
+      onclick:() => { jumpTo(s.el); if (s.line != null && !narrow()) gotoLine(s.line); }}, mark[s.tone], s.line != null ? ` ${s.line}` : ""))));
+  }
   const t = (cls, label, count, title, go) => count ? h("button",{type:"button", class:cls, title, onclick:go}, label, String(count)) : null;
   tally.replaceChildren(...[
-    t("k-ok", "✓", n.ok, "proved", null), t("k-no", "✗", n.no, "refuted", null), t("k-warn", "≈", n.warn, "contested or no rule", null),
+    t("k-ok", "✓", n.ok, "proved: show the first", () => jumpTo((sum.find(s => s.tone === "ok") || {}).el)), t("k-no", "✗", n.no, "refuted: show the first", () => jumpTo((sum.find(s => s.tone === "no") || {}).el)), t("k-warn", "≈", n.warn, "contested or no rule", null),
     t("k-err", "!", n.err, "errors: show the first", () => { showTab("out"); firstErr && firstErr.scrollIntoView && firstErr.scrollIntoView({block:"center"}); const b = firstErr && firstErr.querySelector(".ln"); b && b.click(); }),
     h("button",{type:"button", title:"Expand or collapse every result", "aria-label":"Expand or collapse all", onclick: toggleAll}, "⇕")].filter(Boolean));
   paintSquiggles(); paintGutter();
+}
+const narrow = () => !!(window.matchMedia && window.matchMedia("(max-width: 899px)").matches);
+function jumpTo(el){
+  if (!el) return; showTab("out");
+  if (el.scrollIntoView) el.scrollIntoView({block:"nearest"});
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
 }
 function toggleAll(){
   const ds = [...$("out").querySelectorAll("details.rd")]; const open = !ds.every(d => d.open);
@@ -11819,12 +12063,11 @@ sp.addEventListener("pointerdown", e => {
 });
 sp.addEventListener("keydown", e => { if (e.key === "ArrowLeft") setSplit(split - 2); else if (e.key === "ArrowRight") setSplit(split + 2); else return; e.preventDefault(); saveSplit(); });
 
-const EX_GROUPS = [["Items", ["Luden's vs Cosmic Drive","AP per gold"]], ["Proofs", ["Fizz into Syndra","Who beats Syndra?"]],
-  ["Combos", ["Custom combos","Practice dummy"]], ["Fights", ["Kill in N seconds","Conqueror vs Electrocute","Team fight with healers","Team comp burst"]], ["Mechanics", ["Dodging and range"]]];
 { const listed = new Set(EX_GROUPS.flatMap(g => g[1])), rest = Object.keys(EXAMPLES).filter(k => !listed.has(k)); if (rest.length) EX_GROUPS.push(["More", rest]); }
 const exBtn = $("exbtn"), exMenu = $("exmenu");
 let curEx = null; try { curEx = localStorage.getItem("riftlogic.example"); } catch (_) {}
-if (!EXAMPLES[curEx]) curEx = "Luden's vs Cosmic Drive";
+const EX_DEFAULT = "Which item hits harder?";
+if (!EXAMPLES[curEx]) curEx = EX_DEFAULT;
 /* your code: every program you type is kept as a draft, so opening an example never loses it */
 let drafts = {}; try { drafts = JSON.parse(localStorage.getItem("riftlogic.drafts") || "{}") || {}; } catch (_) {}
 { let old = null; try { old = localStorage.getItem("riftlogic.cpp"); } catch (_) {}      // migrate the old single save
@@ -11840,7 +12083,7 @@ function saveDraft(){                 // Ctrl/⌘+S and :w — saves under "Your
 async function loadDraft(n){
   if (n !== curDraft && !(await guard(`open “${n}”`))) return;
   fileName = null; fileHandle = null;
-  curDraft = n; $("excur").textContent = n; markCurrent(); persistDrafts();
+  curDraft = n; $("excur").textContent = n; markCurrent(); persistDrafts(); clearShareHash();
   src.value = drafts[n]; src.scrollTop = 0; src.scrollLeft = 0; paint(); run(); markSaved();
 }
 function deleteDraft(n){ delete drafts[n]; if (curDraft === n) curDraft = null; persistDrafts(); buildMenu(); }
@@ -11850,6 +12093,7 @@ async function loadExample(k, why){
   if (!(await guard(why || `open the example “${k}”`))) return;
   fileName = null; fileHandle = null;
   curEx = k; curDraft = null; $("excur").textContent = k; try { localStorage.setItem("riftlogic.example", k); } catch (_) {}
+  clearShareHash();
   markCurrent(); persistDrafts();
   src.value = EXAMPLES[k]; src.scrollTop = 0; src.scrollLeft = 0; paint(); run(); markSaved();
 }
@@ -11858,7 +12102,9 @@ function buildMenu(){
   const mine = names.length ? [h("h4",{}, "Your code"), ...names.map(n => h("div",{class:"exdraft"},
       h("button",{type:"button", role:"menuitem", "data-k":n, "data-d":n, "aria-current": String(n === curDraft), onclick:() => { setMenu(false); loadDraft(n); exBtn.focus(); }}, n),
       h("button",{type:"button", class:"exdel", title:`Delete “${n}”`, "aria-label":`Delete ${n}`, onclick:e => { e.stopPropagation(); if (e.currentTarget.dataset.armed){ deleteDraft(n); } else { e.currentTarget.dataset.armed = "1"; e.currentTarget.textContent = "delete?"; } }}, "×")))] : [];
-  exMenu.replaceChildren(...mine, ...EX_GROUPS.flatMap(([g, ks]) => [h("h4",{}, g), ...ks.filter(k => EXAMPLES[k]).map(k => h("button",{type:"button", role:"menuitem", "data-k":k, "aria-current": String(!curDraft && k === curEx), onclick:() => { setMenu(false); loadExample(k); exBtn.focus(); }}, k))]));
+  const question = k => (EXAMPLES[k].match(/^\/\/\s*(.+)/) || [, k])[1];     // the example's first comment line, as its tooltip
+  exMenu.replaceChildren(...mine, h("div",{class:"excols"}, EX_GROUPS.map(([g, ks]) => h("div",{class:"exg"}, h("h4",{}, g),
+    ks.filter(k => EXAMPLES[k]).map(k => h("button",{type:"button", role:"menuitem", "data-k":k, "data-file": EX_FILES[k] || null, title: question(k), "aria-current": String(!curDraft && k === curEx), onclick:() => { setMenu(false); loadExample(k); exBtn.focus(); }}, k))))));
 }
 buildMenu();
 exBtn.addEventListener("click", () => setMenu(exMenu.hidden));
@@ -11871,6 +12117,68 @@ exMenu.addEventListener("keydown", e => {
 document.addEventListener("click", e => { if (!exMenu.hidden && !e.target.closest(".exwrap")) setMenu(false); });
 $("excur").textContent = curEx;
 $("reset").addEventListener("click", () => loadExample(curEx, "reset to the example as written"));   // back to the example as written; your edits stay under "Your code"
+
+/* ================= share: the program in the URL hash =================
+   #code=t<base64url of UTF-8>, or #code=z<base64url of deflate (zlib)> when it is long and the browser can compress (CompressionStream);
+   #ex=<file> opens a gallery example (tests/examples/<file>.rl). Opening either runs it; nothing is saved until you save. */
+const b64u = bytes => { let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+const utf8 = s => Uint8Array.from(unescape(encodeURIComponent(s)), c => c.charCodeAt(0));
+const unutf8 = b => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return decodeURIComponent(escape(s)); };
+async function squeeze(bytes, Stream){
+  const cs = new Stream("deflate"), w = cs.writable.getWriter(); w.write(bytes).catch(() => {}); w.close().catch(() => {});
+  const r = cs.readable.getReader(), parts = []; let n = 0;
+  for (;;){ const {value, done} = await r.read(); if (done) break; parts.push(value); n += value.length; }
+  const out = new Uint8Array(n); let o = 0; for (const p of parts){ out.set(p, o); o += p.length; } return out;
+}
+async function encodeProgram(text){
+  const raw = utf8(text);
+  if (raw.length > 300 && typeof window.CompressionStream === "function"){ try { const z = await squeeze(raw, window.CompressionStream); if (z.length < raw.length) return "z" + b64u(z); } catch (_) {} }
+  return "t" + b64u(raw);
+}
+async function decodeProgram(code){
+  const kind = code[0], body = code.slice(1);
+  if (kind === "t") return unutf8(unb64u(body));
+  if (kind === "z"){ if (typeof window.DecompressionStream !== "function") throw new Error("this browser can't open compressed links"); return unutf8(await squeeze(unb64u(body), window.DecompressionStream)); }
+  throw new Error("not a Rift Logic link");
+}
+async function readHash(){                  // → {text} | {example} | {error} | null
+  const m = /^#(code|ex)=(.+)$/.exec(location.hash || "");
+  if (!m) return null;
+  if (m[1] === "ex"){ const k = Object.keys(EX_FILES).find(k => EX_FILES[k] === decodeURIComponent(m[2])); return k ? {example: k} : null; }
+  try { return {text: await decodeProgram(m[2])}; } catch (e) { return {error: `The shared link could not be opened (${e.message}).`}; }
+}
+function clearShareHash(){ if (/^#(code|ex)=/.test(location.hash || "")) try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {} }
+async function shareLink(){
+  const url = location.href.split("#")[0] + "#code=" + await encodeProgram(src.value);
+  let ok = false;
+  try { if (navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(url); ok = true; } } catch (_) {}
+  $("sharebtn").dataset.url = url;
+  try { history.replaceState(null, "", url); } catch (_) {}      // the address bar holds the link too, so it can be copied by hand
+  flash(ok ? "Link copied" : "Link in the address bar");
+  return url;
+}
+$("sharebtn").addEventListener("click", () => { shareLink(); });
+function openShared(sh){
+  if (sh.text != null){ fileName = null; fileHandle = null; curDraft = null; src.value = sh.text; $("excur").textContent = "Shared program"; markCurrent(); }
+  else if (sh.example){ curEx = sh.example; curDraft = null; src.value = EXAMPLES[curEx]; $("excur").textContent = curEx; markCurrent(); }
+  src.scrollTop = 0; src.scrollLeft = 0;
+}
+window.addEventListener("hashchange", async () => {
+  const sh = await readHash(); if (!sh) return;
+  if (sh.error){ flash(sh.error); return; }
+  if (!(await guard("open the shared program"))) return;
+  openShared(sh); paint(); run(); markSaved();
+});
+
+/* ================= first-visit hint: one line, dismissed for good with × ================= */
+{
+  const bar = $("hintbar"); let seen = null; try { seen = localStorage.getItem("riftlogic.hint"); } catch (_) {}
+  bar.hidden = seen === "0";
+  if (!/Mac|iPhone|iPad/.test(navigator.platform || "")) bar.querySelector(".runkey").textContent = "Ctrl↵"; else bar.querySelector(".runkey").textContent = "⌘↵";
+  $("hintx").addEventListener("click", () => { bar.hidden = true; try { localStorage.setItem("riftlogic.hint", "0"); } catch (_) {} });
+  $("hintex").addEventListener("click", e => { e.stopPropagation(); setMenu(true); });
+}
 
 /* ================= files: save / open / recent, and a reminder before unsaved changes are left ================= */
 // Ctrl/⌘+S (and vim :w) saves under "Your code" in this browser; File → Save to file… writes a .rl file where you choose.
@@ -12253,8 +12561,12 @@ $("find").addEventListener("input", inspect);
 $("patchline").textContent = `patch ${KB.patch} · ${Object.keys(KB.champs).length} champions · ${ITEMKEYS.length} items`;
 let cur = null; try { cur = JSON.parse(localStorage.getItem("riftlogic.current") || "null"); } catch (_) {}
 if (!cur && drafts["My code"] !== undefined) cur = {draft: "My code"};
-if (cur && cur.draft && drafts[cur.draft] !== undefined){ curDraft = cur.draft; src.value = drafts[curDraft]; $("excur").textContent = curDraft; markCurrent(); }
+const shared = await readHash();          // a shared link (#code=…) or a gallery link (#ex=…) wins over the last session
+if (shared && !shared.error) openShared(shared);
+else if (cur && cur.draft && drafts[cur.draft] !== undefined){ curDraft = cur.draft; src.value = drafts[curDraft]; $("excur").textContent = curDraft; markCurrent(); }
 else src.value = EXAMPLES[curEx];
 paint(); run(); inspect(); markSaved(); VIM.restore();
+if (shared && shared.error) $("out").prepend(renderError({line: null, msg: shared.error}));
+window.__code = {ready: true, EXAMPLES, EX_FILES, EX_GROUPS, encodeProgram, decodeProgram, shareLink, run};   // for tools/code_page_test.js
 })();
 </script>

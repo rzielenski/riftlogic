@@ -222,7 +222,7 @@ html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
 .rlnav-set svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rlnav-set:hover,.rlnav-set[aria-expanded="true"]{color:var(--ink);background:var(--inset)}
 #rlset-pop[hidden]{display:none}#rlset-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;padding:10px 12px;border-radius:10px;background:var(--surface,#0E1014);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap}
-.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}
+.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}.rlset-row+.rlset-row{margin-top:8px}.rlset-rev{border:0;background:none;color:var(--accent);font:500 12px/1 inherit;padding:6px 4px;cursor:pointer}
 #rlset-pop .seg{display:inline-flex;flex-direction:row;flex-wrap:nowrap;width:auto;border:0;gap:2px;padding:2px;border-radius:8px;background:var(--inset)}#rlset-pop .seg>button{display:inline-block;width:auto;min-height:0;margin:0;border:0;background:none;color:var(--muted);font:500 12px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}#rlset-pop .seg>button[aria-pressed="true"]{background:var(--inset);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .rlnav-docs{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;color:var(--muted);text-decoration:none;font:500 13px/1 var(--sans)}
 .rlnav-docs svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -561,6 +561,9 @@ st.running = true; if (!rq) { last = 0; rq = W.requestAnimationFrame(frame); }
 else { stop(); if (st.hidden) idle(); else if (!st.typing) still(); }
 }
 const sync = () => { if (pop) pop.querySelectorAll("[data-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === mode))); };
+function syncSpoil() { if (!pop) return; let v = null; try { v = W.localStorage.getItem("riftlogic.spoilers"); } catch (_) {}
+pop.querySelectorAll("[data-spoil]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-spoil") === (v === "shown" ? "shown" : "hidden")))); }
+syncSpoil();
 function setMode(m) {
 if (!/^(anim|still|off)$/.test(m)) return;
 mode = st.mode = m; st.paused = m !== "anim"; st.off = m === "off";
@@ -578,7 +581,13 @@ const pause = v => setMode(v ? "still" : "anim");
 if (btn && pop) {
 const open = v => { pop.hidden = !v; btn.setAttribute("aria-expanded", String(v)); };
 on(btn, "click", e => { e.stopPropagation(); open(pop.hidden); });
-on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg")); });
+on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg"));
+const sp = e.target.closest && e.target.closest("[data-spoil],[data-spoil-reveal]");
+if (sp) {
+try { if (sp.hasAttribute("data-spoil-reveal")) W.localStorage.setItem("riftlogic.spoilers.at", String(Date.now()));
+else if (sp.getAttribute("data-spoil") === "shown") W.localStorage.setItem("riftlogic.spoilers", "shown"); else W.localStorage.removeItem("riftlogic.spoilers"); } catch (_) {}
+syncSpoil(); try { W.dispatchEvent(new W.CustomEvent("rl:spoilers")); } catch (_) {}
+} });
 on(D, "click", () => open(false));
 on(D, "keydown", e => { if (e.key === "Escape" && !pop.hidden) { open(false); btn.focus(); } });
 }
@@ -797,6 +806,7 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
       <li><a href="#overview">Overview</a></li>
       <li><a href="#running">Running programs</a></li>
       <li><a href="#first">A first program</a></li>
+      <li><a href="#examples">Examples</a></li>
       <li class="grp">The language</li>
       <li><a href="#syntax">Syntax</a></li>
       <li><a href="#types">Types and values</a></li>
@@ -849,6 +859,13 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
     <section id="running">
       <h2>Running programs</h2>
       <p><b>In the editor</b>, results update as you type (<code>Ctrl/⌘ + Enter</code> re-runs). Click a row in the results to see its working, assumptions and tables. The <b>Inspect</b> tab shows any champion's or item's data, including every named formula you can reach.</p>
+      <ul>
+        <li><b>At a glance</b>: above the results, one chip per <code>assert</code>, <code>prove</code> and error (✓ proved, ✗ refuted, ≈ contested, ! error), with its line number. Click a chip to jump to its result and its line.</li>
+        <li><b>Errors</b> are underlined in the editor, with the message at the end of the line and a mark in the line numbers.</li>
+        <li><b>Autocomplete</b> (as you type, or <code>Ctrl + Space</code>): champions, items, runes, built-ins, members after a dot (<code>a.</code>, <code>f.</code>, <code>s.</code>), and inside a call its named arguments (<code>fight(a, b, 10, spr</code> → <code>spread:</code>).</li>
+        <li><b>Copy link</b> puts the whole program in the link (<code>#code=…</code>, compressed when it is long). Opening the link loads the program and runs it; nothing is saved until you save it. <code>#ex=&lt;name&gt;</code> opens one of the <a href="#examples">examples</a>.</li>
+        <li><b>Charts</b>: <code>print()</code> of lists of numbers draws a line chart (see <a href="#teamcomp">lists</a>).</li>
+      </ul>
       <p><b>From the command line</b>, the same engine runs a file:</p>
       <pre>node tools/rl.js program.rl           <span class="c"># full working for every result</span>
 node tools/rl.js program.rl --brief   <span class="c"># one line per result</span>
@@ -866,6 +883,20 @@ Champion tank = Garen(11).with(Plated, Kaenic);
 assert(a.Q.damage(vs: tank) > 150);          <span class="c">// Proved or Refuted, with the formula</span>
 print(a.ap, a.Q.cd, a.combo(Q, E, R, vs: tank));
 assert(canKill(a, tank, 5), "Syndra kills Garen in 5 seconds");</pre>
+    </section>
+
+    <section id="examples">
+      <h2>Examples</h2>
+      <p>The editor's <b>Examples</b> menu has these ready-made questions. Each link opens one in the editor and runs it. Every example is also a regression test (<code>tests/examples/</code>), so they all come back <b>Proved</b> on the current engine.</p>
+      <div class="tscroll"><table><tbody>
+        <tr><td>Items</td><td><a class="exlink" href="index.html#ex=item_which_hits_harder">Which item hits harder?</a> · <a class="exlink" href="index.html#ex=item_ludens_vs_cosmic_drive">Luden's or Cosmic Drive?</a> · <a class="exlink" href="index.html#ex=item_zhonya_vs_zed">Does Zhonya's stop Zed?</a> · <a class="exlink" href="index.html#ex=item_ap_per_gold">Most AP per gold</a></td></tr>
+        <tr><td>Combos &amp; kills</td><td><a class="exlink" href="index.html#ex=combo_custom">Custom combos</a> · <a class="exlink" href="index.html#ex=combo_kill_in_n_seconds">Kill in N seconds</a> · <a class="exlink" href="index.html#ex=combo_practice_dummy">Practice dummy</a></td></tr>
+        <tr><td>1v1 duels</td><td><a class="exlink" href="index.html#ex=duel_riven_renekton">Riven vs Renekton by level</a> · <a class="exlink" href="index.html#ex=duel_conqueror_electrocute">Conqueror or Electrocute?</a> · <a class="exlink" href="index.html#ex=duel_dodging_range">Dodging and range</a></td></tr>
+        <tr><td>Teamfights</td><td><a class="exlink" href="index.html#ex=team_wombo_spread">Wombo: spread and ult timing</a> · <a class="exlink" href="index.html#ex=team_fight_sweeps">Fight sweeps</a> · <a class="exlink" href="index.html#ex=team_healers">Healers and focus fire</a> · <a class="exlink" href="index.html#ex=team_comp_burst">Team burst with functions</a></td></tr>
+        <tr><td>Draft &amp; stats</td><td><a class="exlink" href="index.html#ex=draft_pro_vs_solo">Draft win chance: pro vs solo</a> · <a class="exlink" href="index.html#ex=stats_real_games">Real-game stats</a></td></tr>
+        <tr><td>Scaling</td><td><a class="exlink" href="index.html#ex=scaling_lethality_armor">Lethality or armor pen?</a> · <a class="exlink" href="index.html#ex=scaling_kill_window">Kill window by level</a></td></tr>
+        <tr><td>Proofs</td><td><a class="exlink" href="index.html#ex=proof_fizz_syndra">Fizz into Syndra</a> · <a class="exlink" href="index.html#ex=proof_who_beats_syndra">Who beats Syndra?</a></td></tr>
+      </tbody></table></div>
     </section>
 
     <section id="syntax">
@@ -899,6 +930,7 @@ assert(canKill(a, tank, 5), "Syndra kills Garen in 5 seconds");</pre>
         <tr><td>Rune</td><td>A keystone, minor rune or stat shard.</td></tr>
         <tr><td>Summoner</td><td>A summoner spell: <code>Flash</code>, <code>Ghost</code>, <code>Heal</code>, <code>Barrier</code>, <code>Ignite</code>, <code>Exhaust</code>, <code>Cleanse</code> (<a href="#summoner">Summoner spells</a>).</td></tr>
         <tr><td>TeamComp</td><td>A list of champions.</td></tr>
+        <tr><td>List</td><td>A list of any values: <code>List xs = {};</code>, <code>{3, 6, 9}</code>, <code>range(0, 250, 25)</code>, <code>items()</code>. See <a href="#teamcomp">TeamComp and lists</a>.</td></tr>
         <tr><td>Fight</td><td>The result of <code>fight(…)</code>.</td></tr>
         <tr><td>Fights</td><td>The result of <code>fights(…)</code>, a sweep of fights (<a href="#fights">Fight sweeps</a>).</td></tr>
         <tr><td>Stat</td><td>A number from real games with its sample: <code>winrate(Syndra, vs: Orianna)</code> (<a href="#stats">Real-game stats</a>). It compares and calculates as its value.</td></tr>
@@ -1086,7 +1118,16 @@ print(Annie(11).perform(c, vs: Dummy(hp: 3000)).damage);</pre>
         <tr><td>blue[0]  blue.size()  blue.add(x)  blue.contains(x)</td><td>Index, size, add a copy, membership by champion.</td></tr>
         <tr><td>for (Champion c : blue) …</td><td>Loop over copies; <code>Champion&amp; c</code> to change members.</td></tr>
         <tr><td>champions()  champions(Assassin)</td><td>Every champion (of a class) at <code>defaultLevel</code>.</td></tr>
+        <tr><td>List xs = {};  xs.add(v)  xs[0]  xs.size()</td><td>A list of numbers, strings or objects, grown with <code>add</code>; <code>for (double x : xs)</code> loops over it.</td></tr>
+        <tr><td>print(levels, a, b)</td><td>In the editor, printing lists of numbers draws a <b>line chart</b>: when the first list increases and the others have its length, they are plotted against it (up to 4 lines, each labelled at its end; hover a column for the values); a single list is plotted against 1…n.</td></tr>
       </tbody></table></div>
+<pre>List levels = {3, 6, 9, 11, 13, 16, 18}, margin = {};
+for (int L : levels) {
+    Champion riven = Riven(L).with(Eclipse, Sterak, Conqueror), renek = Renekton(L).with(Eclipse, Sterak, Conqueror);
+    Fight f = fight(riven, renek, 30);
+    margin.add(f.hpPercent(riven) - f.hpPercent(renek));   <span class="c">// above 0: Riven ends healthier</span>
+}
+print(levels, margin);   <span class="c">// a chart: Riven's margin by level</span></pre>
     </section>
 
     <section id="fight">
@@ -1094,6 +1135,7 @@ print(Annie(11).perform(c, vs: Dummy(hp: 3000)).damage);</pre>
       <div class="tscroll"><table><tbody>
         <tr><td>Fight f = fight(blue, red, 10);</td><td>Both sides fight for up to 10 seconds (0–120). A side is a Champion or TeamComp.</td></tr>
         <tr><td>fight(blue, red, 20, start: 1000)</td><td>The two front lines start 1000 units apart (default 0: in contact). Also <code>formation: false</code> (everyone on the front line instead of ranged units at their attack range behind it), <code>kite: false</code> (nobody kites: role <code>"kite"</code>, whether default or set with <code>x.role</code>, becomes <code>"fight"</code> for this fight), <code>room: 600</code> (a champion can back off at most 600 units from where it started; <b>default: unlimited</b>). See <a href="#cc">Crowd control and positions</a>.</td></tr>
+        <tr><td>fight(blue, red, 20, spread: 0)  rHold: 0</td><td><b>Team-fight shape</b> (3 or more a side). <code>spread:</code> is how far apart each side's champions stand sideways (<b>default 350</b> units between neighbours; <code>spread: 0</code> puts everyone on one line, so every area, line or cone can hit all five). <code>rHold:</code> is how many seconds in combat a champion waits before its ultimate (<b>default 5</b>; <code>rHold: 0</code> casts it as soon as it's ready; heal/shield ultimates and R used to peel or escape aren't held). Both work in <code>fights(…)</code> too. Example: <i>Wombo: spread and ult timing</i>. Details in <a href="#cc">Positions</a>.</td></tr>
         <tr><td>fight(blue, red, 20, skill: 90)  skill: {70, 90}  x.skill = 100</td><td><b>Player skill</b>, 0–100 (<b>default 70</b>): how well a champion dodges. A skillshot or area that isn't unit-targeted misses a defender who, reacting <b>0.10 + 0.35 × (100 − skill) / skill</b> seconds after it shows, could walk out of it: 100 → 0.10 s, 90 → 0.14 s, 70 → 0.25 s, 50 → 0.45 s, 30 → 0.92 s, 0 → never dodges. The check is <code>canDodge</code>'s own physics (reveal from the press, reach, width/radius + hitbox, landing time) at the distance when it was cast, with the defender's current move speed, after any stun or root it is under. Walking only: Flash, dashes, spell shields and walls aren't spent on dodges (the kits still raise their shields and walls with perfect reaction). Point-and-click abilities, basic attacks and dashes are unaffected, and so is the attacker's aim (always centred on the target). <code>skill: n</code> sets everyone, <code>skill: {n1, n2}</code> each side; a champion's own <code>x.skill</code> wins. <code>perfectAim: true</code> lands every ability in reach, the engine before skill existed (skill 0 gives the same). <code>perform()</code>, <code>canKill</code> and <code>timeToKill</code> always land everything. <code>f.dodges(x)</code>: how many hits x walked out of.</td></tr>
         <tr><td>fight(blue, red, 30, levelGap: {0, -2})  levelGap: -2</td><td><b>Level gap</b>: an offset from the levels the teams were built at, per champion, <b>clamped to 1–18</b> (skill points follow the new level unless the program set ranks). <code>{a, b}</code> gives each team its own offset; one number is <b>team 1's lead</b>: <code>levelGap: 2</code> lowers team 2 by two levels, <code>levelGap: -2</code> lowers team 1 (so a lead never needs a level above 18). Default 0: every champion at its own level.</td></tr>
         <tr><td>fight(blue, red, 30, goldGap: {0, -1500})  goldGap: 1500</td><td><b>Gold gap</b>, per champion: a team <code>g</code> gold behind loses <code>g</code> gold of its build, <b>last item first</b> (the order you listed them is the buy order). An item only partly paid for keeps that share of its stats and <b>none of its passive or active</b> (roughly what its components give): Ahri with Luden's, Shadowflame, Sorcerer's Shoes and Rabadon's (3500) at <code>goldGap: {-1750, 0}</code> keeps half of Rabadon's AP and no Magical Opus. A build can't lose more than it has. <code>{a, b}</code> is each team's deficit (0 or less); one number is team 1's lead, taken off the other team. Rough sizes (pro games 2026, Oracle's Elixir, whole team): the median gold difference is 1,900 at 15 minutes, 3,200 at 20 and 4,700 at 25, and 1 game in 10 is past 5,200 / 8,300 / 11,500. That is about 400 / 650 / 950 per champion at the median and 1,000 / 1,650 / 2,300 at the 90th percentile. A player's level gap to their opponent is usually under one level; about 2 levels at 25 minutes in 1 game in 10.</td></tr>
@@ -1118,13 +1160,17 @@ print(fight(k, g, 3, start: 600, perfectAim: true).bySource(k, "Q")); <span clas
     <section id="fights">
       <h2>Fight sweeps</h2>
       <p>One <code>fight()</code> is one cell, and its winner can flip when the start distance moves by 100 units or a role changes. <code>fights(…)</code> runs <code>fight()</code> over every start × level × role set and gives the share with an interval, so a claim can rest on the sweep instead of one cell. Example: <i>Fight sweeps</i> in the editor.</p>
-<pre>TeamComp engage(TeamComp t, int level) {   <span class="c">// a role set: gets each team at each level, returns it ready to fight</span>
-    for (Champion&amp; c : t) if (c.name == "Renekton" || c.name == "Jarvan IV" || c.name == "Rakan") c.role = "engage";
+<pre>TeamComp wombo = {Malphite(13).with(Sunfire, Thornmail), Amumu(13).with(Sunfire, Liandry), Orianna(13).with(Ludens, Shadowflame),
+                  MissFortune(13).with(Eclipse, Collector), Leona(13).with(Locket, Thornmail)};
+TeamComp split = {Fiora(13).with(Ravenous, Trinity, Conqueror), Graves(13).with(Eclipse, Collector), Viktor(13).with(Ludens, Shadowflame),
+                  Jinx(13).with(Infinity, Kraken), Lulu(13).with(Moonstone, Redemption)};
+Fights s = fights(wombo, split, 30, starts: range(0, 1000, 200), levels: {9, 13, 16}, bothSides: true);
+print(s);   <span class="c">// … 16-4-16 of 36, share 50.0% (95% CI 34.5%–65.5%), 0 side-swap mismatches</span>
+print(s.byLevel(9).share, s.byLevel(16).share);   <span class="c">// 0.67  0.42: the engage comp is stronger early</span>
+TeamComp engage(TeamComp t, int level) {   <span class="c">// a role set (roles: engage): gets each team at each level, returns it ready to fight</span>
+    for (Champion&amp; c : t) if (c.name == "Malphite" || c.name == "Amumu" || c.name == "Leona") c.role = "engage";
     return t;
-}
-Fights s = fights(poke, red, 40, starts: range(0, 1200, 100), levels: {9, 13, 16}, roles: engage, bothSides: true);
-print(s);   <span class="c">// … 50-0-28 of 78, share 64.1% (95% CI 53.0%–73.9%), decided in 12.96s on average, 0 side-swap mismatches</span>
-print(s.byLevel(9).share, s.byLevel(16).share, s.byStart(400).wins);   <span class="c">// 0.77  0.54  0</span></pre>
+}</pre>
       <div class="tscroll"><table><tbody>
         <tr><td>fights(a, b, 40)</td><td>fight(a, b, 40, start: s) for s = 0, 50, …, 1200 (25 fights) at the champions' own levels. Teams and seconds as in <code>fight</code>.</td></tr>
         <tr><td>starts: range(0, 1200, 50)</td><td>Start distances (a number or a list). <code>range(from, to, step)</code> is a list from <code>from</code> to <code>to</code>, <b>both included</b> (step default 1).</td></tr>
@@ -1132,7 +1178,7 @@ print(s.byLevel(9).share, s.byLevel(16).share, s.byStart(400).wins);   <span cla
         <tr><td>roles: f  roles: {setA, setB}</td><td>Role sets: functions you write, <code>TeamComp f(TeamComp t)</code>, <code>f(TeamComp t, int level)</code> or <code>f(TeamComp t, int level, int team)</code> (team 1 or 2, whichever side it stands on). Each gets a copy of each team already at the level and returns the team to fight with (roles, rotations, ranks, items…). It runs once per level and team, not once per fight.</td></tr>
         <tr><td>bothSides: true</td><td>Also runs every fight with the teams on swapped sides, counted from team 1's view: twice the fights, and <code>s.sideMismatches</code> counts the cells whose result changed. The simulation is side-symmetric, so it should be 0.</td></tr>
         <tr><td>levelGaps: range(-3, 3, 1)  goldGaps: {-2000, -1000, 0}</td><td>Game-state gaps as sweep axes: each value is <b>team 1's lead</b> (<code>-2</code> = team 1 two levels behind, <code>+1000</code> = team 2 1000 gold behind per champion), with the rules of <code>levelGap:</code> and <code>goldGap:</code> in <a href="#fight">fight</a>. The level gap is applied before a role function (it sees the level the team fights at), the gold gap after it (off the final build). A gap belongs to its team, so it follows the team when <code>bothSides:</code> swaps the sides. <code>levelGap: {0, -2}</code> / <code>goldGap:</code> (one fixed gap) work here too.</td></tr>
-        <tr><td>kite:  room:  formation:  skill:  perfectAim:</td><td>Passed to every fight, as in <code>fight</code> (a per-side <code>skill: {n1, n2}</code> follows its team when <code>bothSides:</code> swaps them).</td></tr>
+        <tr><td>kite:  room:  formation:  spread:  rHold:  skill:  perfectAim:</td><td>Passed to every fight, as in <code>fight</code> (a per-side <code>skill: {n1, n2}</code> follows its team when <code>bothSides:</code> swaps them).</td></tr>
         <tr><td>s.wins  s.draws  s.losses  s.total</td><td>From team 1's side. A draw: neither team wiped within the seconds, or both in the same step.</td></tr>
         <tr><td>s.share  s.low  s.high</td><td><b>share = (wins + draws / 2) / total</b>: a mirror is 0.5, and the shares of <code>fights(a, b)</code> and <code>fights(b, a)</code> add up to 1. <code>low</code>–<code>high</code> is the Wilson 95% score interval on the share. Fights are deterministic: the interval says how much the answer depends on where in the sweep you look, not luck.</td></tr>
         <tr><td>s.meanTime  s.margin</td><td>Average end time of the decided fights (infinity if none); average of (team 1 alive − team 2 alive) at the end.</td></tr>
@@ -1651,7 +1697,8 @@ prove beats(Fizz, Syndra);</pre>
   const p = document.getElementById("patch"); if (p && D.patch) p.textContent = D.patch;
   const safeUrl = u => typeof u === "string" && /^(https:\/\/|[\w-]+\.html$)/.test(u);      // no javascript:/data: links
   const setLink = (el, u) => { el.href = u; if (/^https:/.test(u)) el.rel = "noopener noreferrer"; };
-  if (safeUrl(D.appUrl)) setLink(document.getElementById("applink"), D.appUrl);
+  if (safeUrl(D.appUrl)){ setLink(document.getElementById("applink"), D.appUrl);
+    for (const a of document.querySelectorAll("a.exlink")) setLink(a, D.appUrl.split("#")[0] + a.getAttribute("href").slice(a.getAttribute("href").indexOf("#"))); }
   if (safeUrl(D.draftUrl)) setLink(document.getElementById("draftlink"), D.draftUrl);
 })();
 </script>
