@@ -3,6 +3,10 @@
 //                            Worlds, MSI, First Stand), the next one when none is, and series that ended in the last 36 h
 //   GET /api/live/stream   → Server-Sent Events: "live" events carrying the same payload whenever it changes, ": hb" heartbeats
 //                            (capped: LIVE_MAX_CLIENTS in all, 20 per IP: households and campus networks share one address)
+//   GET /api/live/frames?id=<lolesports game id>                              → one saved game timeline (see "Saved timelines")
+//   GET /api/live/frames?league=L&teams=A,B&date=YYYY-MM-DD&game=N[&at=ISO]   → the same, found by matchFrames (404: none)
+//   GET /api/live/frames/index[?league=L&teams=A,B&date=YYYY-MM-DD]          → {games: [{id, matchId, league, slug, key, teams,
+//                            date, start, number, state}]}: the stored games (filtered by the matcher when asked)
 // One poller for every visitor, server-side, cached; nobody's browser talks to lolesports.
 //
 // Sources (unofficial, public, no account):
@@ -20,14 +24,28 @@
 // every 60 s when one is; the livestats window every 12 s for a live game while someone is watching (a stream client, or
 // /api/live in the last 90 s), every 30 s while nobody is; nothing else. Errors back off exponentially (x2 per failure up to
 // 15 min, Retry-After honoured). Requests carry a descriptive User-Agent.
-// Env: LIVE_OFF=1 (no polling; /api/live answers with an empty payload: tests set it), LIVE_GQL_EVENTS_ID (the homeEvents
-//      persisted-query id, when lolesports changes it), LIVE_GQL_CLIENT_VERSION, LIVE_MAX_CLIENTS (default 300), LIVE_IDLE_S.
+// Env: LIVE_OFF=1 (no polling and no saving; /api/live answers with an empty payload: tests set it), LIVE_GQL_EVENTS_ID (the
+//      homeEvents persisted-query id, when lolesports changes it), LIVE_GQL_CLIENT_VERSION, LIVE_MAX_CLIENTS (default 300),
+//      LIVE_IDLE_S, FRAMES_DIR (saved timelines; default "live-frames" next to REPORT_DIR when that is set, so it shares its
+//      volume, else .live-frames here, hidden by serve.json), FRAMES_MAX_MB (default 200: the oldest games are dropped beyond it).
+//
+// Saved timelines: every tracked game is written to FRAMES_DIR/<lolesports game id>.json.gz (about 5-10 KB) every saveMs
+// (2 min) while it runs and once more when it ends (after the missing minutes are backfilled from the window feed); a server
+// restart mid-game reloads the file and backfills the gap. FRAMES_DIR/index.json lists them (rebuilt from the files when missing).
+// File: {v, id, matchId, league {name, slug}, key (the schedule's league key), block, bestOf, number, matchStart, start (the
+// spawn, ISO), date, duration (s), state "live" | "finished", teams [{code, name, site, oe}] (lolesports order), sides (each
+// team's side), approx (joined mid-game: pauses before that unseen), pausedS, savedAt, model {name, from, heldAfter, variant},
+// cols + rows: quarter-minute rows [minute, gold blue, gold red, kills b/r, towers b/r, inhibitors b/r, barons b/r, dragons b/r,
+// P(blue wins) by the pro live model or null, held 0/1], dragons [[blue's types in order], [red's]], events [[minute, "blue" |
+// "red", "dragon" | "baron" | "tower" | "inhib", dragon type | null]] (first seen: to the poll or backfill resolution),
+// players {meta [{side, role, name, champ}] x10, cols, rows [[minute, gold, level, cs, k, d, a for each of the 10]]} per whole
+// minute, p25 (the 25:00 features, for the held WP)}. Series values are blue / red, never "teams[0] / teams[1]".
 //
 // Win probability: web/live-model.json (src/live_model.py): the PRO in-game model (never the solo-queue one) on the features the
 // feed gives (gold per role, kills, CS, pre-game Elo); coefficients interpolated between its 10/15/20/25-minute fits. None
 // before 10:00; after 25:00 the 25:00 value is held and marked held (no pro snapshot data past 25 minutes to validate on).
 "use strict";
-const fs = require("fs"), path = require("path");
+const fs = require("fs"), path = require("path"), zlib = require("zlib");
 
 const GQL_URL = "https://lolesports.com/api/gql", FEED = "https://feed.lolesports.com/livestats/v1";
 // homeEvents in https://lolesports.com/_next/static/chunks/3-lni1dtvfkzz.js (the persisted-query manifest, 2026-09-28)
@@ -50,6 +68,10 @@ const DEFAULTS = {
   watchMs: 90e3,          // a /api/live request counts as watching this long
   lagMs: 30e3,            // ask the feed for frames this far behind now (it trails real time)
   backfillPerTick: 3,     // missing minutes of the gold series fetched per frames tick (a viewer joining mid-game)
+  backfillIdlePerTick: 1, // the same while nobody watches (the saved timeline still gets them, slowly)
+  saveMs: 120e3,          // a live game's timeline is saved this often (and when it ends)
+  finishTicks: 12,        // a finished game's backfill gets this many frames ticks before its final save regardless
+  framesMaxBytes: 200 * 1024 * 1024,
   maxBackoffMs: 15 * 60e3,
   timeoutMs: 10e3,
   recentMs: 36 * 3600e3,
@@ -77,6 +99,8 @@ module.exports = function liveApi(opts = {}){
   const send = opts.send || ((res, code, obj) => { res.writeHead(code, {"content-type": "application/json", "cache-control": "no-store"}); res.end(JSON.stringify(obj)); });
   const eventsId = env.LIVE_GQL_EVENTS_ID || EVENTS_ID, clientVersion = env.LIVE_GQL_CLIENT_VERSION || CLIENT_VERSION;
   const off = env.LIVE_OFF === "1";
+  const framesDir = opts.framesDir || env.FRAMES_DIR || (env.REPORT_DIR ? path.join(path.dirname(env.REPORT_DIR), "live-frames") : path.join(ROOT, ".live-frames"));
+  if (+env.FRAMES_MAX_MB > 0) C.framesMaxBytes = +env.FRAMES_MAX_MB * 1024 * 1024;
 
   /* ---------------- site data: team names, logos, ratings, the live model, streams ---------------- */
   const readJson = f => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), "utf8")); } catch (e) { return null; } };
@@ -146,8 +170,21 @@ module.exports = function liveApi(opts = {}){
     return [...ROLES.map(gold), (b.totalKills - r.totalKills), (cs(b) - cs(r)) / 100];
   }
 
+  // a game's teams[] index playing blue (0 until the feed's metadata says otherwise)
+  const blueIdxOf = G => G.teams && G.teams[1] && G.blueTeamId != null && G.teams[1].id === G.blueTeamId ? 1 : 0;
+  function variantOf(G){
+    const bi = blueIdxOf(G), ra = G.teams && rating(G.teams[bi]), rb = G.teams && rating(G.teams[1 - bi]);
+    return G.teams && ra != null && rb != null ? {variant: "live", d: (ra - rb) / 400} : {variant: "liveNoRating", d: null};
+  }
+  // P(blue wins) at a minute from blue-view features, the same model and rating rule as the payload's wp; null without teams
+  function wpBlue(G, minute, x){
+    if (!x || !G.teams) return null;
+    const v = variantOf(G), p = winProb(minute, v.d != null ? [...x, v.d] : x, v.variant);
+    return p == null ? null : +p.toFixed(4);
+  }
+
   /* ---------------- fetching ---------------- */
-  const stats = {gql: 0, feed: 0, errors: 0};
+  const stats = {gql: 0, feed: 0, errors: 0, saved: 0, evicted: 0};
   async function get(url, headers){
     const ac = typeof AbortController === "function" ? new AbortController() : null;
     const timer = ac ? later(() => ac.abort(), C.timeoutMs) : null;
@@ -186,7 +223,8 @@ module.exports = function liveApi(opts = {}){
 
   /* ---------------- state ---------------- */
   const matches = new Map();    // match id → {ev, slug, teams: [...]}  (live)
-  const games = new Map();      // game id → game state (see pollGame)
+  const games = new Map();      // game id → game state (see pollGame): the games in progress
+  const finishing = new Map();  // game id → game state: games that left inProgress, until their timeline's final save
   const recent = new Map();     // match id → recent result
   let next = null, source = {ok: null, error: null, checkedAt: null};
   let evErrors = 0, frErrors = 0, evTimer = null, frTimer = null, stopped = false, lastWatch = -Infinity, firstCheck = true;
@@ -215,9 +253,9 @@ module.exports = function liveApi(opts = {}){
     matches.clear(); for (const [k, v] of liveNow) matches.set(k, v);
     next = nx ? {id: nx.ev.id, startTime: nx.ev.startTime, league: {name: nx.ev.league.name, slug: nx.slug}, block: nx.ev.blockName || null,
                  bestOf: nx.ev.match.strategy && nx.ev.match.strategy.count || null, teams: (nx.ev.matchTeams || []).slice(0, 2).map(teamOf).map(publicTeam)} : null;
-    // drop the frame state of games no longer live
-    const liveGames = new Set([...matches.values()].flatMap(m => (m.ev.match.games || []).map(g => g.id)));
-    for (const id of games.keys()) if (!liveGames.has(id)) games.delete(id);
+    // games no longer in progress: their timeline gets its final save (backfill first), then the state goes
+    const inProg = new Set(liveGamesList().map(x => x.g.id));
+    for (const [id, G] of games) if (!inProg.has(id)){ games.delete(id); if (!off && G.start != null && !G.final) finishing.set(id, G); }
     if (ended.length || firstCheck) await checkCompleted(new Set(ended));
     firstCheck = false;
   }
@@ -244,7 +282,8 @@ module.exports = function liveApi(opts = {}){
   function absorb(G, frames){   // frames in time order: pause accounting, latest frame
     for (const f of frames){
       const ts = ptime(f.rfc460Timestamp);
-      if (!(ts > (G.lastTs || -Infinity))) continue;
+      // (the feed's "finished" frame can carry the last in-game frame's timestamp)
+      if (!(ts > (G.lastTs || -Infinity)) && !(ts === G.lastTs && f.gameState === "finished" && !G.done)) continue;
       if (G.start == null && f.blueTeam && f.blueTeam.totalGold > 0) G.start = ts;
       if (G.lastState === "paused" && G.lastTs != null && G.start != null) G.paused += ts - G.lastTs;
       G.lastTs = ts; G.lastState = f.gameState; G.frame = f;
@@ -253,11 +292,27 @@ module.exports = function liveApi(opts = {}){
       if (c != null && f.gameState !== "paused") point(G, c / 60, f);
     }
   }
+  // one point of the series per quarter minute: blue-view features (the WP), gold difference, the saved row (team totals,
+  // blue then red), each player's [gold, level, CS, K, D, A] by participant id, and the live WP from 10 to 25 minutes
   function point(G, minute, f){
-    const x = features(f, G.roles), key = Math.round(minute * 4) / 4;
-    G.series.set(key, {m: key, x, gd: (f.blueTeam.totalGold - f.redTeam.totalGold)});
+    const b = f.blueTeam, r = f.redTeam, x = features(f, G.roles), key = Math.round(minute * 4) / 4;
     if (G.p25 == null && minute >= 25 && minute < 26.5) G.p25 = x;
+    const row = [b.totalGold, r.totalGold, b.totalKills, r.totalKills, b.towers, r.towers, b.inhibitors, r.inhibitors, b.barons, r.barons,
+      (b.dragons || []).length, (r.dragons || []).length].map(v => v == null ? 0 : v);
+    const pl = [...b.participants, ...r.participants].sort((p, q) => p.participantId - q.participantId)
+      .map(p => [p.totalGold, p.level, p.creepScore, p.kills, p.deaths, p.assists].map(v => v == null ? null : v));
+    // after 25:00 the WP is the 25:00 value, held (filled in when saved: the 25:00 point may be backfilled later)
+    G.series.set(key, {m: key, x, gd: b.totalGold - r.totalGold, row, pl, wp: minute >= 10 && minute <= 25 ? wpBlue(G, minute, x) : null, held: minute > 25});
+    if (G.dragM == null || key >= G.dragM){ G.dragM = key; G.drag = [(b.dragons || []).slice(), (r.dragons || []).slice()]; }
+    G.dirty = true;
     if (G.series.size > 400){ const k = [...G.series.keys()].sort((a, b) => a - b); G.series.delete(k[1]); }
+  }
+  // the whole minutes up to the latest frame with no point within half a minute (backfill candidates), untried ones only
+  function missing(G){
+    if (G.start == null || G.lastTs == null) return [];
+    const upto = Math.min(Math.floor(clockOf(G, G.lastTs) / 60), 60), ks = [...G.series.keys()], out = [];
+    for (let m = 1; m <= upto; m++) if (!G.tried.has(m) && !ks.some(k => Math.abs(k - m) < 0.5)) out.push(m);
+    return out;
   }
   async function pollGame(G, watched){
     if (!G.meta){
@@ -274,27 +329,118 @@ module.exports = function liveApi(opts = {}){
       if (w && w.frames && w.frames.length){ absorb(G, w.frames); G.searchTs = ptime(w.frames[w.frames.length - 1].rfc460Timestamp); }
       if (G.start == null) return;
     }
-    if (G.done) return;
-    const w = await windowFrames(G.id, now() - C.lagMs);
-    if (w && w.frames) absorb(G, w.frames);
+    if (!G.restoreTried){ G.restoreTried = true; restore(G); }   // a server restart mid-game: the saved timeline so far
+    if (!G.done){
+      const w = await windowFrames(G.id, now() - C.lagMs);
+      if (w && w.frames) absorb(G, w.frames);
+    }
     // joined after the first minute and a half (a viewer or the server arrived mid-game): pauses before that went unseen, so
     // the clock and the backfilled minutes may run ahead of the game clock
-    if (G.seenFrom == null && G.start != null && G.lastTs != null){ G.seenFrom = clockOf(G, G.lastTs); G.approx = G.seenFrom > 90; }
-    // backfill: a point per game minute we haven't seen (a viewer joined mid-game or the server restarted); no pause data there
-    if (watched && G.start != null && G.lastTs != null){
-      const upto = Math.floor(clockOf(G, G.lastTs) / 60);
-      let n = 0;
-      for (let m = 1; m <= Math.min(upto, 60) && n < C.backfillPerTick; m++){
-        if ([...G.series.keys()].some(k => Math.abs(k - m) < 0.5) || G.tried.has(m)) continue;
-        G.tried.add(m); n++;
+    if (G.seenFrom == null && G.start != null && G.lastTs != null){ G.seenFrom = clockOf(G, G.lastTs); G.approx = G.approx || G.seenFrom > 90; }
+    // backfill: a point per game minute we haven't seen (a viewer joined mid-game or the server restarted); no pause data there.
+    // Watched or ended (the final save waits for it): backfillPerTick a tick; unwatched: backfillIdlePerTick
+    if (G.start != null && G.lastTs != null){
+      const per = watched || G.done || G.ending ? C.backfillPerTick : C.backfillIdlePerTick;
+      for (const m of missing(G).slice(0, per)){
+        G.tried.add(m);
         const wb = await windowFrames(G.id, G.start + m * 60e3);
         if (!wb || !wb.frames || !wb.frames.length) continue;
         const target = G.start + m * 60e3;
         const f = wb.frames.reduce((a, b) => Math.abs(ptime(b.rfc460Timestamp) - target) < Math.abs(ptime(a.rfc460Timestamp) - target) ? b : a);
-        if (f.gameState === "paused" || f.gameState === "finished") continue;
+        if (f.gameState === "paused" || f.gameState === "finished" || Math.abs(ptime(f.rfc460Timestamp) - target) > 45e3) continue;
         point(G, m, f);
       }
     }
+  }
+
+  /* ---------------- saved timelines (FRAMES_DIR) ---------------- */
+  let index = null;   // game id → index entry; loaded from FRAMES_DIR on first use
+  const gzPath = id => path.join(framesDir, id + ".json.gz");
+  const readFrames = id => JSON.parse(zlib.gunzipSync(fs.readFileSync(gzPath(id))).toString("utf8"));
+  const entryOf = (d, bytes) => ({id: d.id, matchId: d.matchId, league: d.league && d.league.name, slug: d.league && d.league.slug, key: d.key,
+    teams: (d.teams || []).map(t => ({code: t.code, name: t.name, site: t.site, oe: t.oe})), date: d.date, start: d.start, number: d.number,
+    state: d.state, savedAt: d.savedAt, bytes});
+  function loadIndex(){
+    if (index) return index;
+    index = new Map();
+    let names; try { names = fs.readdirSync(framesDir); } catch (e) { return index; }
+    const files = new Set(names.filter(f => /^\d+\.json\.gz$/.test(f)));
+    let saved = null; try { saved = JSON.parse(fs.readFileSync(path.join(framesDir, "index.json"), "utf8")); } catch (e) {}
+    if (saved && Array.isArray(saved.games)) for (const e of saved.games) if (e && files.has(e.id + ".json.gz")) index.set(e.id, e);
+    for (const f of files){   // files the index misses (it was lost or a save died between the file and the index): read them
+      const id = f.slice(0, -8);
+      if (!index.has(id)) try { index.set(id, entryOf(readFrames(id), fs.statSync(gzPath(id)).size)); } catch (e) {}
+    }
+    return index;
+  }
+  function writeAtomic(f, data){ const tmp = `${f}.${process.pid}.tmp`; fs.writeFileSync(tmp, data); fs.renameSync(tmp, f); }
+  const COLS = ["m", "goldBlue", "goldRed", "killsBlue", "killsRed", "towersBlue", "towersRed", "inhibBlue", "inhibRed", "baronsBlue", "baronsRed",
+    "dragonsBlue", "dragonsRed", "wpBlue", "held"];
+  const PCOLS = ["gold", "level", "cs", "k", "d", "a"];
+  const EVENT_COLS = [["tower", 4], ["inhib", 6], ["baron", 8], ["dragon", 10]];   // row offsets of the blue count (red: +1)
+  function serialize(G){
+    const pts = [...G.series.values()].filter(p => p.row).sort((a, b) => a.m - b.m);
+    const bi = blueIdxOf(G), v = variantOf(G), held = G.p25 && G.teams ? wpBlue(G, 25, G.p25) : null;
+    const rows = pts.map(p => [p.m, ...p.row, p.held ? (held != null ? held : p.wp == null ? null : p.wp) : p.wp == null ? null : p.wp, p.held ? 1 : 0]);
+    const drag = G.drag || [[], []], events = [];
+    for (let i = 1; i < pts.length; i++){ const a = pts[i - 1].row, b = pts[i].row;
+      for (const [kind, o] of EVENT_COLS) for (const s of [0, 1]) for (let j = a[o + s]; j < b[o + s]; j++)
+        events.push([pts[i].m, s ? "red" : "blue", kind, kind === "dragon" ? drag[s][j] || null : null]); }
+    const meta = G.meta ? ["blueTeamMetadata", "redTeamMetadata"].flatMap((k, s) => (G.meta[k].participantMetadata || []).map(p => ({id: p.participantId,
+      side: s ? "red" : "blue", role: p.role || null, name: p.summonerName || null, champ: p.championId || null}))).sort((a, b) => a.id - b.id).map(({id, ...p}) => p) : [];
+    const start = new Date(G.start).toISOString(), ended = !!(G.done || G.ending);
+    return {v: 1, id: G.id, matchId: G.matchId || null, league: G.league || null, key: G.league ? SCHEDULE_KEY[G.league.slug] || null : null,
+      block: G.block || null, bestOf: G.bestOf || null, number: G.number || null, matchStart: G.matchStart || null, start, date: start.slice(0, 10),
+      duration: G.lastTs == null ? null : Math.round(clockOf(G, G.lastTs)), state: ended ? "finished" : "live",
+      teams: (G.teams || []).map(t => ({code: t.code, name: t.name, site: t.site, oe: t.oe})), sides: bi === 0 ? ["blue", "red"] : ["red", "blue"],
+      approx: !!G.approx, pausedS: Math.round(G.paused / 1000), savedAt: new Date(now()).toISOString(),
+      model: {name: "Rift Logic pro live model", from: 10, heldAfter: 25, variant: v.variant},
+      cols: COLS, rows, dragons: drag, events,
+      players: {meta, cols: PCOLS, rows: pts.filter(p => Number.isInteger(p.m) && p.pl).map(p => [p.m, ...p.pl.flat()])},
+      p25: G.p25 || null};
+  }
+  function saveGame(G){
+    if (off || G.start == null || !G.series.size) return false;
+    try {
+      const d = serialize(G), gz = zlib.gzipSync(JSON.stringify(d), {level: 9}), ix = loadIndex();
+      fs.mkdirSync(framesDir, {recursive: true});
+      writeAtomic(gzPath(G.id), gz);
+      ix.set(G.id, entryOf(d, gz.length));
+      // the size cap: the oldest games (by start) go first, never the one just written
+      let total = 0; for (const e of ix.values()) total += e.bytes || 0;
+      for (const e of [...ix.values()].sort((a, b) => String(a.start).localeCompare(String(b.start)) || String(a.savedAt).localeCompare(String(b.savedAt)))){
+        if (total <= C.framesMaxBytes) break;
+        if (e.id === G.id) continue;
+        try { fs.unlinkSync(gzPath(e.id)); } catch (err) {}
+        ix.delete(e.id); total -= e.bytes || 0; stats.evicted++;
+      }
+      writeAtomic(path.join(framesDir, "index.json"), JSON.stringify({v: 1, games: [...ix.values()]}));
+      stats.saved++; return true;
+    } catch (e) { stats.errors++; log.warn(`live: saving the timeline of game ${G.id} failed: ${e.message}`); return false; }
+    finally { G.savedAt = now(); G.dirty = false; }
+  }
+  // a server restart mid-game: the points saved before it (the feed's backfill fills the gap)
+  function restore(G){
+    if (!loadIndex().has(G.id)) return;
+    let d; try { d = readFrames(G.id); } catch (e) { return; }
+    if (!d || d.v !== 1 || !Array.isArray(d.rows)) return;
+    const pm = new Map(((d.players && d.players.rows) || []).map(r => [r[0], r.slice(1)]));
+    for (const r of d.rows){
+      const m = r[0]; if (G.series.has(m)) continue;
+      const flat = pm.get(m), pl = flat ? Array.from({length: flat.length / 6}, (_, i) => flat.slice(i * 6, i * 6 + 6)) : null, row = r.slice(1, 13);
+      G.series.set(m, {m, x: null, gd: row[0] - row[1], row, pl, wp: r[13], held: !!r[14]});
+    }
+    if (!G.p25 && d.p25) G.p25 = d.p25;
+    if (d.dragons && (G.dragM == null || d.rows.length && d.rows[d.rows.length - 1][0] > G.dragM)){ G.drag = d.dragons; G.dragM = d.rows.length ? d.rows[d.rows.length - 1][0] : 0; }
+    G.paused = Math.max(G.paused, (d.pausedS || 0) * 1000);
+    if (d.approx) G.approx = true;
+  }
+  // after each poll: a checkpoint every saveMs while live; the final save once the game ended and its minutes are backfilled
+  function checkpoint(G){
+    if (off || G.final) return;
+    if (G.done || G.ending){
+      if (!missing(G).length || (G.ending || 0) > C.finishTicks){ saveGame(G); G.final = true; }
+    } else if (G.dirty && now() - (G.savedAt || -Infinity) >= C.saveMs) saveGame(G);
   }
 
   /* ---------------- payload ---------------- */
@@ -355,7 +501,7 @@ module.exports = function liveApi(opts = {}){
     publish();
     if (stopped) return;
     evTimer = later(() => { evRunning = eventsTick().finally(() => { evRunning = null; }); }, backoff(near() ? C.nearMs : C.idleMs, evErrors, retryAfter));
-    if (liveGamesList().length && !frTimer && !frRunning) scheduleFrames(0);
+    if ((liveGamesList().length || finishing.size) && !frTimer && !frRunning) scheduleFrames(0);
   }
   function scheduleFrames(ms){
     if (stopped || frTimer) return;
@@ -363,7 +509,7 @@ module.exports = function liveApi(opts = {}){
   }
   async function framesTick(){
     const list = liveGamesList();
-    if (!list.length) return;            // resumes when the events check finds a live game
+    if (!list.length && !finishing.size) return;            // resumes when the events check finds a live game
     const w = watching();
     let retryAfter = null;
     try {
@@ -371,12 +517,21 @@ module.exports = function liveApi(opts = {}){
         let G = games.get(g.id);
         if (!G){ G = {id: g.id, number: g.number, matchId: m.ev.id, meta: null, roles: {}, blueTeamId: null, start: null, lastTs: null, lastState: null,
                       paused: 0, frame: null, series: new Map(), p25: null, done: false, approx: false, tried: new Set(), searchTs: null}; games.set(g.id, G); }
+        Object.assign(G, {teams: m.teams, league: {name: m.ev.league.name, slug: m.slug}, block: m.ev.blockName || null,
+          bestOf: m.ev.match.strategy && m.ev.match.strategy.count || null, matchStart: m.ev.startTime || null});
         await pollGame(G, w);
+        checkpoint(G);
+      }
+      for (const G of [...finishing.values()]){   // ended games: the last frames and the missing minutes, then the final save
+        G.ending = (G.ending || 0) + 1;
+        if (!G.final) await pollGame(G, true);
+        checkpoint(G);
+        if (G.final) finishing.delete(G.id);
       }
       frErrors = 0;
     } catch (e) { frErrors++; stats.errors++; retryAfter = e.retryAfter; if (frErrors === 1 || frErrors % 10 === 0) log.warn(`live: ${e.message} (failure ${frErrors})`); }
     publish();
-    scheduleFrames(backoff(w ? C.frameMs : C.frameIdleMs, frErrors, retryAfter));
+    if (liveGamesList().length || finishing.size) scheduleFrames(backoff(w ? C.frameMs : C.frameIdleMs, frErrors, retryAfter));
   }
   function wake(){   // a viewer arrived: frames at the watched cadence now instead of at the next idle tick
     if (stopped || !liveGamesList().length || frRunning || frErrors) return;
@@ -422,8 +577,47 @@ module.exports = function liveApi(opts = {}){
   }
 
   /* ---------------- HTTP ---------------- */
+  function frameQuery(url){
+    const sp = url.searchParams, s = k => String(sp.get(k) || "").slice(0, 120);
+    return {league: s("league"), teams: s("teams") ? s("teams").split(",").slice(0, 2) : [], date: /^\d{4}-\d{2}-\d{2}$/.test(s("date")) ? s("date") : "",
+      game: +s("game") || null, at: s("at")};
+  }
+  function framesIndex(req, res, url){
+    const q = frameQuery(url);
+    let list = [...loadIndex().values()];
+    if (q.league || q.teams.length || q.date) list = list.filter(e => framesFit(e, q));
+    list.sort((a, b) => String(b.start).localeCompare(String(a.start)) || (a.number || 0) - (b.number || 0));
+    res.writeHead(200, {"content-type": "application/json", "cache-control": "public, max-age=60", "x-content-type-options": "nosniff"});
+    res.end(JSON.stringify({games: list.map(({bytes, savedAt, ...e}) => e)}));
+  }
+  function framesGet(req, res, url){
+    let id = url.searchParams.get("id");
+    const byId = id != null;
+    if (byId){ if (!/^\d{1,24}$/.test(id)) return send(res, 400, {error: "Bad id."}); }
+    else {
+      const q = frameQuery(url);
+      if (!q.league || q.teams.length !== 2 || !q.date) return send(res, 400, {error: "Give id, or league, teams=A,B and date=YYYY-MM-DD (and game=N)."});
+      const e = matchFrames([...loadIndex().values()], q);
+      if (!e) return send(res, 404, {error: "No saved timeline for that game."});
+      id = e.id;
+    }
+    const e = loadIndex().get(id);
+    let gz = null; try { if (e) gz = fs.readFileSync(gzPath(id)); } catch (err) {}
+    if (!gz) return send(res, 404, {error: "No saved timeline for that game."});
+    // a finished game's file doesn't change: cached long (a day by query: a later save could match it better); a live one never
+    const headers = {"content-type": "application/json; charset=utf-8", "vary": "Accept-Encoding", "x-content-type-options": "nosniff",
+      "cache-control": e.state !== "finished" ? "no-store" : byId ? "public, max-age=2592000" : "public, max-age=86400"};
+    const gzipOk = /\bgzip\b/.test(String(req.headers && req.headers["accept-encoding"] || ""));
+    let body = gz;
+    if (gzipOk) headers["content-encoding"] = "gzip"; else body = zlib.gunzipSync(gz);
+    headers["content-length"] = body.length;
+    res.writeHead(200, headers);
+    res.end(req.method === "HEAD" ? undefined : body);
+  }
   function handler(req, res, url){
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, {error: "GET only"});
+    if (url.pathname === "/api/live/frames/index") return framesIndex(req, res, url);
+    if (url.pathname === "/api/live/frames") return framesGet(req, res, url);
     if (url.pathname === "/api/live"){ lastWatch = now(); wake(); return send(res, 200, snapshot()); }
     if (url.pathname === "/api/live/stream") return off ? send(res, 503, {error: "Live updates are off."}) : stream(req, res);
     return send(res, 404, {error: "Not found"});
@@ -435,10 +629,12 @@ module.exports = function liveApi(opts = {}){
     for (const c of clients) try { c.res.end(); } catch (e) {}
     clients.clear();
   };
-  handler.state = () => ({matches: matches.size, games: games.size, recent: recent.size, next, clients: clients.size, evErrors, frErrors,
-    evTimer: !!evTimer, frTimer: !!frTimer, watching: watching(), stats: {...stats}, source});
+  // save every tracked game's timeline now (server.js calls it on SIGTERM, so a redeploy loses nothing)
+  handler.flush = () => { for (const G of [...games.values(), ...finishing.values()]) if (G.dirty && !G.final) saveGame(G); };
+  handler.state = () => ({matches: matches.size, games: games.size, finishing: finishing.size, recent: recent.size, next, clients: clients.size, evErrors, frErrors,
+    evTimer: !!evTimer, frTimer: !!frTimer, watching: watching(), stats: {...stats}, source, framesDir});
   handler.idle = () => Promise.all([evRunning, frRunning].filter(Boolean));   // tests: wait for the ticks in flight
-  handler._test = {siteTeam, winProb, features, payload, snapshot, absorb, clockOf,
+  handler._test = {siteTeam, winProb, features, payload, snapshot, absorb, clockOf, serialize, loadIndex, games, finishing,
     newGame: id => ({id, meta: null, roles: {}, start: null, lastTs: null, lastState: null, paused: 0, frame: null, series: new Map(), p25: null, done: false, tried: new Set()})};
   handler.start = () => { if (!off && !stopped && !evTimer && !evRunning) evRunning = eventsTick().finally(() => { evRunning = null; }); };
   if (off) source = {ok: false, error: "off"};
@@ -446,6 +642,42 @@ module.exports = function liveApi(opts = {}){
   return handler;
 };
 module.exports.TIER1 = TIER1;
+
+// Matching a saved timeline to a game known by league, teams, date and game number (Oracle's Elixir / Leaguepedia games have
+// other ids): the league (name, slug or schedule key; OE's WLDs / FST / MSI / EWC names too), both teams in either order (the
+// lolesports code or name, the site's name or the OE name; a sponsor suffix on the lolesports name is fine: "Team Liquid
+// Alienware" is Team Liquid), the game's start date within a day either way (time zones, series past midnight UTC), the game
+// number in the series when given. Several hits (a rematch within a day): the start nearest `at`, else the nearest date.
+const nrm = s => String(s || "").normalize("NFKD").toLowerCase().replace(/\(.*?\)/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+const LEAGUE_ALIAS = {wlds: "worlds", worlds: "worlds", fst: "first stand", firststand: "first stand", msi: "msi", ewc: "ewc"};
+function leagueFits(e, L){
+  const q = nrm(L), q2 = LEAGUE_ALIAS[q.replace(/ /g, "")] || q;
+  return [e.league, String(e.slug || "").replace(/_/g, " "), e.key].map(nrm).some(c => c && (c === q || c === q2));
+}
+function teamFits(t, name){
+  const q = nrm(name);
+  if (!q || !t) return false;
+  // exact, or the start of the lolesports name (a sponsor suffix) for a distinctive name (5+ characters: not "Team")
+  return [t.code, t.name, t.site, t.oe].map(nrm).filter(Boolean).some(c => c === q || (q.length >= 5 && c.startsWith(q + " ")));
+}
+function framesFit(e, q){
+  if (q.league && !leagueFits(e, q.league)) return false;
+  if (q.teams && q.teams.length === 2){
+    const [a, b] = q.teams, T = e.teams || [];
+    if (!((teamFits(T[0], a) && teamFits(T[1], b)) || (teamFits(T[0], b) && teamFits(T[1], a)))) return false;
+  }
+  if (q.date && !(Math.abs(Date.parse(e.date) - Date.parse(q.date)) <= 864e5)) return false;
+  if (q.game && e.number !== +q.game) return false;
+  return true;
+}
+function matchFrames(entries, q){
+  const hits = entries.filter(e => framesFit(e, q));
+  const at = Date.parse(q.at || ""), d = Date.parse(q.date || "");
+  const dist = e => Number.isFinite(at) ? Math.abs(Date.parse(e.start) - at) : Math.abs(Date.parse(e.date) - d);
+  return hits.sort((a, b) => dist(a) - dist(b) || String(b.savedAt).localeCompare(String(a.savedAt)))[0] || null;
+}
+module.exports.matchFrames = matchFrames;
+module.exports.framesFit = framesFit;
 
 // the LIVE_FIXTURE replay: gql_live.json for the events (the recorded game in progress), gql_completed.json for results, and the
 // window_<game>_*.json files for the feed (the latest recorded window at or before the requested time; the end after it)

@@ -5,7 +5,8 @@
 //   /api/play/…                 → the Play quiz's runs and leaderboard (play-api.js; scores under PLAY_DIR)
 // Env: PORT, REPORT_DIR (a Railway volume, e.g. /data/reports), REPORT_TOKEN (≥ 24 chars; reading is off without it),
 //      PLAY_DIR (default: "play" next to REPORT_DIR when that is set, so it shares its volume; else .play here, hidden),
-//      PLAY_SALT (optional: the salt for hashed IPs; else one is made once and kept in PLAY_DIR/.salt).
+//      PLAY_SALT (optional: the salt for hashed IPs; else one is made once and kept in PLAY_DIR/.salt),
+//      FRAMES_DIR (the live games' saved timelines, live-api.js; default "live-frames" next to REPORT_DIR, else .live-frames here).
 "use strict";
 const http = require("http"), fs = require("fs"), path = require("path"), crypto = require("crypto"), zlib = require("zlib");
 const {Readable} = require("stream");
@@ -55,6 +56,8 @@ let play = null;   // the Play quiz API (play-api.js), created on first use
 // live tier-1 pro games (live-api.js): /api/live, /api/live/stream. Started now, not on first use, so finished series are
 // seen even when nobody is on the page; LIVE_OFF=1 turns its polling off (the tests set it)
 const live = require("./live-api.js")({ROOT, send, clientIp});
+// a redeploy or restart (SIGTERM): save the live games' timelines first (live-api.js, FRAMES_DIR)
+for (const sig of ["SIGTERM", "SIGINT"]) process.once(sig, () => { try { live.flush(); } catch (e) {} process.exit(0); });
 async function api(req, res, url){
   if (url.pathname === "/api/live" || url.pathname.startsWith("/api/live/")) return live(req, res, url);
   if (url.pathname.startsWith("/api/play/")){
@@ -160,7 +163,7 @@ function cachePolicy(url){
   }
   if (/^fonts\/[\w.-]+\.woff2$/.test(rel)) return IMMUTABLE;
   // refreshed on their own (tools/refresh_pro.sh), so outside the version map: five minutes fresh, then revalidated
-  if (/^(pro-schedule\.json|pro-rosters\.json|logos\/index\.json)$/.test(rel)) return "public, max-age=300";
+  if (/^(pro-schedule\.json|pro-rosters\.json|pro-prelim\.json|pro-vods\.json|logos\/index\.json)$/.test(rel)) return "public, max-age=300";
   if (/^(webp|jpe?g|png|gif|avif|svg|ico)$/i.test(ext)) return "public, max-age=86400, stale-while-revalidate=604800";
   return REVALIDATE;
 }

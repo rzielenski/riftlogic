@@ -61,10 +61,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);p
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
-.app{max-width:1480px;margin:0 auto;display:grid;gap:12px}
+.app{max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.app>*{min-width:0}
 
 /* bar */
-.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding-block:10px;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar{min-width:0;position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding-block:10px;background:var(--bg);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:8px;margin-right:auto;font:600 15.5px/1 var(--sans);min-width:0}
 .brand svg{width:18px;height:18px;flex:none}
 .brand span{color:var(--muted);font-weight:500}
@@ -85,7 +86,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 #status.ok{color:var(--ok)}
 
 /* eval bar: P(blue wins) from the draft model, chess-style */
-.evalbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:6px 10px;width:100%;max-width:1184px;margin-inline:auto;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.evalbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;align-items:center;gap:6px 10px;width:100%;max-width:1184px;margin-inline:auto;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .eb-lab{font:600 12.5px/1 var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
 .eb-lab small{font:600 10.5px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;margin-right:6px}
 .eb-lab.B{color:var(--side1)}.eb-lab.R{color:var(--side2)}.eb-lab.R small{margin:0 0 0 6px}
@@ -97,11 +98,20 @@ button,input,select,textarea{font:inherit;color:inherit}
 .eb-delta i{width:7px;height:7px;border-radius:50%;background:var(--side1)}.eb-delta i.R{background:var(--side2)}
 .eb-delta b{font-weight:600}
 @media (prefers-reduced-motion:reduce){.eb-fill{transition:none}}
-@media (max-width:640px){.evalbar{grid-template-columns:auto minmax(0,1fr) auto;padding:6px 8px}.eb-meta{grid-column:1/-1;justify-content:center}}
+/* win-chance line: P(blue) after each pick (the mode's draft model); dots = the picking side */
+.eb-line{display:block;width:230px;height:34px;overflow:visible}
+.eb-line .mid{stroke:var(--line-strong);stroke-width:1;stroke-dasharray:2 3}
+.eb-line .ln{fill:none;stroke:var(--ink-2);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+.eb-line .ar{opacity:.18}.eb-line .ar.B{fill:var(--side1)}.eb-line .ar.R{fill:var(--side2)}
+.eb-line circle{stroke:var(--surface);stroke-width:1.5}.eb-line circle.B{fill:var(--side1)}.eb-line circle.R{fill:var(--side2)}.eb-line circle.s0{fill:var(--muted)}
+.eb-line .ghost{fill:var(--line-strong);stroke:none}
+@media (max-width:640px){.evalbar{grid-template-columns:auto minmax(0,1fr) auto;padding:6px 8px}.eb-meta{grid-column:1/-1;justify-content:center}.eb-line{grid-column:1/-1;width:100%;height:30px}}
 
 /* board */
 /* one shared height: pick columns and the champion viewport end on the same line */
-.board{--bh:clamp(540px,calc(100vh - 160px),860px);display:grid;grid-template-columns:minmax(180px,230px) minmax(0,700px) minmax(180px,230px);justify-content:center;grid-template-areas:"blue mid red";gap:12px;height:var(--bh)}
+/* the middle column: turn, the suggestions (focal point, in view at 1280 x 800), then the pool */
+.board{--bh:clamp(560px,calc(100vh - 160px),860px);display:grid;grid-template-columns:minmax(180px,230px) minmax(0,720px) minmax(180px,230px);justify-content:center;
+  grid-template-areas:"blue turn red" "blue sug red" "blue pool red";grid-template-rows:auto auto minmax(0,1fr);gap:8px 12px;height:var(--bh)}
 .team{grid-area:blue;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;border-top:3px solid var(--side1)}
 .team .theme{font:500 11.5px/1.3 var(--sans);color:var(--ink-2);min-height:2.6em}
 .team .theme b{font-weight:600}
@@ -151,8 +161,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .mono{display:grid;place-items:center;width:100%;height:100%;font:600 15px/1 var(--sans);color:#fff;letter-spacing:-.02em}
 img.pt{display:block;width:100%;height:100%;object-fit:cover}
 
-.mid{grid-area:mid;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
-.turn{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:44px}
+.turn{grid-area:turn;min-width:0;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:44px}
 .turn b{font:600 15px/1 var(--sans)}
 .turn .B{color:var(--side1)}.turn .R{color:var(--side2)}
 .turn .clock{font:600 15px/1 var(--mono);color:var(--muted);min-width:3ch;text-align:right}
@@ -163,7 +172,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover}
 .steps i.pk{border-radius:50%}
 .steps i.done{opacity:.35}
 .steps i.now{outline:2px solid var(--ink);outline-offset:1px}
-.pool{flex:1;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+.pool{grid-area:pool;min-width:0;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
 .filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--line)}
 .filters input[type=search]{flex:1 1 150px;min-width:0;height:32px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface-2);padding:0 10px;font-size:13.5px}
 .filters input[type=search]:focus{outline:none;border-color:var(--accent)}
@@ -183,15 +192,51 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover}
 .dot{width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px var(--surface)}
 .empty{padding:20px;color:var(--muted);text-align:center;grid-column:1/-1}
 
-/* lane matchups strip (under the board) */
-.lanes{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;width:100%;max-width:1184px;margin-inline:auto;padding:6px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12.5px}
-.lanes>.lab{font:600 10.5px/1.6 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.lanes .lane{display:inline-flex;flex-wrap:wrap;align-items:center;gap:0 4px;min-width:0}
-.lanes .lane svg{width:14px;height:14px;fill:currentColor;color:var(--muted)}
-.lanes .lane .why{font-size:11.5px}
+/* lane matchups: one row per lane, blue left, red right; gold @15 as a diverging bar, the pair's win rate, a counter flag */
+.lanes{grid-area:lanes;display:grid;gap:2px;align-content:start;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.lanes h3{margin:0 0 4px;font:600 12px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.lanes h3 small{font:500 11px/1 var(--mono);letter-spacing:0;text-transform:none;color:var(--faint)}
+.lane{display:grid;grid-template-columns:18px minmax(0,1fr) 92px minmax(0,1fr);align-items:center;gap:6px;min-height:34px;padding:2px 0;border-top:1px solid var(--line)}
+.lane:first-of-type{border-top:0}
+.lane>svg{width:16px;height:16px;fill:currentColor;color:var(--muted)}
+.lc{display:flex;align-items:center;gap:6px;min-width:0;font:500 12.5px/1.2 var(--sans)}
+.lc.R{flex-direction:row-reverse;text-align:right}
+.lc .ph{width:26px;height:26px;border-radius:4px;overflow:hidden;flex:none;background:var(--inset)}
+.lc .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lc.none .n{color:var(--faint)}
+.ctr{flex:none;font:700 9.5px/1 var(--sans);letter-spacing:.05em;text-transform:uppercase;padding:3px 5px;border-radius:4px;color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.lm{display:grid;gap:3px;justify-items:center;font:600 11.5px/1 var(--mono)}
+.lm .gb{position:relative;width:100%;height:6px;border-radius:3px;background:var(--inset)}
+.lm .gb::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line-strong)}
+.lm .gb i{position:absolute;top:0;bottom:0;border-radius:3px}
+.lm .gb i.B{background:var(--side1)}.lm .gb i.R{background:var(--side2)}
+.lm small{font:500 10.5px/1 var(--mono);color:var(--muted)}
+.lm .xp{opacity:.6}
 
 /* analysis */
-.below{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;width:100%;max-width:1184px;margin-inline:auto}
+/* under the board: blue comp | lanes | red comp, mirroring the board */
+.below{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr) minmax(0,1fr);grid-template-areas:"anB lanes anR" "code code code";gap:12px;width:100%;max-width:1184px;margin-inline:auto;align-items:start}
+#an-B{grid-area:anB}#an-R{grid-area:anR}.below .codebox{grid-area:code}
+.below.nolanes{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"anB anR" "code code"}
+/* comp summary: flags, damage + colour bars, six percentile tiles (3 x 2); the full breakdown folds into Details */
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.flag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;border:1px solid var(--line-strong);background:var(--surface-2);font:500 11.5px/1.2 var(--sans);color:var(--ink-2);cursor:help}
+.flag.bad{border-color:color-mix(in srgb,var(--no) 55%,transparent);color:var(--no)}
+.flag.warn{border-color:color-mix(in srgb,var(--warn) 55%,transparent);color:var(--warn)}
+.flag.plan b{color:var(--ink);font-weight:600}
+.sbar{display:grid;grid-template-columns:52px minmax(0,1fr);gap:6px;align-items:center;margin:0 0 6px;font:600 10px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.sbar .stack{height:14px;border-radius:4px}
+.sbar .stack i{display:flex;align-items:center;justify-content:center;overflow:hidden;font:600 9.5px/1 var(--mono);letter-spacing:0;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.6)}
+.ctiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.ctile{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:4px 6px;padding:7px 9px;border:1px solid var(--line);border-left:3px solid var(--pc);border-radius:7px;background:var(--surface-2);min-width:0;cursor:help}
+.ctile .nm{font:600 10px/1.2 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctile b{font:600 18px/1 var(--sans);color:var(--pc);grid-row:span 2;align-self:center}
+.ctile b small{font-size:10px;font-weight:500;margin-left:1px}
+.ctile .g{display:block;height:4px;border-radius:2px;background:var(--inset);overflow:hidden}
+.ctile .g i{display:block;height:100%;background:var(--pc)}
+details.more{margin-top:10px;border-top:1px solid var(--line);padding-top:6px}
+details.more>summary{cursor:pointer;font:600 10.5px/1.8 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);list-style-position:inside}
+details.more>summary:hover{color:var(--ink-2)}
 .foot{margin-inline:auto;width:100%;max-width:1184px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}
 .card.B{border-top:3px solid var(--side1)}.card.R{border-top:3px solid var(--side2)}
@@ -219,41 +264,72 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover}
 .rng .tr u{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--accent)}
 .rng span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rng span:last-child{text-align:right;color:var(--muted);font-family:var(--mono);font-size:11px}
-.sug{grid-column:1/-1}
-.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
-.srow{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2);text-align:left;cursor:pointer}
+/* suggestions: one drag-scroll row of cards under the turn; the first 4 fit the middle column */
+.sug{grid-area:sug;padding:8px 10px 10px;display:grid;gap:7px;min-width:0}
+.sug h3{margin:0}
+.sgrid{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(164px,1fr);gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:6px 1px 1px;margin-top:-6px;scroll-snap-type:x proximity}
+.sgrid::-webkit-scrollbar{display:none}
+.sgrid.drag.ovf{cursor:grab}.sgrid.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none;scroll-snap-type:none}
+.srow{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);grid-template-areas:"ph nm" "ph d" "rs rs";gap:3px 8px;align-items:center;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);text-align:left;cursor:pointer;min-width:0;scroll-snap-align:start}
 .srow:hover{border-color:var(--accent)}
-.srow .ph{width:32px;height:32px;border-radius:4px;overflow:hidden}
-.srow b{font-size:13px;font-weight:600;display:block}
-.srow small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.srow small.rs{color:var(--ink-2);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.srow{grid-template-columns:32px minmax(0,1fr) auto}
-.sgrid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.srow:first-child{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--surface-2))}
+.srow .ph{grid-area:ph;width:36px;height:36px;border-radius:5px;overflow:hidden}
+.srow b{grid-area:nm;font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow b svg{width:13px;height:13px;flex:none;fill:currentColor;color:var(--muted)}
+.srow small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow small.rs{grid-area:rs;color:var(--ink-2)}
+.sug h3 .B{color:var(--side1)}.sug h3 .R{color:var(--side2)}
+.srow kbd{display:none;position:absolute;top:-6px;left:-5px;min-width:15px;height:15px;padding:0 3px;border-radius:4px;border:1px solid var(--line-strong);background:var(--surface);font:600 9.5px/13px var(--mono);color:var(--muted);text-align:center}
+@media (hover:hover) and (pointer:fine){.srow kbd{display:block}}
 .tbars{display:grid;grid-template-columns:70px minmax(0,1fr) 38px;gap:2px 8px;align-items:center;font-size:12px}
 .tbars .tr{height:7px;border-radius:2px;background:var(--inset);position:relative}
 .tbars .tr i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--accent)}
 .tbars span:last-child{text-align:right;font:11px var(--mono);color:var(--muted)}
-.srow .d{font:600 12.5px/1 var(--mono)}
-.srow .d small.wp{display:block;margin-top:3px;font:500 10.5px/1 var(--mono);color:var(--muted);text-align:right}
+.srow .d{grid-area:d;font:600 15px/1 var(--mono);white-space:nowrap}
+.srow .d small.wp{display:inline;margin-left:2px;font:500 9.5px/1 var(--mono);color:var(--muted)}
 h3 small.wpnow{margin-left:8px}
 .up{color:var(--ok)}.dn{color:var(--no)}
 .codebox{grid-column:1/-1}
 .codebox textarea{width:100%;height:260px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface-2);font:12px/1.55 var(--mono);padding:10px;resize:vertical}
 .foot{font-size:12px;color:var(--muted)}
 .foot b{color:var(--ink-2)}
+.foot summary{cursor:pointer;font:600 10.5px/1.8 var(--sans);letter-spacing:.07em;text-transform:uppercase}
+.foot p{margin:6px 0 0}
 
+@media (max-width:1060px){
+  .below{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"lanes lanes" "anB anR" "code code"}
+}
 @media (max-width:899px){
-  .board{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"blue red" "mid mid";height:auto}
+  /* phones and narrow tablets: turn and suggestions first, then the two teams, then the pool */
+  .board{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"turn turn" "sug sug" "blue red" "pool pool";grid-template-rows:none;height:auto}
   .picks{grid-template-rows:none}
-  .mid{height:min(78vh,640px)}
-  .below{grid-template-columns:minmax(0,1fr)}
+  .pool{height:min(72vh,600px)}
+  .below,.below.nolanes{grid-template-columns:minmax(0,1fr);grid-template-areas:"lanes" "anB" "anR" "code"}
+  .sgrid{grid-auto-columns:minmax(150px,44%)}
+  /* touch: a slot drags by its grip; the rest of the slot scrolls the page and taps */
+  .pslot .grip{width:22px;height:100%;right:0;border-radius:0 7px 7px 0;background:none;opacity:.8}
+  .pslot .grip::before{content:"";position:absolute;left:50%;top:50%;width:6px;height:14px;transform:translate(-50%,-50%);background:radial-gradient(circle,var(--muted) 1.1px,transparent 1.3px) 0 0/3px 3.5px}
+  .pslot.filled .nm{padding-right:18px}
   .pslot{grid-template-columns:22px 36px minmax(0,1fr);min-height:46px;gap:6px}
   .rl svg{width:16px;height:16px}
   .pslot .ph{width:36px;height:36px}
   .bslot{width:26px;height:26px}.bans{gap:3px}.bans .gap{width:3px}
   .sep{display:none}
 }
+@media (pointer:coarse){
+  .pslot.filled{touch-action:pan-y}
+  .pslot .grip{touch-action:none;width:22px;height:100%;right:0;border-radius:0 7px 7px 0;background:none;opacity:.8}
+  .pslot .grip::before{content:"";position:absolute;left:50%;top:50%;width:6px;height:14px;transform:translate(-50%,-50%);background:radial-gradient(circle,var(--muted) 1.1px,transparent 1.3px) 0 0/3px 3.5px}
+  .pslot.filled .nm{padding-right:18px}
+}
+@media (max-width:640px){
+  .tools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:0;min-width:0;flex:1 1 100%}.tools>*{flex:none}.tools::-webkit-scrollbar{display:none}
+  .sug h3 small.wpnow .mn{display:none}
+}
 @media (max-width:420px){
+  .ctile{padding:6px 7px}.ctile b{font-size:16px}
+  .lane{grid-template-columns:16px minmax(0,1fr) 78px minmax(0,1fr);gap:4px}
+  .lc{font-size:12px;gap:4px}.lc .ph{width:22px;height:22px}
   .team{padding:8px}
   .bslot{width:22px;height:22px}.bans{gap:2px}.bans .gap{width:2px}
   .pslot .nm b{font-size:12.5px}
@@ -374,7 +450,7 @@ html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
 .rlnav-set svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rlnav-set:hover,.rlnav-set[aria-expanded="true"]{color:var(--ink);background:var(--inset)}
 #rlset-pop[hidden]{display:none}#rlset-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;padding:10px 12px;border-radius:10px;background:var(--surface,#0E1014);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap}
-.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}
+.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}.rlset-row+.rlset-row{margin-top:8px}.rlset-rev{border:0;background:none;color:var(--accent);font:500 12px/1 inherit;padding:6px 4px;cursor:pointer}
 #rlset-pop .seg{display:inline-flex;flex-direction:row;flex-wrap:nowrap;width:auto;border:0;gap:2px;padding:2px;border-radius:8px;background:var(--inset)}#rlset-pop .seg>button{display:inline-block;width:auto;min-height:0;margin:0;border:0;background:none;color:var(--muted);font:500 12px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}#rlset-pop .seg>button[aria-pressed="true"]{background:var(--inset);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .rlnav-docs{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;color:var(--muted);text-decoration:none;font:500 13px/1 var(--sans)}
 .rlnav-docs svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -713,6 +789,9 @@ st.running = true; if (!rq) { last = 0; rq = W.requestAnimationFrame(frame); }
 else { stop(); if (st.hidden) idle(); else if (!st.typing) still(); }
 }
 const sync = () => { if (pop) pop.querySelectorAll("[data-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === mode))); };
+function syncSpoil() { if (!pop) return; let v = null; try { v = W.localStorage.getItem("riftlogic.spoilers"); } catch (_) {}
+pop.querySelectorAll("[data-spoil]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-spoil") === (v === "shown" ? "shown" : "hidden")))); }
+syncSpoil();
 function setMode(m) {
 if (!/^(anim|still|off)$/.test(m)) return;
 mode = st.mode = m; st.paused = m !== "anim"; st.off = m === "off";
@@ -730,7 +809,13 @@ const pause = v => setMode(v ? "still" : "anim");
 if (btn && pop) {
 const open = v => { pop.hidden = !v; btn.setAttribute("aria-expanded", String(v)); };
 on(btn, "click", e => { e.stopPropagation(); open(pop.hidden); });
-on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg")); });
+on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg"));
+const sp = e.target.closest && e.target.closest("[data-spoil],[data-spoil-reveal]");
+if (sp) {
+try { if (sp.hasAttribute("data-spoil-reveal")) W.localStorage.setItem("riftlogic.spoilers.at", String(Date.now()));
+else if (sp.getAttribute("data-spoil") === "shown") W.localStorage.setItem("riftlogic.spoilers", "shown"); else W.localStorage.removeItem("riftlogic.spoilers"); } catch (_) {}
+syncSpoil(); try { W.dispatchEvent(new W.CustomEvent("rl:spoilers")); } catch (_) {}
+} });
 on(D, "click", () => open(false));
 on(D, "keydown", e => { if (e.key === "Escape" && !pop.hidden) { open(false); btn.focus(); } });
 }
@@ -945,7 +1030,7 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
       <button type="button" class="btn" id="nextgame" hidden>Next game</button>
       <button type="button" class="btn" id="timerbtn" aria-pressed="false" title="30 s per turn; an expired ban is skipped">Timer</button>
       <span class="sep"></span>
-      <button type="button" class="btn ghost" id="undo" title="Undo (Ctrl/⌘ Z)">Undo</button>
+      <button type="button" class="btn ghost" id="undo" title="Undo (U or Ctrl/⌘ Z)">Undo</button>
       <button type="button" class="btn ghost" id="swap" title="Swap blue and red">Swap</button>
       <button type="button" class="btn ghost" id="reset">Reset</button>
       <span class="sep"></span>
@@ -960,36 +1045,34 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
     <div class="eb-track" id="eb-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-label="Blue win probability"><i class="eb-fill" id="eb-fill"></i></div>
     <span class="eb-lab R"><span id="eb-r">50.0%</span><small>Red</small></span>
     <span class="eb-meta"><span class="eb-delta" id="eb-delta" hidden></span><span id="eb-model"></span></span>
+    <svg class="eb-line" id="eb-line" role="img" aria-label="Blue win chance after each pick"></svg>
   </div>
 
   <main class="board">
     <section class="team B" id="team-B" aria-label="Blue side"></section>
-    <section class="mid">
-      <div class="turn" id="turn"></div>
-      <div class="pool">
-        <div class="filters">
-          <input type="search" id="q" placeholder="Search  ( / )" aria-label="Search champions" autocomplete="off">
-          <div class="seg" role="group" aria-label="Role" id="rolef"></div>
-          <div class="pips" role="group" aria-label="LS colour" id="colf"></div>
-        </div>
-        <div class="grid" id="grid" role="list"></div>
+    <div class="turn" id="turn"></div>
+    <section class="card sug" id="sug" aria-label="Suggestions"></section>
+    <div class="pool">
+      <div class="filters">
+        <input type="search" id="q" placeholder="Search  ( / )" aria-label="Search champions" autocomplete="off">
+        <div class="seg" role="group" aria-label="Role" id="rolef"></div>
+        <div class="pips" role="group" aria-label="LS colour" id="colf"></div>
       </div>
-    </section>
+      <div class="grid" id="grid" role="list"></div>
+    </div>
     <section class="team R" id="team-R" aria-label="Red side"></section>
   </main>
 
-  <div class="lanes" id="lanes" hidden></div>
-
   <section class="below">
-    <div class="card sug" id="sug"></div>
     <div class="card B" id="an-B"></div>
+    <div class="lanes" id="lanes" hidden></div>
     <div class="card R" id="an-R"></div>
     <div class="card codebox" id="codebox" hidden>
       <h3>Rift Logic program <small>select all and copy</small></h3>
       <textarea id="code" readonly spellcheck="false" aria-label="Generated Rift Logic program"></textarea>
     </div>
   </section>
-  <p class="foot" id="foot"></p>
+  <details class="foot" id="foot"><summary>Data sources</summary><p id="foot-t"></p></details>
 </div>
 
 <script>
@@ -1349,19 +1432,39 @@ function laneMatch(a, b, r, mode){
   return out;
 }
 const LANE_TIP = () => `Lane matchups, blue's laner first, in the lanes the board assigns (set or inferred). Gold: expected gold difference at 15 min against the lane opponent in pro play (Oracle's Elixir 2022–2026; LPL doesn't record it): each champion's lane average plus the pair's own residual, both shrunk toward 0 (empirical Bayes), so rare pairs lean on the champions' averages; n = pro games of the pair with the diff recorded. The pro draft model uses it (per-lane weights, held-out 2026 log loss slightly better; see the docs). Win rate: the pair in the same lane in ${S.mode === "pro" ? "pro games 2022–2026" : "ranked solo 16.x"}, n = games (pairs under ${laneStats(S.mode) ? laneStats(S.mode).L.minPair : "?"} games aren't stored). Solo-queue gold diffs need timelines (coming).`;
+// the model's lane term for blue's a vs red's b in role r (logit; + favours blue)
+function laneTerm(X, r, a, b){ const n = X.n; return a === b ? 0 : a < b ? (X.lane[r].get(a * n + b) || 0) : -(X.lane[r].get(b * n + a) || 0); }
+const CTR_PP = 0.3;                                      // counter flag: the model's lane term is worth 0.3+ pp (the ban ideas' "counters your X" bar)
+const GD_SCALE = 400;                                    // the gold bar's half width (gold @15)
 function renderLanes(){
   const box = $("lanes"), at = side => { const m = {}; for (const [ci, r] of Object.entries(rolesOf(side))) if (r != null) m[r] = C[ci]; return m; };
-  const b = at("B"), q = at("R"), rows = [];
+  const b = at("B"), q = at("R"), any = Object.keys(b).length + Object.keys(q).length, X = wpModel(S.mode), pb = X ? wpNow("B") : 0.5;
+  box.hidden = !any; box.closest(".below").classList.toggle("nolanes", !any);
+  if (!any){ box.replaceChildren(); return; }
+  const md = S.mode === "pro" ? "pro" : "solo", side = (c, s, flag) => h("span", {class: `lc ${s}${c ? "" : " none"}`},
+    h("span", {class: "ph"}, c ? portrait(c) : ""), h("span", {class: "n"}, c ? c.name : "–"), flag ? h("span", {class: "ctr", title: flag}, "counter") : null);
+  const rows = [];
   for (let r = 0; r < 5; r++){
-    if (!b[r] || !q[r]) continue;
-    const x = laneMatch(b[r].wpi, q[r].wpi, r, S.mode), g = x.gd == null ? null : Math.round(x.gd);
-    rows.push(h("span", {class: "lane", "data-role": r}, roleIcon(r), h("b", {}, POS[r] + ":"), ` ${b[r].name} vs ${q[r].name}`,
-      h("span", {class: "why"}, " · "), g == null ? h("span", {class: "why"}, "gold n/a") : h("b", {class: g >= 50 ? "up" : g <= -50 ? "dn" : null}, `${g >= 0 ? "+" : "−"}${Math.abs(g)} g @15`),
-      g == null ? null : h("span", {class: "why"}, ` (n ${fmtN(x.ngd)})`), h("span", {class: "why"}, " · "),
-      x.w == null ? h("span", {class: "why"}, `${S.mode === "pro" ? "pro" : "solo"} win rate: too few games`) : h("span", {}, `${pct(x.w, 1)} `, h("span", {class: "why"}, `${S.mode === "pro" ? "pro" : "solo"} (n ${fmtN(x.n)})`))));
+    const A = b[r], Q = q[r];
+    if (!A || !Q){ rows.push(h("div", {class: "lane", "data-role": r}, roleIcon(r), side(A, "B"), h("span", {class: "lm"}, h("small", {}, "")), side(Q, "R"))); continue; }
+    const x = laneMatch(A.wpi, Q.wpi, r, S.mode), g = x.gd == null ? null : Math.round(x.gd);
+    const lp = X ? 100 * pb * (1 - pb) * laneTerm(X, r, A.wpi, Q.wpi) : 0;   // pp of blue's win chance
+    const fav = lp >= CTR_PP ? "B" : lp <= -CTR_PP ? "R" : null;
+    const fl = fav ? `${fav === "B" ? A.name : Q.name} counters ${fav === "B" ? Q.name : A.name}: the ${wpName(S.mode)}'s lane term is worth ${Math.abs(lp).toFixed(1)} pp of win chance` : null;
+    const gw = g == null ? 0 : Math.min(50, 50 * Math.abs(g) / GD_SCALE);
+    const tip = `${POS[r]}: ${A.name} vs ${Q.name}\nGold @15 (pro): ${g == null ? "n/a" : `${g >= 0 ? "+" : "−"}${Math.abs(g)} for ${A.name} (n ${fmtN(x.ngd)})`}` +
+      `\nWin rate (${md}): ${x.w == null ? "too few games" : `${pct(x.w, 1)} for ${A.name} (n ${fmtN(x.n)})`}` +
+      `\nModel lane term: ${lp >= 0 ? "+" : "−"}${Math.abs(lp).toFixed(1)} pp for Blue`;
+    rows.push(h("div", {class: "lane", "data-role": r, "data-gd": g == null ? null : String(g), "data-ngd": String(x.ngd), "data-wr": x.w == null ? null : x.w.toFixed(4), "data-n": String(x.n), "data-lp": lp.toFixed(3), title: tip},
+      roleIcon(r), side(A, "B", fav === "B" ? fl : null),
+      h("span", {class: "lm"},
+        h("b", {class: (g == null ? "" : g >= 50 ? "up" : g <= -50 ? "dn" : "") + (md === "solo" ? " xp" : "")}, g == null ? "–" : `${g >= 0 ? "+" : "−"}${Math.abs(g)} g`),
+        h("span", {class: "gb"}, g ? h("i", {class: g > 0 ? "B" : "R", style: g > 0 ? `left:50%;width:${gw}%` : `left:${50 - gw}%;width:${gw}%`}) : null),
+        h("small", {}, x.w == null ? "–" : `${pct(x.w, 1)} · ${fmtN(x.n)}`)),
+      side(Q, "R", fav === "R" ? fl : null)));
   }
-  box.hidden = !rows.length; box.title = rows.length ? LANE_TIP() : "";
-  box.replaceChildren(h("span", {class: "lab"}, "Lanes"), ...rows);
+  box.title = LANE_TIP();
+  box.replaceChildren(h("h3", {}, "Lanes", h("small", {}, `gold @15 · ${md} WR · games`)), ...rows);
 }
 /* ---------- role fit (stats.json draftwp[mode].roleFit): share of the champion's games in the role, the model's off-role term ---------- */
 const RFX = {};
@@ -1539,7 +1642,10 @@ let drag = null;
 function slotPointer(el, side, p){
   el.addEventListener("pointerdown", e => {
     if (e.button || !has(S.order[side][p])) return;
-    drag = {side, p, x: e.clientX, y: e.clientY, moved: false, el};
+    // touch: only the grip drags (the rest of the slot scrolls the page); a tap anywhere still targets the slot
+    const tap = e.pointerType === "touch" && !(e.target.closest && e.target.closest(".grip"));
+    drag = {side, p, x: e.clientX, y: e.clientY, moved: false, el, tap};
+    if (tap) return;
     el.closest(".picks") && el.closest(".picks").classList.add("sorting");
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
   });
@@ -1550,6 +1656,7 @@ function slotUnder(x, y, side){
 }
 window.addEventListener("pointermove", e => {
   if (!drag) return;
+  if (drag.tap){ if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) >= 10) drag = null; return; }   // a scroll, not a tap
   if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
   drag.moved = true; drag.el.classList.add("dragging");
   drag.el.style.transform = `translate(${e.clientX - drag.x}px, ${e.clientY - drag.y}px)`;   // the slot follows the pointer
@@ -1600,9 +1707,8 @@ function renderTeam(side){
   const done = picksOf(side).length, T = themeOf(side);
   box.replaceChildren(h("h2", {}, SIDE[side], h("small", {}, `${done}/5`)), h("div", {class: "bans"}, banEls),
     h("div", {class: "theme", title: CONF_TIP}, T.n ? [h("b", {}, themeName(T)), h("br"), h("small", {}, `confidence ${pct(T.conf)} (${T.n}/5)`)] : h("small", {}, "theme appears as picks lock in")),
-    h("div", {class: "picks"}, pickEls),
-    h("button", {type: "button", class: "btn ghost sortbtn", disabled: done < 2 ? true : null, title: "One click: move each pick to its most likely lane (position shares) and set those lanes. Picks otherwise stay in pick order.", onclick: () => sortByRole(side)}, "Sort by role"),
-    S.placed[side].some((x, p) => !x && has(S.order[side][p])) ? h("p", {class: "lanehint"}, "Drag picks to their lanes (or Alt + ↑↓). Until then roles are inferred.") : "");   // "" not null: replaceChildren prints null as text
+    h("div", {class: "picks", title: "Drag a pick to its lane (on touch: by the grip; keyboard: Alt + ↑↓). Until then its role is inferred (auto)."}, pickEls),
+    h("button", {type: "button", class: "btn ghost sortbtn", disabled: done < 2 ? true : null, title: "One click: move each pick to its most likely lane (position shares) and set those lanes. Picks otherwise stay in pick order.", onclick: () => sortByRole(side)}, "Sort by role"));
 }
 function renderTurn(){
   const k = current(), q = seq(), box = $("turn");
@@ -1739,42 +1845,112 @@ function gamePlan(ms, open = []){
 function openRolesOf(cs){ const used = new Set(Object.values(assignRoles(cs).m)); return [0, 1, 2, 3, 4].filter(r => !used.has(r)); }
 // a side's picks in slot order: slot p, role r (lane p if placed, else inferred)
 function team(side){ const R = rolesOf(side); return S.order[side].map((k, p) => has(k) ? {k, p, c: C[S.fill[k]], r: R[S.fill[k]], placed: S.placed[side][p]} : null).filter(Boolean); }
-function analysis(side){
-  const T = team(side), box = $("an-" + side);
-  const head = h("h3", {}, `${SIDE[side]} comp`, h("small", {}, T.length ? `${T.length}/5 picked` : ""));
-  if (!T.length){ box.replaceChildren(head, h("p", {class: "why"}, "No picks yet.")); return; }
-  const rows = [], TH = themeOf(side);
-  const ar = ARCH.map((n, j) => [n, TH.arch[j]]).sort((a, b) => b[1] - a[1]);
-  rows.push(["Theme", [h("div", {title: CONF_TIP}, h("b", {}, themeName(TH)), h("span", {class: "why"}, ` · confidence ${pct(TH.conf)} (${TH.n}/5)`)),
-    h("div", {class: "tbars"}, ar.flatMap(([n, v]) => [h("span", {}, archLabel(n)), h("div", {class: "tr"}, h("i", {style: `width:${Math.min(100, 200 * v)}%`})), h("span", {}, pct(v))])),
-    h("div", {class: "why"}, "Archetype mix is a heuristic from ability tags, CC, ranges, classes and the scaling hint.")]]);
-  // how this comp wins (complete comp; provisional from 3 picks, with the open roles at a typical pick)
-  if (T.length >= 3){
-    const cs = T.map(x => x.c.i), G = gamePlan(T.map(x => x.c), openRolesOf(cs));
-    const other = side === "B" ? "R" : "B", ET = team(other);
-    const EG = ET.length >= 3 ? gamePlan(ET.map(x => x.c), openRolesOf(ET.map(x => x.c.i))) : null;
-    rows.push(["Game plan", [h("div", {class: "plan", title: PLAN_TIP}, h("b", {}, `${G.name}: `), G.plan,
-        T.length < 5 ? h("span", {class: "why"}, ` (provisional, ${T.length}/5)`) : null),
-      ...G.warn.map(t => h("div", {class: "plan warn", title: PLAN_TIP}, "⚠ " + t)),
-      EG ? h("div", {class: "plan", title: PLAN_TIP}, h("b", {}, `vs ${SIDE[other]} (${EG.name.toLowerCase()}): `), `${cap(EG.wants)}. Deny it: ${EG.deny}.`) : null,
-      h("div", {class: "why", title: PLAN_TIP}, "Standard strategic heuristics, not measured (hover for sources).")]]);
+/* ---------- comp profile tiles: six measures as percentiles of typical comps in the mode ----------
+ * Typical comps: 4,000 five-champion comps drawn per mode, one champion per role with that role's pick weights (pro picks by
+ * position in pro, ranked solo games by position in solo queue; no champion twice), seeded so the page is deterministic.
+ * A comp's value = its picks' sum plus the role's typical pick for each open role (as the model and compQ treat open slots),
+ * so the tile reads "where this comp is heading". One red-grey-green percentile colour scale (the stats page's pcol). */
+const DIMS = [
+  ["eng", "Engage", c => c.eng + 0.5 * c.pick, "engage + ½ pick (hand profiles)"],
+  ["peel", "Peel", c => c.peel, "peel (hand profiles)"],
+  ["poke", "Poke", c => c.arch[ARCH.indexOf("poke")], "poke share of each pick's archetype mix (hand profiles)"],
+  ["front", "Front", c => c.front, "frontline (hand profiles)"],
+  ["dmg", "Damage", c => c.carry, "carry threat (hand profiles)"],
+  ["scale", "Scaling", c => scaleOf(c), "win-rate slope per 10 min of game length (the in-game model), shrunk and centred"]];
+const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const REF = {};
+function compRef(mode){
+  if (REF[mode]) return REF[mode];
+  const pro = mode === "pro", mean = [], cum = [], N = 4000;
+  for (let r = 0; r < 5; r++){
+    const w = C.map(c => pro ? (c.pro ? c.pro.pos[r] : 0) : c.pos[r]); let t = 0;
+    cum.push(w.map(x => t += x));
+    mean.push(DIMS.map(([, , f]) => C.reduce((a, c, i) => a + w[i] * f(c), 0) / (t || 1)));
   }
-  // LS colours (labels/ls_colors.csv): each labelled champion's weights sum to 1
+  const rng = mulberry(pro ? 7 : 11), vals = DIMS.map(() => new Float64Array(N));
+  const draw = r => { const cu = cum[r], x = rng() * cu[cu.length - 1]; let lo = 0, hi = cu.length - 1; while (lo < hi){ const m = (lo + hi) >> 1; if (cu[m] > x) hi = m; else lo = m + 1; } return lo; };
+  for (let s = 0; s < N; s++){
+    const got = new Set();
+    for (let r = 0; r < 5; r++){ let i, g = 0; do i = draw(r); while (got.has(i) && ++g < 30); got.add(i); DIMS.forEach(([, , f], j) => { vals[j][s] += f(C[i]); }); }
+  }
+  vals.forEach(v => v.sort());
+  return (REF[mode] = {mean, vals, N});
+}
+// percentile of v among sorted xs (ties count half)
+function pctRank(v, xs){
+  const lb = x => { let lo = 0, hi = xs.length; while (lo < hi){ const m = (lo + hi) >> 1; if (xs[m] < x) lo = m + 1; else hi = m; } return lo; };
+  const ub = x => { let lo = 0, hi = xs.length; while (lo < hi){ const m = (lo + hi) >> 1; if (xs[m] <= x) lo = m + 1; else hi = m; } return lo; };
+  const a = lb(v - 1e-9), b = ub(v + 1e-9); return (a + 0.5 * (b - a)) / xs.length;
+}
+function compDims(T){
+  const ref = compRef(S.mode), used = new Set(T.map(x => x.r)), open = [0, 1, 2, 3, 4].filter(r => !used.has(r));
+  return DIMS.map(([k, label, f, what], j) => {
+    const v = T.reduce((a, x) => a + f(x.c), 0) + open.reduce((a, r) => a + ref.mean[r][j], 0), xs = ref.vals[j];
+    return {k, label, what, v, q: pctRank(v, xs), med: xs[xs.length >> 1], open: open.length};
+  });
+}
+const pcol = q => q == null ? "var(--faint)" : q < 0.5 ? `color-mix(in oklab, var(--no) ${Math.round(200 * (0.5 - q))}%, var(--muted))` : `color-mix(in oklab, var(--ok) ${Math.round(200 * (Math.min(1, q) - 0.5))}%, var(--muted))`;
+const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+const fx = v => Math.abs(v) < 1 ? v.toFixed(3) : v.toFixed(1);
+/* flags: only the comp problems real games show a cost for (reasoning/draft-circle, reasoning/draft-recs/audit.md) */
+const FLAG_TIP = {
+  engage: "Engage + ½ pick under 3.5, or no hard-engage / pick tool (engage ≥ 1.5 or pick ≥ 2 in the hand profiles). Real games: teams without one win 46.4% in pro and 48.2% in solo queue; pro comps this short on engage win .46–.48 (reasoning/draft-circle).",
+  dmg: "Over 80% of the damage is one type (damage to champions, ranked solo). Solo queue: such comps win 43.0%. In pro the effect isn't measurable (48.7 ± 3.4%), so pro mode shows no flag."};
+function compFlags(T, G){
+  const ms = T.map(x => x.c), n = ms.length, out = [], lead = ms.some(isLead), q = compQ(ms, []);
+  if (n === 5 ? !lead || q.E < NEED.engage : n >= 3 && !lead)
+    out.push(h("span", {class: "flag " + (n === 5 ? "bad" : "warn"), "data-flag": "engage", title: FLAG_TIP.engage}, n === 5 ? "⚠ No engage" : "No engage yet"));
+  if (S.mode === "solo" && n === 5 && (q.ap > 0.8 || q.ap < 0.2))
+    out.push(h("span", {class: "flag bad", "data-flag": "dmg", title: FLAG_TIP.dmg}, `⚠ ${pct(q.ap > 0.5 ? q.ap : 1 - q.ap)} ${q.ap > 0.5 ? "AP" : "AD"}`));
+  // off-role picks: the model's role-fit term (log share of the champion's games in the role) counts them against the side
+  for (const x of T){
+    const s = x.r != null ? roleShare(x.c, x.r, S.mode) : null;
+    if (s && s.share < OFFROLE) out.push(h("span", {class: "flag bad", "data-flag": "offrole",
+      title: `Off-role: ${x.c.name} ${POS[x.r].toLowerCase()} is ${s.share < 0.001 ? "under 0.1" : (100 * s.share).toFixed(1)}% of ${x.c.name}'s ${S.mode === "pro" ? "pro" : "solo-queue"} games (${fmtN(s.games)}). The ${wpName(S.mode)} has a role-fit term: log of the share of the champion's games in its role (floor ${D.wp[S.mode].roleFit.floor * 100}%), so an unusual role costs win probability; it is in the eval bar.`},
+      `⚠ Off-role ${x.c.name}`));
+  }
+  if (G) out.unshift(h("span", {class: "flag plan", "data-flag": "plan", title: `${G.name}: ${G.plan}${G.warn.length ? "\n⚠ " + G.warn.join("\n⚠ ") : ""}\n\n${PLAN_TIP}`},
+    "Game plan ", h("b", {}, G.name), T.length < 5 ? h("span", {class: "why"}, ` ${T.length}/5`) : null));
+  return out;
+}
+let openDetails = {B: true, R: true};
+try { const o = JSON.parse(localStorage.getItem("riftlogic.draftdetails") || "null"); if (o && typeof o.B === "boolean" && typeof o.R === "boolean") openDetails = o; } catch (_) {}
+function analysis(side){
+  const T = team(side), box = $("an-" + side), TH = themeOf(side), other = side === "B" ? "R" : "B", ET = team(other);
+  const head = h("h3", {}, `${SIDE[side]} comp`, h("small", {title: CONF_TIP}, T.length ? `${themeName(TH)} · ${T.length}/5` : ""));
+  if (!T.length){ box.replaceChildren(head, h("p", {class: "why"}, "No picks yet.")); return; }
+  // how this comp wins (complete comp; provisional from 3 picks, with the open roles at a typical pick)
+  const G = T.length >= 3 ? gamePlan(T.map(x => x.c), openRolesOf(T.map(x => x.c.i))) : null;
+  const EG = G && ET.length >= 3 ? gamePlan(ET.map(x => x.c), openRolesOf(ET.map(x => x.c.i))) : null;
+  // damage split (average damage to champions per game, ranked solo) and LS colours (labels/ls_colors.csv)
+  const dm = [0, 0, 0]; for (const x of T) if (x.c.dmg && x.c.g) x.c.dmg.forEach((v, j) => dm[j] += v / x.c.g);
+  const dt = dm[0] + dm[1] + dm[2] || 1, DMG = [["phys", "AD"], ["magic", "AP"], ["true", "True"]];
   const lab = T.filter(x => x.c.col), cw = {};
   for (const x of lab) for (const [k, v] of Object.entries(x.c.col)) cw[k] = (cw[k] || 0) + v / lab.length;
   const colSorted = COLS.filter(([k]) => cw[k] > 0).sort((a, b) => cw[b[0]] - cw[a[0]]);
-  rows.push(["Colours", lab.length ? [
-    h("div", {class: "stack"}, colSorted.map(([k, n]) => h("i", {style: `width:${100 * cw[k]}%;background:var(--m${k})`, title: `${n} ${pct(cw[k])}`}))),
-    h("div", {class: "legend"}, colSorted.map(([k, n]) => h("span", {}, h("i", {class: "dot", style: `background:var(--m${k})`}), `${n} ${pct(cw[k])}`)),
-      lab.length < T.length ? h("span", {class: "why"}, `${T.length - lab.length} unlabelled`) : null)] : [h("span", {class: "why"}, "No LS labels for these champions.")]]);
-  // damage split: average damage to champions per game in ranked solo
-  const dm = [0, 0, 0]; let dn = 0;
-  for (const x of T) if (x.c.dmg && x.c.g){ x.c.dmg.forEach((v, j) => dm[j] += v / x.c.g); dn++; }
-  const dt = dm[0] + dm[1] + dm[2] || 1;
-  rows.push(["Damage", [
-    h("div", {class: "stack"}, [["phys", "AD"], ["magic", "AP"], ["true", "True"]].map(([v, n], j) => h("i", {style: `width:${100 * dm[j] / dt}%;background:var(--${v})`, title: `${n} ${pct(dm[j] / dt)}`}))),
-    h("div", {class: "legend"}, [["phys", "AD"], ["magic", "AP"], ["true", "True"]].map(([v, n], j) => h("span", {}, h("i", {class: "dot", style: `background:var(--${v})`}), `${n} ${pct(dm[j] / dt)}`)),
-      h("span", {class: "why"}, `≈ ${fmtN(Math.round(dt))} to champions / game`))]]);
+  const seg = (w, bg, tip, txt) => h("i", {style: `width:${w}%;background:${bg}`, title: tip}, w >= 14 ? txt : "");
+  const bars = [
+    h("div", {class: "sbar", "data-bar": "dmg", title: `Damage split: ${DMG.map(([, n], j) => `${n} ${pct(dm[j] / dt)}`).join(" · ")} · ≈ ${fmtN(Math.round(dt))} to champions per game (ranked solo averages)`},
+      "Damage", h("div", {class: "stack"}, DMG.map(([v, n], j) => seg(100 * dm[j] / dt, `var(--${v})`, `${n} ${pct(dm[j] / dt)}`, `${n} ${pct(dm[j] / dt)}`)))),
+    lab.length ? h("div", {class: "sbar", "data-bar": "col", title: `LS colours: ${colSorted.map(([k, n]) => `${n} ${pct(cw[k])}`).join(" · ")}${lab.length < T.length ? ` (${T.length - lab.length} unlabelled)` : ""}`},
+      "Colours", h("div", {class: "stack"}, colSorted.map(([k, n]) => seg(100 * cw[k], `var(--m${k})`, `${n} ${pct(cw[k])}`, "")))) : null];
+  // six tiles, 3 x 2
+  const dims = compDims(T), mdn = S.mode === "pro" ? "pro" : "solo-queue";
+  const tiles = h("div", {class: "ctiles"}, dims.map(d => { const p = Math.round(100 * d.q);
+    return h("div", {class: "ctile", style: `--pc:${pcol(d.q)}`, "data-k": d.k, "data-v": d.v.toFixed(4), "data-q": d.q.toFixed(3),
+      title: `${d.label}: ${fx(d.v)} (${d.what}) · ${ordinal(p)} percentile of typical ${mdn} comps (median ${fx(d.med)})${d.open ? ` · ${d.open} open slot${d.open > 1 ? "s" : ""} at the role's typical pick` : ""}${d.k === "scale" ? "\n" + SCALE_TIP : ""}`},
+      h("span", {class: "nm"}, d.label), h("b", {}, String(p), h("small", {}, ordinal(p).slice(-2))), h("i", {class: "g"}, h("i", {style: `width:${Math.max(3, p)}%`}))); }));
+  // Details: the full breakdown, explanations in tooltips
+  const rows = [], ar = ARCH.map((n, j) => [n, TH.arch[j]]).sort((a, b) => b[1] - a[1]);
+  rows.push(["Theme", [h("div", {title: CONF_TIP + " The archetype mix is a heuristic from ability tags, CC, ranges, classes and the scaling hint."}, h("b", {}, themeName(TH)), h("span", {class: "why"}, ` · confidence ${pct(TH.conf)} (${TH.n}/5)`)),
+    h("div", {class: "tbars"}, ar.flatMap(([n, v]) => [h("span", {}, archLabel(n)), h("div", {class: "tr"}, h("i", {style: `width:${Math.min(100, 200 * v)}%`})), h("span", {}, pct(v))]))]]);
+  if (G) rows.push(["Game plan", [h("div", {class: "plan", title: PLAN_TIP}, h("b", {}, `${G.name}: `), G.plan, T.length < 5 ? h("span", {class: "why"}, ` (${T.length}/5)`) : null),
+    ...G.warn.map(t => h("div", {class: "plan warn", title: PLAN_TIP}, "⚠ " + t)),
+    EG ? h("div", {class: "plan", title: PLAN_TIP}, h("b", {}, `vs ${SIDE[other]} (${EG.name.toLowerCase()}): `), `${cap(EG.wants)}. Deny it: ${EG.deny}.`) : null]]);
+  rows.push(["Colours", lab.length ? [h("div", {class: "legend"}, colSorted.map(([k, n]) => h("span", {}, h("i", {class: "dot", style: `background:var(--m${k})`}), `${n} ${pct(cw[k])}`)),
+    lab.length < T.length ? h("span", {class: "why"}, `${T.length - lab.length} unlabelled`) : null)] : [h("span", {class: "why"}, "No LS labels for these champions.")]]);
+  rows.push(["Damage", [h("div", {class: "legend"}, DMG.map(([v, n], j) => h("span", {}, h("i", {class: "dot", style: `background:var(--${v})`}), `${n} ${pct(dm[j] / dt)}`)),
+    h("span", {class: "why"}, `≈ ${fmtN(Math.round(dt))} / game`))]]);
   // crowd control (calc.json, the data fight() uses); durations at max rank
   const cc = {}; let hardSec = 0, hardN = 0, soft = 0;
   for (const x of T) for (const [slot, type, dur] of x.c.cc){
@@ -1782,44 +1958,40 @@ function analysis(side){
     if (HARD.has(type)){ hardN++; hardSec += dur || 0; } else soft++;
   }
   const ccTypes = Object.keys(cc).sort((a, b) => HARD.has(b) - HARD.has(a) || cc[b].length - cc[a].length);
-  rows.push(["CC", [h("div", {}, h("b", {}, hardN), " hard", hardSec ? h("span", {class: "why"}, ` (${hardSec.toFixed(1)} s summed, max rank)`) : null, " · ", h("b", {}, soft), " soft"),
+  rows.push(["CC", [h("div", {title: hardSec ? `${hardSec.toFixed(1)} s of hard CC summed (max rank, calc.json)` : null}, h("b", {}, hardN), " hard", hardSec ? h("span", {class: "why"}, ` (${hardSec.toFixed(1)} s)`) : null, " · ", h("b", {}, soft), " soft"),
     h("div", {class: "chips"}, ccTypes.map(t => h("span", {class: "chip" + (HARD.has(t) ? " hard" : ""), title: cc[t].join("\n")}, t, h("b", {}, "×" + cc[t].length))))]]);
   // tools: kb.json ability tags, grouped (the grouping is a heuristic)
-  const tl = TOOLGROUPS.map(([g, tags]) => {
-    const who = [];
-    for (const x of T) for (const t of tags) if (x.c.tools[t]) who.push([x.c.name, x.c.tools[t].join(""), t]);
-    return [g, who];
-  });
-  rows.push(["Tools", tl.map(([g, who]) => h("div", {class: "chips"}, h("span", {class: "why", style: "min-width:68px"}, g), who.length ? who.map(([n, s, t]) => h("span", {class: "chip", title: t}, n, h("b", {}, s), h("span", {class: "why"}, t.replace("_", " ")))) : h("span", {class: "why"}, "—")))]);
+  const tl = TOOLGROUPS.map(([g, tags]) => { const who = []; for (const x of T) for (const t of tags) if (x.c.tools[t]) who.push([x.c.name, x.c.tools[t].join(""), t]); return [g, who]; });
+  rows.push(["Tools", tl.map(([g, who]) => h("div", {class: "chips"}, h("span", {class: "why", style: "min-width:68px"}, g), who.length ? who.map(([n, s, t]) => h("span", {class: "chip", title: t.replace("_", " ")}, n, h("b", {}, s), h("span", {class: "why"}, t.replace("_", " ")))) : h("span", {class: "why"}, "—")))]);
   // range: attack range and longest non-global ability range (kb.json)
   const rr = T.map(x => { const ab = x.c.rng.filter(([, r]) => r <= 2500).sort((a, b) => b[1] - a[1])[0]; return {n: x.c.name, ar: x.c.ar, ab}; });
-  const maxR = Math.max(1200, ...rr.map(x => Math.max(x.ar, x.ab ? x.ab[1] : 0)));
-  const melee = rr.filter(x => x.ar < 300).length;
-  rows.push(["Range", [h("div", {class: "why"}, `${melee} melee · ${rr.length - melee} ranged · bar = longest ability, dark = attack range`),
-    h("div", {class: "rng"}, rr.flatMap(x => [h("span", {}, x.n), h("div", {class: "tr"}, x.ab ? h("i", {style: `width:${100 * x.ab[1] / maxR}%`}) : null, h("u", {style: `width:${100 * x.ar / maxR}%`})),
+  const maxR = Math.max(1200, ...rr.map(x => Math.max(x.ar, x.ab ? x.ab[1] : 0))), melee = rr.filter(x => x.ar < 300).length;
+  rows.push(["Range", [h("div", {class: "why"}, `${melee} melee · ${rr.length - melee} ranged`),
+    h("div", {class: "rng", title: "Bar: longest ability range (non-global); dark: attack range (kb.json)"}, rr.flatMap(x => [h("span", {}, x.n), h("div", {class: "tr"}, x.ab ? h("i", {style: `width:${100 * x.ab[1] / maxR}%`}) : null, h("u", {style: `width:${100 * x.ar / maxR}%`})),
       h("span", {}, x.ab ? `${x.ab[0]} ${x.ab[1]}` : x.ar)]))]]);
-  // off-role picks: the model's role-fit term (log share of the champion's games in the role) counts them against the side
-  const off = T.map(x => ({x, s: x.r != null ? roleShare(x.c, x.r, S.mode) : null})).filter(o => o.s && o.s.share < OFFROLE);
-  if (off.length) rows.push(["Off-role", off.map(({x, s}) => h("div", {class: "plan warn", title: `The ${wpName(S.mode)} has a role-fit term: log of the share of the champion's games in its role (floor ${D.wp[S.mode].roleFit.floor * 100}%), so an unusual role costs win probability; it is in the eval bar and the Win prob. row.`},
-    `⚠ Off-role: ${x.c.name} ${POS[x.r].toLowerCase()} is ${s.share < 0.001 ? "under 0.1" : (100 * s.share).toFixed(1)}% of ${x.c.name}'s ${S.mode === "pro" ? "pro" : "solo-queue"} games (${fmtN(s.games)})`))]);
   // scaling: the in-game model's shrunk, centred win-rate slope per 10 min (summed); both teams shown
   if (SCL){
-    const other = side === "B" ? "R" : "B", ET = team(other), sum = TT => TT.reduce((a, x) => a + scaleOf(x.c), 0), mine = sum(T), theirs = sum(ET);
+    const sum = TT => TT.reduce((a, x) => a + scaleOf(x.c), 0), mine = sum(T), theirs = sum(ET);
     const sc = T.map(x => ({n: x.c.name, d: scaleOf(x.c)})).sort((a, b) => b.d - a.d), f = v => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(3)}`;
-    rows.push(["Scaling", [h("div", {class: "scal", title: SCALE_TIP}, h("b", {class: mine >= 0 ? "up" : "dn"}, f(mine)), mine > 0.05 ? " late-leaning" : mine < -0.05 ? " early-leaning" : " about average",
-        h("span", {class: "why"}, ` · ${SIDE[other]} ${ET.length ? f(theirs) : "—"}${ET.length ? ` (${mine > theirs + 1e-9 ? "you scale better" : mine < theirs - 1e-9 ? "they scale better" : "even"})` : ""}`)),
-      h("div", {class: "why", title: SCALE_TIP}, `Win-rate slope per 10 min of game length (log-odds, solo queue), shrunk and centred, summed over the picks · most late: ${sc[0].n} (${f(sc[0].d)}), most early: ${sc[sc.length - 1].n} (${f(sc[sc.length - 1].d)}). A hint: game length is an outcome (hover).`)]]);
+    rows.push(["Scaling", [h("div", {class: "scal", title: `${SCALE_TIP}\nWin-rate slope per 10 min of game length (log-odds, solo queue), shrunk and centred, summed over the picks · most late: ${sc[0].n} (${f(sc[0].d)}), most early: ${sc[sc.length - 1].n} (${f(sc[sc.length - 1].d)}).`},
+      h("b", {class: mine >= 0 ? "up" : "dn"}, f(mine)), mine > 0.05 ? " late" : mine < -0.05 ? " early" : " average",
+      h("span", {class: "why"}, ` · ${SIDE[other]} ${ET.length ? f(theirs) : "—"}${ET.length ? ` · ${mine > theirs + 1e-9 ? "you scale better" : mine < theirs - 1e-9 ? "they scale better" : "even"}` : ""}`)),
+      h("div", {class: "why"}, `late: ${sc[0].n} ${f(sc[0].d)} · early: ${sc[sc.length - 1].n} ${f(sc[sc.length - 1].d)}`)]]);
   }
   const wpn = wpNow(side);
   if (wpn != null){
-    const X = wpModel(S.mode), open = 5 - T.length, eo = 5 - team(side === "B" ? "R" : "B").length;
-    rows.push(["Win prob.", [h("div", {class: "wprow", title: WP_TIP()}, h("b", {class: wpn >= 0.5 ? "up" : "dn"}, pct(wpn, 1)),
-      h("span", {class: "why"}, ` ${wpName(S.mode)}${open || eo ? ` · open slots count as a typical pick (${open} yours, ${eo} theirs)` : ""}`)),
-      h("div", {class: "why"}, `Held-out ${X.M.valid.test}: accuracy ${pct(X.V.acc, 1)}, AUC ${X.V.auc.toFixed(3)} (side only: ${pct(X.M.valid.rows["side only"].acc, 1)}). Draft effects are small.`)]]);
+    const X = wpModel(S.mode), open = 5 - T.length, eo = 5 - ET.length;
+    rows.push(["Win prob.", [h("div", {class: "wprow", title: `${WP_TIP()}${open || eo ? `\nOpen slots count as a typical pick (${open} yours, ${eo} theirs).` : ""}\nHeld-out ${X.M.valid.test}: accuracy ${pct(X.V.acc, 1)}, AUC ${X.V.auc.toFixed(3)} (side only: ${pct(X.M.valid.rows["side only"].acc, 1)}). Draft effects are small.`},
+      h("b", {class: wpn >= 0.5 ? "up" : "dn"}, pct(wpn, 1)), h("span", {class: "why"}, ` ${wpName(S.mode)}${open || eo ? ` · ${open + eo} open slots at a typical pick` : ""}`)),
+      h("div", {class: "why"}, `held-out ${X.M.valid.test}: accuracy ${pct(X.V.acc, 1)} · AUC ${X.V.auc.toFixed(3)} · side only ${pct(X.M.valid.rows["side only"].acc, 1)}`)]]);
   }
   const wr = T.reduce((a, x) => a + x.c.wr, 0) / T.length;
-  rows.push(["Win rate", [h("div", {}, h("b", {}, pct(wr, 1)), h("span", {class: "why"}, ` average solo-queue win rate of the picks (${T.map(x => `${x.c.name} ${pct(x.c.wr, 1)}, n ${fmtN(x.c.g)}`).join(" · ")})`))]]);
-  box.replaceChildren(head, ...rows.map(([l, v]) => h("div", {class: "row"}, h("label", {}, l), h("div", {class: "v"}, v))));
+  rows.push(["Win rate", [h("div", {title: `Average solo-queue win rate of the picks: ${T.map(x => `${x.c.name} ${pct(x.c.wr, 1)}, n ${fmtN(x.c.g)}`).join(" · ")}`}, h("b", {}, pct(wr, 1)), h("span", {class: "why"}, " solo-queue average")),
+    h("div", {class: "chips"}, T.map(x => h("span", {class: "chip", title: `n ${fmtN(x.c.g)} solo-queue games`}, x.c.name, h("b", {}, pct(x.c.wr, 1)))))]]);
+  const det = h("details", {class: "more", open: openDetails[side] ? true : null}, h("summary", {}, "Breakdown"), ...rows.map(([l, v]) => h("div", {class: "row"}, h("label", {}, l), h("div", {class: "v"}, v))));
+  det.addEventListener("toggle", () => { openDetails[side] = det.open; try { localStorage.setItem("riftlogic.draftdetails", JSON.stringify(openDetails)); } catch (_) {} });
+  const fl = compFlags(T, G);
+  box.replaceChildren(head, fl.length ? h("div", {class: "flags"}, fl) : "", ...bars.filter(Boolean), tiles, det);
 }
 
 /* ---------- suggestions: ranked by the draft model's win-probability gain (see pickScores / banScores) ---------- */
@@ -1828,7 +2000,9 @@ const SUG_TIP = {pick: () => `WP = the ${wpName(S.mode)}'s win-chance gain from 
   ban: () => `WP = the win chance a ban saves (pp): the chance the enemy picks it (${S.mode === "pro" ? "pro picks per role, last patches" : "solo-queue pick rates per role"}, their open roles) × what it gains them over their usual alternative (${wpName(S.mode)}).`};
 function suggest(){
   const box = $("sug"), k = current();
-  if (k == null){ box.replaceChildren(h("h3", {}, "Suggestions"), h("p", {class: "why"}, "Draft complete. Open it in Rift Logic to run the fight.")); return; }
+  if (k == null){ const pb = wpNow("B");
+    box.replaceChildren(h("h3", {}, "Final", pb != null ? h("small", {class: "wpnow", title: WP_TIP()}, `Blue ${pct(pb, 1)} · Red ${pct(1 - pb, 1)}`) : null),
+      h("div", {}, h("button", {type: "button", class: "btn primary", onclick: openInEditor}, "Run the fight in Rift Logic"))); return; }
   const a = seq()[k], side = a.s, isPick = a.t === "pick";
   const all = isPick ? pickScores(side) : banScores(side), per = {}, rows = [];
   for (const x of all){ if (rows.length >= 8) break; if (isPick && (per[x.role] = (per[x.role] || 0) + 1) > 3) continue; rows.push(x); }   // ≤ 3 picks per role shown
@@ -1838,12 +2012,36 @@ function suggest(){
   const tip = x => isPick ? `${x.c.name} ${POS[x.role]}: model ${pp(x.wpa)} pp${x.pen >= 0.05 ? `, counter risk −${(KAPPA[S.mode] * x.pen).toFixed(1)} pp (${x.ctr})` : ""}`
     : `${x.c.name}: pick chance ${pct(x.P)}, gains them ${pp(x.wpa)} pp vs ${pp(x.parts.instead)} for their usual alternative`;
   box.replaceChildren(
-    h("h3", {title: SUG_TIP[a.t]()}, `${isPick ? "Pick" : "Ban"} ideas for ${SIDE[side]}`,
-      now != null ? h("small", {class: "wpnow", title: WP_TIP()}, `${SIDE[side]} win chance now ${pct(now, 1)} (${wpName(S.mode)})`) : null),
-    rows.length ? h("div", {class: "sgrid"}, rows.map(x => h("button", {type: "button", class: "srow", onclick: () => choose(x.c.i), title: tip(x)},
+    h("h3", {title: SUG_TIP[a.t]()}, h("span", {class: side}, `${isPick ? "Pick" : "Ban"} ideas for ${SIDE[side]}`),
+      now != null ? h("small", {class: "wpnow", title: WP_TIP()}, `${SIDE[side]} win chance now ${pct(now, 1)}`, h("span", {class: "mn"}, ` (${wpName(S.mode)})`)) : null),
+    rows.length ? sugRow(h("div", {class: "sgrid", role: "list", "aria-label": `${isPick ? "Pick" : "Ban"} ideas (keys 1–8; scrolls sideways)`}, rows.map((x, j) => h("button", {type: "button", class: "srow", role: "listitem", onclick: () => choose(x.c.i), title: tip(x), "data-champ": x.c.id},
+      j < 8 ? h("kbd", {"aria-hidden": "true"}, String(j + 1)) : null,
       h("div", {class: "ph"}, portrait(x.c)),
-      h("div", {}, h("b", {}, x.c.name, x.role != null ? h("span", {class: "why"}, ` · ${POS[x.role]}`) : null), h("small", {class: "rs"}, x.why)),
-      h("span", {class: "d " + (x.score >= 0 ? "up" : "dn")}, `${pp(x.score, isPick ? 1 : 2)}%`, h("small", {class: "wp", title: SUG_TIP[a.t]()}, "WP"))))) : h("p", {class: "why"}, "No legal champion with enough data."));
+      h("b", {}, x.c.name, x.role != null ? h("span", {class: "rsvg", title: POS[x.role], "aria-label": POS[x.role]}, roleIcon(x.role)) : null),
+      h("span", {class: "d " + (x.score >= 0 ? "up" : "dn")}, `${pp(x.score, isPick ? 1 : 2)}%`, h("small", {class: "wp", title: SUG_TIP[a.t]()}, "WP")),
+      h("small", {class: "rs"}, x.why))))) : h("p", {class: "why"}, "No legal champion with enough data."));
+}
+const sugRow = el => dragScroll(el);                    // mouse drag scrolls the row (touch: native swipe)
+/* drag to scroll (the stats page's dragScroll, trimmed): a mouse drag scrolls a horizontal row after 5 px; touch keeps the native
+   swipe; the click that ends a drag is swallowed */
+function dragScroll(el){
+  el.classList.add("drag");
+  let st = null, swallow = false;
+  const ovf = () => el.scrollWidth > el.clientWidth + 1;
+  el.addEventListener("pointerover", () => el.classList.toggle("ovf", ovf()));
+  el.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse" || e.button !== 0 || !ovf()) return; swallow = false; st = {id: e.pointerId, x: e.clientX, left: el.scrollLeft, moved: false}; });
+  el.addEventListener("pointermove", e => {
+    if (!st || e.pointerId !== st.id) return;
+    const dx = e.clientX - st.x;
+    if (!st.moved){ if (Math.abs(dx) < 5) return; st.moved = true; el.classList.add("dragging"); try { el.setPointerCapture(e.pointerId); } catch (_) {} }
+    e.preventDefault(); el.scrollLeft = st.left - dx;
+  });
+  const end = e => { if (!st || e.pointerId !== st.id) return; const s = st; st = null; el.classList.remove("dragging");
+    if (s.moved){ try { el.releasePointerCapture(s.id); } catch (_) {} if (e.type === "pointerup"){ swallow = true; setTimeout(() => { swallow = false; }, 400); } } };
+  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+  el.addEventListener("click", e => { if (swallow){ swallow = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  el.addEventListener("dragstart", e => e.preventDefault());
+  return el;
 }
 
 /* ---------- Rift Logic program ---------- */
@@ -1918,12 +2116,42 @@ function renderEval(){
   const V = X.M.valid, tip = `${wpName(S.mode)[0].toUpperCase() + wpName(S.mode).slice(1)} (${S.mode === "pro" ? "pro" : "solo queue"}; src/draftwp.py, the language's draftwp()): P(blue wins) from the picks and their roles (lanes you set, else inferred); open slots count as a typical pick, so no picks = the side prior.${S.mode === "pro" ? " Pro: team ratings held equal (the page has no teams; draftwp() in Rift Logic takes ratings)." : ""}\nValidation: held-out ${V.test}, accuracy ${pct(X.V.acc, 1)}, AUC ${X.V.auc.toFixed(3)} (side only ${pct(V.rows["side only"].acc, 1)}); draft effects are small.`;
   bar.title = tip;
   $("eb-model").textContent = `${wpName(S.mode)}${n ? "" : " · side prior"}`;
+  renderLine(X);
   const k = lastPick(), chip = $("eb-delta");
   if (k < 0){ chip.hidden = true; return; }
   const a = seq()[k], d = 100 * (wpNow(a.s) - wpNow(a.s, k));
   chip.hidden = false; chip.title = `How ${a.s}${a.n} ${C[S.fill[k]].name} moved ${SIDE[a.s]}'s win chance (with vs without the pick)`;
   chip.replaceChildren(h("i", {class: a.s}), h("b", {class: d >= 0.05 ? "up" : d <= -0.05 ? "dn" : null}, `${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}%`), ` ${a.s}${a.n} ${C[S.fill[k]].name}`);
 }
+
+/* ---------- win-chance line: P(blue wins) after each pick, the mode's draft model (the same numbers as the bar) ----------
+ * Point j = the draft with the picks up to that step (lanes as now: set lanes kept, the rest inferred among those picks). */
+function wpSeries(X){
+  const q = seq(), pts = [{k: -1, p: wpBlue(X, [-1, -1, -1, -1, -1], [-1, -1, -1, -1, -1])}];
+  const slotsUpTo = (side, kmax) => { const cs = [], f = {}; S.order[side].forEach((k, p) => { if (has(k) && k <= kmax){ cs.push(S.fill[k]); if (S.placed[side][p]) f[S.fill[k]] = p; } }); return wpSlotsM(assignRoles(cs, f).m); };
+  q.forEach((a, k) => { if (a.t === "pick" && has(k)) pts.push({k, s: a.s, n: a.n, c: C[S.fill[k]], p: wpBlue(X, slotsUpTo("B", k), slotsUpTo("R", k))}); });
+  return pts;
+}
+function renderLine(X){
+  const svg = $("eb-line"), pts = wpSeries(X), W = Math.max(160, Math.round(svg.getBoundingClientRect ? svg.getBoundingClientRect().width : 0) || 230), H = 34, pad = 5;
+  const dev = Math.max(0.04, ...pts.map(x => Math.abs(x.p - 0.5))) * 1.15, xs = j => pad + j * (W - 2 * pad) / 10, ys = p => H / 2 - (p - 0.5) / dev * (H / 2 - pad);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.dataset.n = String(pts.length - 1);
+  const NS = SVGNS, el = (t, a, kid) => { const e = document.createElementNS(NS, t); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); if (kid) e.append(kid); return e; };
+  const kids = [el("line", {class: "mid", x1: pad, x2: W - pad, y1: H / 2, y2: H / 2})];
+  for (let j = pts.length; j <= 10; j++) kids.push(el("circle", {class: "ghost", cx: xs(j), cy: H / 2, r: 1.5}));
+  const d = pts.map((x, j) => `${j ? "L" : "M"}${xs(j).toFixed(1)} ${ys(x.p).toFixed(1)}`).join(" ");
+  if (pts.length > 1){
+    const base = `L${xs(pts.length - 1).toFixed(1)} ${H / 2} L${xs(0).toFixed(1)} ${H / 2} Z`, id = "ebclip";
+    kids.push(el("clipPath", {id: id + "a"}, el("rect", {x: 0, y: 0, width: W, height: H / 2})), el("clipPath", {id: id + "b"}, el("rect", {x: 0, y: H / 2, width: W, height: H / 2})));
+    kids.push(el("path", {class: "ar B", d: d + " " + base, "clip-path": `url(#${id}a)`}), el("path", {class: "ar R", d: d + " " + base, "clip-path": `url(#${id}b)`}), el("path", {class: "ln", d}));
+  }
+  pts.forEach((x, j) => { const prev = j ? pts[j - 1].p : x.p, dd = 100 * (x.s === "R" ? prev - x.p : x.p - prev);
+    kids.push(el("circle", {class: j ? x.s : "s0", cx: xs(j), cy: ys(x.p), r: j ? 3 : 2.2}, el("title", {}, document.createTextNode(j
+      ? `${x.s}${x.n} ${x.c.name}: Blue ${pct(x.p, 1)} (${x.s === "B" ? "Blue" : "Red"} ${dd >= 0 ? "+" : "−"}${Math.abs(dd).toFixed(1)} pp)` : `Before picks: Blue ${pct(x.p, 1)} (side prior)`)))); });
+  svg.replaceChildren(...kids);
+  svg.setAttribute("aria-label", `Blue win chance after each pick: ${pts.map(x => pct(x.p, 1)).join(", ")}`);
+}
+window.addEventListener("resize", () => { const X = wpModel(S.mode); if (X) renderLine(X); });
 
 /* ---------- render ---------- */
 function render(){
@@ -1947,16 +2175,20 @@ $("swap").addEventListener("click", swapSides);
 $("reset").addEventListener("click", reset);
 $("copy").addEventListener("click", () => copyCode(false));
 $("open").addEventListener("click", openInEditor);
+dragScroll(document.querySelector(".bar .tools"));        // phones: the tool row scrolls sideways (mouse drag too)
 document.addEventListener("keydown", e => {
   const inField = e.target.closest && e.target.closest("input,textarea,select");
+  const plain = !inField && !e.ctrlKey && !e.metaKey && !e.altKey;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !inField){ e.preventDefault(); undo(); }
   else if (e.key === "/" && !inField){ e.preventDefault(); $("q").focus(); }
+  else if (plain && /^[1-8]$/.test(e.key)){ const b = document.querySelectorAll("#sug .srow")[+e.key - 1]; if (b){ e.preventDefault(); b.click(); } }   // take suggestion n
+  else if (plain && e.key.toLowerCase() === "u"){ e.preventDefault(); undo(); }
   else if (e.key === "Escape" && target != null){ target = null; render(); }
 });
-$("foot").append(h("b", {}, "Data. "), `Portraits: Data Dragon. Positions, damage split, items, win rates: ${fmtN(D.games)} ranked solo games (patch ${Object.keys(D.versions).join(", ")}). Crowd control: the engine's calc.json (max-rank durations). Tools and ranges: kb.json ability tags and ranges (patch ${D.patch}). Colours: LS labels. Themes: LS colour weights plus the archetype mix from hand profiles (labels/draft_profiles.csv: class, frontline, engage, pick, peel, carry, archetype); Pro presence, bans, positions and phase-1 picks: ${fmtN(PROG)} pro games (Oracle's Elixir, patches ${D.pro.patches[0]}–${D.pro.patches[D.pro.patches.length - 1]}). Draft win probability: separate pro and solo-queue logistic models (src/draftwp.py, the same as the language's draftwp()), fitted on ${D.wp ? `pro games 2022–2026 with Elo team ratings held equal, and ${fmtN(D.wp.solo.games)} ranked solo games` : "(not built)"}. Lane gold diffs: pro games 2022–2026 (Oracle's Elixir gold difference at 15 min, empirical Bayes). Scaling: the in-game model's shrunk win-rate slope per 10 min of game length (ranked solo). Suggestions: ranked by the draft model's win-chance gain (picks: one-ply counter lookahead; bans: enemy pick chance × gain). Tool grouping and profiles are heuristics.`);
+$("foot-t").append(`Portraits: Data Dragon. Positions, damage split, items, win rates: ${fmtN(D.games)} ranked solo games (patch ${Object.keys(D.versions).join(", ")}). Crowd control: the engine's calc.json (max-rank durations). Tools and ranges: kb.json ability tags and ranges (patch ${D.patch}). Colours: LS labels. Themes: LS colour weights plus the archetype mix from hand profiles (labels/draft_profiles.csv: class, frontline, engage, pick, peel, carry, archetype); Pro presence, bans, positions and phase-1 picks: ${fmtN(PROG)} pro games (Oracle's Elixir, patches ${D.pro.patches[0]}–${D.pro.patches[D.pro.patches.length - 1]}). Draft win probability: separate pro and solo-queue logistic models (src/draftwp.py, the same as the language's draftwp()), fitted on ${D.wp ? `pro games 2022–2026 with Elo team ratings held equal, and ${fmtN(D.wp.solo.games)} ranked solo games` : "(not built)"}. Lane gold diffs: pro games 2022–2026 (Oracle's Elixir gold difference at 15 min, empirical Bayes). Scaling: the in-game model's shrunk win-rate slope per 10 min of game length (ranked solo). Suggestions: ranked by the draft model's win-chance gain (picks: one-ply counter lookahead; bans: enemy pick chance × gain). Comp tiles: percentiles among 4,000 typical comps per mode (one champion per role by pick weight: pro picks by position, or ranked solo games by position), open slots at the role's typical pick. Tool grouping and profiles are heuristics.`);
 render();
 window.__draft = {get state(){ return S; }, gamePlan, openRolesOf, choose, undo, swapSides, nextGame, skipBan, moveSlot, sortByRole, pickScores, banScores, themeOf, themeName, program, reset, setMode, byId: id => C.findIndex(c => c.id === id),
-  rolesOf, lastPick, champs: C, KAPPA, wpParts, candidates, playsRole, shareOf, compQ, assignRoles, wpNow, wpModel, wpBlue, wpFor, laneMatch, scaleOf, roleShare};
+  rolesOf, lastPick, wpSeries: () => wpSeries(wpModel(S.mode)), compDims: side => compDims(team(side)), champs: C, KAPPA, wpParts, candidates, playsRole, shareOf, compQ, assignRoles, wpNow, wpModel, wpBlue, wpFor, laneMatch, scaleOf, roleShare};
 })();
 </script>
 

@@ -3,3 +3,4 @@ reasoning
 *.template.html
 .play/
 .reports/
+.live-frames/

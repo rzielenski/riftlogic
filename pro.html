@@ -489,6 +489,26 @@ button.chip.share{cursor:pointer;color:var(--accent);border-color:var(--accent);
 .gser{margin:-4px 0 14px}.gl[aria-current]{border-color:var(--accent);color:var(--ink);font-weight:700}.gl.pend i{background:var(--line-strong)}
 .gc.sc .top a.st{color:inherit;text-decoration:none}.gc.sc .top a.st:hover{color:var(--accent)}
 .gc.pend{border-left-color:var(--line-strong);border-style:dashed}.gc.on{outline:2px solid var(--accent);outline-offset:1px}
+/* series cards open the series page: a covering link under the card's own links (teams, game chips, stream) */
+.gc.sc,.nextm.lnk{position:relative}
+.gc.sc>a.cover,.nextm>a.cover{position:absolute;inset:0;border-radius:inherit;z-index:0}
+.gc.sc>:not(.cover),.nextm.lnk>:not(.cover){position:relative;z-index:1;pointer-events:none}
+.gc.sc>:not(.cover) a,.gc.sc>:not(.cover) button,.nextm.lnk>:not(.cover) a{pointer-events:auto}
+.gc.sc:hover,.nextm.lnk:hover{border-color:var(--accent);cursor:pointer}
+a.cardlnk{color:inherit;text-decoration:none}a.cardlnk:hover{color:var(--accent)}
+.gc.pre{border-left-color:var(--accent);border-left-style:dotted}.gc .res.pre,.chip.pre{color:var(--accent);font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.gl.pre{border-style:dotted}
+/* spoilers */
+.spoilbtn{border:1px solid var(--line-strong);background:var(--inset);color:var(--ink-2);font:500 12px/1 var(--sans);padding:5px 10px;border-radius:7px;cursor:pointer;margin-left:auto}
+.spoilbtn:hover{border-color:var(--accent);color:var(--ink)}
+.spoilnote{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:8px 12px;border:1px dashed var(--line-strong);border-radius:10px;font-size:12.5px;color:var(--muted)}
+.gc.sc.spoil .sn{color:var(--faint)}.gc .tm.masked b{font-style:italic;color:var(--muted)}
+/* the minute-by-minute chart (live timelines) */
+.mchart .mfa{fill:var(--side1);opacity:.16}.mchart .mfb{fill:var(--side2);opacity:.16}
+.mchart .ln.mwp{stroke:var(--ink-2);stroke-width:1.75}.mchart .ln.mwp.held{stroke-dasharray:4 4;opacity:.7}
+.mchart .mev{stroke:var(--surface);stroke-width:1.2}.mchart .mev.b{fill:var(--side1)}.mchart .mev.r{fill:var(--side2)}
+.mchart .mdt{font:700 7px/1 var(--mono);fill:#fff;pointer-events:none}
+.mchart .hits .hit{fill:transparent}.mchart .hits .hit:hover{fill:var(--ink);opacity:.05}
 #gdrakes .ci div{white-space:normal}
 .pick .dwd{font:500 10.5px/1 var(--mono);color:var(--muted);margin-left:auto}.pick .dwd.up{color:var(--ok)}.pick .dwd.dn{color:var(--no)}.pick .dwd + .rg{margin-left:6px}
 .lrow2{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr);align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:12.5px}
@@ -502,7 +522,7 @@ button.chip.share{cursor:pointer;color:var(--accent);border-color:var(--accent);
 .lb .lt{position:relative;height:10px;background:var(--inset);border-radius:5px}.lb .lt i{position:absolute;top:0;bottom:0;border-radius:5px}.lb .lt i.b{background:var(--side1)}.lb .lt i.r{background:var(--side2)}
 .lb .lt u{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line-strong)}.lb .lv{text-align:right;color:var(--ink-2)}
 #ptable td[data-k]{font-family:var(--mono);font-size:12px}#ptable td.up{color:var(--ok)}#ptable td.dn{color:var(--no)}
-@media (max-width:760px){.lrow2{grid-template-columns:22px minmax(0,1fr) minmax(0,1fr)}.lrow2 .lbars{grid-column:1/-1;grid-row:2}.lrow2 .ls.r{grid-column:3}}</style>
+@media (max-width:760px){.lrow2{grid-template-columns:22px minmax(0,1fr) minmax(0,1fr)}.lrow2 .lbars{grid-column:1/-1;grid-row:2}.lrow2 .ls.r{grid-column:3}}.sc .top{display:flex;align-items:baseline;gap:8px;min-width:0}.sc .top .st{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sc .top time,.sc .top .res{flex:none}</style>
 <style>:root{--bg:#07080A;--glass-ed:rgba(10,12,16,.72);--surface:#0E1014;--glass:rgba(12,15,20,.8);--glass-hi:rgba(16,19,25,.88);--inset:rgba(255,255,255,.045);--ink:#E8EBEF;--ink-2:#B3BAC3;--muted:#8A939E;--faint:#5A626C;--line:rgba(255,255,255,.075);--line-strong:rgba(255,255,255,.14);--accent:#3FB7B4;--accent-ink:#04201F;--teal:#4FD8D2;--blue:#5B93E8;--gold:#D4AF63;--gold-hi:#F4D796;--ok:#4CC287;--no:#F07580;--side1:#5B93E8;--side2:#E26B5F;--hair-a:rgba(212,175,99,.55);--hair-b:rgba(79,216,210,.38);--hair-mid:rgba(255,255,255,.035);--glow:rgba(79,216,210,.5);--glow-gold:rgba(244,215,150,.55);--spot:rgba(79,216,210,.085);--shine:rgba(255,255,255,.07);--band-blend:screen;--shadow-panel:0 12px 34px rgba(0,0,0,.42);--fx-scrim:radial-gradient(120% 90% at 50% 30%,rgba(7,8,10,.1),rgba(7,8,10,.55));--fx-veil:rgba(7,8,10,.85);--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.34,1.4,.5,1)}
 :root[data-theme="light"]{--bg:#EFF2F5;--glass-ed:rgba(255,255,255,.8);--surface:#FFFFFF;--glass:rgba(255,255,255,.84);--glass-hi:rgba(255,255,255,.9);--inset:rgba(18,26,35,.045);--ink:#121A23;--ink-2:#36424F;--muted:#5F6B79;--faint:#8C97A3;--line:rgba(18,26,35,.1);--line-strong:rgba(18,26,35,.18);--accent:#0B6E78;--accent-ink:#FFFFFF;--teal:#0B7C85;--blue:#2F6FD0;--gold:#8A6516;--gold-hi:#A87A12;--ok:#1C7A48;--no:#B42F3E;--side1:#2F6FD0;--side2:#C4453A;--hair-a:rgba(168,122,18,.5);--hair-b:rgba(11,110,120,.36);--hair-mid:rgba(18,26,35,.05);--glow:rgba(11,124,133,.28);--glow-gold:rgba(168,122,18,.3);--spot:rgba(11,124,133,.06);--shine:rgba(255,255,255,.7);--band-blend:multiply;--shadow-panel:0 10px 28px rgba(18,26,35,.12);--fx-scrim:radial-gradient(120% 90% at 50% 30%,rgba(239,242,245,.3),rgba(239,242,245,.72));--fx-veil:rgba(239,242,245,.88)}
 html{background:var(--bg)}
@@ -613,7 +633,7 @@ html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
 .rlnav-set svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rlnav-set:hover,.rlnav-set[aria-expanded="true"]{color:var(--ink);background:var(--inset)}
 #rlset-pop[hidden]{display:none}#rlset-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;padding:10px 12px;border-radius:10px;background:var(--surface,#0E1014);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap}
-.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}
+.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}.rlset-row+.rlset-row{margin-top:8px}.rlset-rev{border:0;background:none;color:var(--accent);font:500 12px/1 inherit;padding:6px 4px;cursor:pointer}
 #rlset-pop .seg{display:inline-flex;flex-direction:row;flex-wrap:nowrap;width:auto;border:0;gap:2px;padding:2px;border-radius:8px;background:var(--inset)}#rlset-pop .seg>button{display:inline-block;width:auto;min-height:0;margin:0;border:0;background:none;color:var(--muted);font:500 12px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}#rlset-pop .seg>button[aria-pressed="true"]{background:var(--inset);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .rlnav-docs{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;color:var(--muted);text-decoration:none;font:500 13px/1 var(--sans)}
 .rlnav-docs svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -643,7 +663,7 @@ html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
   .rlnav-tab[aria-current="page"]{flex:1 1 auto}
 }
 @media (prefers-reduced-motion:reduce){.rlnav-tab,.rlnav-pill{transition:none}}</style>
-<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a><a class="rlnav-tab" id="playlink" href="play.html" title="Quiz: kill or no kill, cooldowns and damage"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.6 6.2h6.8a4 4 0 0 1 3.9 4.9l-.8 3.5a1.9 1.9 0 0 1-3.3.9L11.7 14H8.3l-1.5 1.5a1.9 1.9 0 0 1-3.3-.9l-.8-3.5a4 4 0 0 1 3.9-4.9Z"/><path d="M6.6 8.9v2.8M5.2 10.3H8"/><circle cx="13.1" cy="9.5" r=".55" fill="currentColor"/><circle cx="14.7" cy="11.1" r=".55" fill="currentColor"/></svg><span class="l">Play</span><span class="s" aria-hidden="true">Play</span></a></div><div class="rlnav-side"><div class="rlset"><button type="button" class="rlnav-set" id="rlset" aria-expanded="false" aria-controls="rlset-pop" title="Settings" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg></button><div class="rlset-pop" id="rlset-pop" role="dialog" aria-label="Settings" hidden><div class="rlset-row"><span>Background</span><div class="seg" role="group" aria-label="Background"><button type="button" data-bg="anim" aria-pressed="true">Animated</button><button type="button" data-bg="still" aria-pressed="false">Still</button><button type="button" data-bg="off" aria-pressed="false">Off</button></div></div></div></div><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
+<nav class="rlnav" id="sitenav" aria-label="Rift Logic"><div class="rlnav-brand"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M6.5 12.5 10 5.5l3.5 7" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Rift Logic</span></div><div class="rlnav-tabs"><span class="rlnav-pill" aria-hidden="true"></span><a class="rlnav-tab" id="applink" href="index.html" title="Rift Logic editor: write and run programs"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2.5 10 7 15M13 5l4.5 5L13 15M11.2 3.5 8.8 16.5"/></svg><span class="l">Code</span><span class="s" aria-hidden="true">Code</span></a><a class="rlnav-tab" id="draftlink" href="draft.html" title="Mock draft with win probability"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5"/><rect x="11" y="3" width="6.5" height="6" rx="1.5"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" stroke-dasharray="2 1.6"/></svg><span class="l">Draft</span><span class="s" aria-hidden="true">Draft</span></a><a class="rlnav-tab" id="statslink" href="stats.html" title="Champion tier list and stats from real games"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16.5 5v4.6c0 3.9-2.7 6.6-6.5 8-3.8-1.4-6.5-4.1-6.5-8V5Z"/><path d="m7 9.8 2.2 2.2L13.2 8"/></svg><span class="l">Champions</span><span class="s" aria-hidden="true">Champs</span></a><a class="rlnav-tab" id="prolink" href="pro.html" title="Tier-1 pro leagues: standings, teams, players and games" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0Z"/><path d="M6 4.5H3.5a2.5 2.5 0 0 0 2.6 3.3M14 4.5h2.5a2.5 2.5 0 0 1-2.6 3.3"/><path d="M10 11.5v3M6.5 17.5h7M7.5 17.5c0-1.6 1.1-3 2.5-3s2.5 1.4 2.5 3"/></svg><span class="l">Pro</span><span class="s" aria-hidden="true">Pro</span></a><a class="rlnav-tab" id="playlink" href="play.html" title="Quiz: kill or no kill, cooldowns and damage"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.6 6.2h6.8a4 4 0 0 1 3.9 4.9l-.8 3.5a1.9 1.9 0 0 1-3.3.9L11.7 14H8.3l-1.5 1.5a1.9 1.9 0 0 1-3.3-.9l-.8-3.5a4 4 0 0 1 3.9-4.9Z"/><path d="M6.6 8.9v2.8M5.2 10.3H8"/><circle cx="13.1" cy="9.5" r=".55" fill="currentColor"/><circle cx="14.7" cy="11.1" r=".55" fill="currentColor"/></svg><span class="l">Play</span><span class="s" aria-hidden="true">Play</span></a></div><div class="rlnav-side"><div class="rlset"><button type="button" class="rlnav-set" id="rlset" aria-expanded="false" aria-controls="rlset-pop" title="Settings" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg></button><div class="rlset-pop" id="rlset-pop" role="dialog" aria-label="Settings" hidden><div class="rlset-row"><span>Background</span><div class="seg" role="group" aria-label="Background"><button type="button" data-bg="anim" aria-pressed="true">Animated</button><button type="button" data-bg="still" aria-pressed="false">Still</button><button type="button" data-bg="off" aria-pressed="false">Off</button></div></div><div class="rlset-row" id="rlset-spoil"><span>Spoilers</span><div class="seg" role="group" aria-label="Spoilers"><button type="button" data-spoil="hidden" aria-pressed="true">Hidden</button><button type="button" data-spoil="shown" aria-pressed="false">Shown</button></div><button type="button" class="rlset-rev" data-spoil-reveal title="Show every result hidden so far (newer ones stay hidden)">Reveal all</button></div></div></div><a class="rlnav-docs" id="docslink" href="docs.html" title="Language reference"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4a1.5 1.5 0 0 1 1.5-1.5h9v12H6a1.5 1.5 0 0 0-1.5 1.5Z"/><path d="M4.5 16A1.5 1.5 0 0 0 6 17.5h9v-3"/></svg><span>Docs</span></a></div></nav>
 <div id="hx-veil" aria-hidden="true"></div><div id="hx-beam" aria-hidden="true"><i></i></div>
 <script>(() => {
 "use strict";
@@ -952,6 +972,9 @@ st.running = true; if (!rq) { last = 0; rq = W.requestAnimationFrame(frame); }
 else { stop(); if (st.hidden) idle(); else if (!st.typing) still(); }
 }
 const sync = () => { if (pop) pop.querySelectorAll("[data-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === mode))); };
+function syncSpoil() { if (!pop) return; let v = null; try { v = W.localStorage.getItem("riftlogic.spoilers"); } catch (_) {}
+pop.querySelectorAll("[data-spoil]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-spoil") === (v === "shown" ? "shown" : "hidden")))); }
+syncSpoil();
 function setMode(m) {
 if (!/^(anim|still|off)$/.test(m)) return;
 mode = st.mode = m; st.paused = m !== "anim"; st.off = m === "off";
@@ -969,7 +992,13 @@ const pause = v => setMode(v ? "still" : "anim");
 if (btn && pop) {
 const open = v => { pop.hidden = !v; btn.setAttribute("aria-expanded", String(v)); };
 on(btn, "click", e => { e.stopPropagation(); open(pop.hidden); });
-on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg")); });
+on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg"));
+const sp = e.target.closest && e.target.closest("[data-spoil],[data-spoil-reveal]");
+if (sp) {
+try { if (sp.hasAttribute("data-spoil-reveal")) W.localStorage.setItem("riftlogic.spoilers.at", String(Date.now()));
+else if (sp.getAttribute("data-spoil") === "shown") W.localStorage.setItem("riftlogic.spoilers", "shown"); else W.localStorage.removeItem("riftlogic.spoilers"); } catch (_) {}
+syncSpoil(); try { W.dispatchEvent(new W.CustomEvent("rl:spoilers")); } catch (_) {}
+} });
 on(D, "click", () => open(false));
 on(D, "keydown", e => { if (e.key === "Escape" && !pop.hidden) { open(false); btn.focus(); } });
 }
@@ -1234,6 +1263,49 @@ let theme0 = "dark"; try { theme0 = localStorage.getItem("riftlogic.theme") || "
 setTheme(theme0 === "light" ? "light" : "dark");
 $("theme").addEventListener("click", () => setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"));
 
+/* ---------- spoilers (the settings menu: Spoilers Hidden / Shown, Reveal all; src/sitenav.py + src/theme_fx.py store it) ----------
+   Hidden (the default): results of the series and games of the last 3 days (by start) are hidden: scores, winners, W/L, the
+   game chips' colours, the series and game pages (a Reveal first), standings and records (as of before those games), team and
+   player pages' games and rating paths, the live module's early results and a live series' score. A series decided by a hidden
+   one (a playoff bracket) shows "Winner of A vs B" / "Loser of A vs B" in its slots. Reveal: per series (stored), or all
+   (everything finished so far: riftlogic.spoilers.at). The live card's game stays visible (its score is the point). */
+const SPOIL_MS = 3 * 864e5;
+const NOW = () => typeof window.__rlNow === "function" ? window.__rlNow() : Date.now();
+const SP = {mode: "hidden", at: 0, ids: new Set()};
+function spoilLoad(){
+  SP.mode = "hidden"; SP.at = 0; SP.ids = new Set();
+  try { SP.mode = localStorage.getItem("riftlogic.spoilers") === "shown" ? "shown" : "hidden"; SP.at = +localStorage.getItem("riftlogic.spoilers.at") || 0;
+    SP.ids = new Set(JSON.parse(localStorage.getItem("riftlogic.spoilers.ids") || "[]")); } catch (_) {}
+}
+spoilLoad();
+const spoilOn = () => SP.mode === "hidden";
+const freshT = t => t != null && NOW() - t < SPOIL_MS && t > SP.at;
+/* a series' result is hidden (finished or preliminary, last 3 days, not revealed) */
+const hidM = m => !!m && spoilOn() && !!(m.done || m.pre) && freshT(m.t0) && !SP.ids.has(m.id);
+/* an Oracle's Elixir game's result is hidden (its series' reveal covers it) */
+const hidG = g => !!g && spoilOn() && freshT(g.t0) && !SP.ids.has("g:" + g.id);
+let HIDN = 0;                                          // hidden OE games met while drawing this view (the note on top)
+function reveal(ids){
+  for (const id of ids) SP.ids.add(id);
+  try { localStorage.setItem("riftlogic.spoilers.ids", JSON.stringify([...SP.ids].slice(-400))); } catch (_) {}
+  return render();
+}
+const revealIds = m => [m.id, ...(m.games || []).map(g => "g:" + g.id)];
+const revealBtn = (ids, label = "Reveal") => h("button", {type: "button", class: "spoilbtn", "data-reveal": ids[0], title: "Show this result", onclick: e => { e.preventDefault(); e.stopPropagation(); reveal(ids); }}, label);
+function revealAll(){ try { localStorage.setItem("riftlogic.spoilers.at", String(Date.now())); } catch (_) {} spoilLoad(); SP.at = Math.max(SP.at, NOW()); return render(); }
+window.addEventListener("rl:spoilers", () => { spoilLoad(); render(); });
+/* a slot of an upcoming or live series decided by a hidden series of the same knockout event: {m (that series), txt} */
+function slotMask(lp, m, k){
+  if (!spoilOn() || !m || m.done || m.pre || !lp.S) return null;
+  const t = k ? m.t2 : m.t1, E = m.E;
+  if (!t || !E || !(E.playoffs || m.L === "INTL")) return null;
+  const prev = lp.all.filter(x => x !== m && x.ev === m.ev && x.done && x.t0 < m.t0 && (x.t1 === t || x.t2 === t) && hidM(x)).sort((a, b) => b.t0 - a.t0)[0];
+  if (!prev) return null;
+  const sh = n => (lp.S.teams[n] || {}).short || lpName(lp, n), won = (prev.w === 1 ? prev.t1 : prev.t2) === t;
+  return {m: prev, txt: `${won ? "Winner" : "Loser"} of ${sh(prev.t1)} vs ${sh(prev.t2)}`};
+}
+const spoilNote = (txt, btn) => h("div", {class: "spoilnote", id: "spoilnote", role: "note"}, h("span", {}, txt), btn);
+
 /* ---------- tooltip: any element with data-tip (bars, chart points) ---------- */
 const TIP = $("tip");
 function tipAt(e){ const t = e.target && e.target.closest ? e.target.closest("[data-tip]") : null;
@@ -1278,10 +1350,11 @@ function pickSeq(g){   // [side][role] -> draft action index (0-19) of that role
 }
 const splitName = (D, i) => D.splits[i] || "Other";
 function gamesSel(D, c){
-  if (c.split === "all") return D.games;
-  const sp = c.split === "latest" ? D.latestSp : D.splits.indexOf(c.split);
-  if (sp < 0) return D.games;
-  return D.games.filter(g => g.sp === sp);
+  const sp = c.split === "all" ? -1 : c.split === "latest" ? D.latestSp : D.splits.indexOf(c.split);
+  const gs = sp < 0 ? D.games : D.games.filter(g => g.sp === sp);
+  // spoilers: the games of the last 3 days are left out (standings, records, lists and rating paths as of before them)
+  if (!spoilOn() || !gs.length || NOW() - gs[gs.length - 1].t0 >= SPOIL_MS) return gs;
+  const out = gs.filter(g => !hidG(g)); HIDN += gs.length - out.length; return out;
 }
 const ts = (g, s, k) => g.ts[s][TSI[k]];
 const ps = (g, s, ro, k) => { const r = g.ps[s][ro]; return r ? r[PSI[k]] : null; };
@@ -1815,6 +1888,7 @@ function drawChrome(r, c, L, D){
   if (r.view === "player"){ const e = playerEntry(c.year, r.args[0], r.q.lg); if (e) items.push([e[2], teamLink(c, e[2])]); items.push([r.args[0], null]); }
   if (r.view === "game") items.push(["Game", null]);
   if (r.view === "series") items.push(["Schedule", link("schedule", [], base(c))], ["Series", null]);
+  if (r.view === "pgame") items.push(["Schedule", link("schedule", [], base(c))], ["Series", link("series", [r.args[0] || ""], base(c))], ["Game", null]);
   cr.append(h("ol", {}, items.map(([t, href]) => h("li", {}, href ? h("a", {href}, t) : h("span", {"aria-current": "page"}, t)))));
   const info = L && IX.years[c.year][L];
   $("foot").textContent = `Pro play only (Oracle's Elixir), season ${c.year}${info ? `: ${info.label}, ${info.games} games, ${info.dates[0]} to ${info.dates[1]}` : ""}. Team rating and Impact: the selected season's or split's games only. Win probability and WPA: the site's pro draft and in-game models.`;
@@ -1870,12 +1944,14 @@ let LPP = null;
 function loadLP(){
   if (!LPP){
     const get = f => PAGE.inline ? Promise.resolve(null) : fetch(f).then(r => r.ok ? r.json() : null).catch(() => null);
-    LPP = Promise.all([get("pro-schedule.json"), get("pro-rosters.json")]).then(([S, R]) => prepLP(S, R));
+    LPP = Promise.all([get("pro-schedule.json"), get("pro-rosters.json"), get("pro-prelim.json")]).then(([S, R, P]) => prepLP(S, R, P));
   }
   return LPP;
 }
-function prepLP(S, R){
-  const lp = {S, R, year: null, all: [], lpOf: new Map(), byOE: new Map(), pOE: new Map(), linked: new Map()};
+function prepLP(S, R, P){
+  const lp = {S, R, year: null, all: [], lpOf: new Map(), byOE: new Map(), pOE: new Map(), linked: new Map(), pre: new Map()};
+  // preliminary games (pro-prelim.json): series id → game number → Leaguepedia's scoreboard
+  for (const g of (P && P.games) || []){ if (!lp.pre.has(g.match)) lp.pre.set(g.match, new Map()); lp.pre.get(g.match).set(g.n, g); }
   if (S && S.leagues){
     lp.year = (S.events && S.events.length ? S.events[0].start : S.lastUpdated || "").slice(0, 4) || null;
     for (const [L, v] of Object.entries(S.leagues)) for (const k of ["upcoming", "recent", "noResult"]) for (const m of v[k] || []){
@@ -1936,19 +2012,31 @@ const lpCtx = (lp, c) => c.year === lp.year ? c : {...c, year: lp.year, split: "
 /* a series card: both teams, the score, stage and best-of; played: a link per game; upcoming: the stream */
 function seriesCard(lp, c, m, {persp, day} = {}){
   const cy = lpCtx(lp, c), T = [m.t1, m.t2], o = T.map(n => lpOE(lp, n)), sc = [m.s1, m.s2];
-  const won = m.done && persp && m.w ? o[m.w - 1] === persp : null;
-  const tm = k => h("div", {class: "tm" + (m.w === k + 1 ? " won" : ""), "data-team": o[k] || T[k] || "TBD"}, lpBadge(lp, cy, T[k]), h("b", {}, lpName(lp, T[k])),
-    m.done ? h("span", {class: "sn"}, sc[k] == null ? "–" : String(sc[k])) : null);
+  // spoilers: a hidden result shows no score, winner or game colours (a Reveal button instead); a slot decided by a hidden
+  // series shows "Winner of … / Loser of …"
+  const hid = hidM(m), mask = [0, 1].map(k => slotMask(lp, m, k));
+  const won = m.done && persp && m.w && !hid ? o[m.w - 1] === persp : null;
+  const tm = k => mask[k] ? h("div", {class: "tm masked", "data-team": "hidden"}, h("span", {class: "tag tbd", "aria-hidden": "true"}, "?"), h("b", {title: "Hidden (spoilers): decided by a result of the last 3 days"}, mask[k].txt))
+    : h("div", {class: "tm" + (m.w === k + 1 && !hid ? " won" : ""), "data-team": o[k] || T[k] || "TBD"}, lpBadge(lp, cy, T[k]), h("b", {}, lpName(lp, T[k])),
+      m.done ? h("span", {class: "sn"}, hid ? "·" : sc[k] == null ? "–" : String(sc[k])) : null);
   const ev = m.L === "INTL" ? (m.E ? m.E.name : "International") : m.L;
-  const gl = (m.games || []).map((g, k) => { const wn = m.D.teams[g.t[g.w]];
+  const gl = hid ? [] : (m.games || []).map((g, k) => { const wn = m.D.teams[g.t[g.w]];
     return h("a", {class: "gl", href: gameLink(cy, g, m.D), "data-game": g.id, style: `--th:${hue(wn)}`, title: `Game ${k + 1}: ${wn} won in ${mmss(g.len)}`}, h("i", {"aria-hidden": "true"}), `G${k + 1} ${IX.tags[wn] || wn}`); });
-  if (m.done) for (let k = gl.length; k < (m.s1 || 0) + (m.s2 || 0); k++)
-    gl.push(h("a", {class: "gl pend", href: link("series", [m.id], {...base(cy), g: k + 1}), "data-pend": k + 1, title: m.L === "INTL" ? `Game ${k + 1}: the series page (international: series result only)` : `Game ${k + 1}: not in Oracle's Elixir yet (preliminary)`}, h("i", {"aria-hidden": "true"}), `G${k + 1}`));
-  return h("div", {class: "gc sc" + (won === true ? " w" : won === false ? " l" : m.up ? " up" : ""), "data-match": m.id, "data-l": m.L},
+  if (m.done && !hid) for (let k = gl.length; k < (m.s1 || 0) + (m.s2 || 0); k++)
+    { const pg = preOf(lp, m, k + 1), wn = pg ? lpName(lp, pg.t[pg.w]) : null;
+      gl.push(h("a", {class: "gl pend" + (pg ? " pre" : ""), href: pg ? pgameLink(cy, m, k + 1) : link("series", [m.id], {...base(cy), g: k + 1}), "data-pend": k + 1, style: pg ? `--th:${hue(lpOE(lp, pg.t[pg.w]) || wn)}` : null,
+        title: pg ? `Game ${k + 1}: ${wn} won (preliminary: Leaguepedia's scoreboard; Oracle's Elixir doesn't have it yet)` : m.L === "INTL" ? `Game ${k + 1}: the series page (international: series result only)` : `Game ${k + 1}: not in Oracle's Elixir yet (preliminary)`},
+        h("i", {"aria-hidden": "true"}), `G${k + 1}` + (pg ? " " + ((lp.S.teams[pg.t[pg.w]] || {}).short || wn) : ""))); }
+  const masked = mask.filter(Boolean);
+  // the whole card opens the series page (a covering link under the card's own links: teams, games, the stream)
+  return h("div", {class: "gc sc" + (won === true ? " w" : won === false ? " l" : m.up ? " up" : "") + (hid ? " spoil" : ""), "data-match": m.id, "data-l": m.L, "data-hidden": hid || masked.length ? "1" : null},
+    h("a", {class: "cover", href: link("series", [m.id], base(cy)), tabindex: "-1", "aria-hidden": "true"}),
     h("div", {class: "top"}, h("time", {datetime: m.dt, title: utcTxt(m.dt)}, day ? `${lday(m.t0)} · ${ltime(m.t0)}` : ltime(m.t0)),
       h("a", {class: "st", href: link("series", [m.id], base(cy)), title: "The series page"}, `${ev} · ${m.stage || m.E && m.E.name || ""}`), h("span", {class: "res"}, won === true ? "WIN" : won === false ? "LOSS" : "Bo" + (m.bo || 1))),
     tm(0), tm(1),
-    gl.length ? h("div", {class: "ft gls"}, gl) : m.up && m.stream ? h("div", {class: "ft"}, h("a", {class: "stream", href: m.stream, target: "_blank", rel: "noopener noreferrer"}, streamTxt(m.stream))) : null);
+    hid ? h("div", {class: "ft"}, h("span", {class: "note"}, "Result hidden"), revealBtn(revealIds(m)))
+      : masked.length ? h("div", {class: "ft"}, h("span", {class: "note"}, "Teams hidden"), revealBtn(masked.flatMap(x => revealIds(x.m))))
+      : gl.length ? h("div", {class: "ft gls"}, gl) : m.up && m.stream ? h("div", {class: "ft"}, h("a", {class: "stream", href: m.stream, target: "_blank", rel: "noopener noreferrer"}, streamTxt(m.stream))) : null);
 }
 /* matches grouped by local day */
 function byDay(lp, c, ms, opts){
@@ -1994,7 +2082,7 @@ async function scheduleBody(lp, c, ms, {intl, label}){
   const sweeps = done.filter(m => m.bo > 1 && Math.min(m.s1, m.s2) === 0).length, multi = done.filter(m => m.bo > 1).length;
   const nextEv = (lp.S.events || []).filter(e => e.league === "INTL" && e.start >= new Date().toISOString().slice(0, 10)).sort((a, b) => a.start.localeCompare(b.start))[0];
   const out = [h("div", {class: "cards6", id: "cards"},
-    card("Next match", nx ? `${nx.t1 ? (lp.S.teams[nx.t1] || {}).short || lpName(lp, nx.t1) : "TBD"} vs ${nx.t2 ? (lp.S.teams[nx.t2] || {}).short || lpName(lp, nx.t2) : "TBD"}` : "–", nx ? h("time", {datetime: nx.dt, title: utcTxt(nx.dt)}, `${lday(nx.t0)} · ${ltime(nx.t0)} · Bo${nx.bo}`) : "none scheduled"),
+    card("Next match", nx ? h("a", {href: link("series", [nx.id], base(lpCtx(lp, c))), id: "nextm-link", class: "cardlnk"}, [nx.t1, nx.t2].map((t, k) => { const x = slotMask(lp, nx, k); return x ? x.txt : t ? (lp.S.teams[t] || {}).short || lpName(lp, t) : "TBD"; }).join(" vs ")) : "–", nx ? h("time", {datetime: nx.dt, title: utcTxt(nx.dt)}, `${lday(nx.t0)} · ${ltime(nx.t0)} · Bo${nx.bo}`) : "none scheduled"),
     card("Upcoming", String(up.length), up.length ? `${new Set(up.map(m => ldayKey(m.t0))).size} match days · to ${lday(up[up.length - 1].t0)}` : ""),
     card("Played", String(done.length), `${grp(done.reduce((s, m) => s + (m.s1 || 0) + (m.s2 || 0), 0))} games`),
     card("Sweeps", pct(multi ? sweeps / multi : null), `${sweeps} of ${multi} best-of-3 and best-of-5 series`),
@@ -2051,7 +2139,8 @@ function homeLeague(y, L){
   return D;
 }
 async function viewHome(r, c){
-  const Ls = Object.keys(IX.years[c.year]), sum = c.split === "all" && Ls.every(L => IX.home && IX.home[c.year] && IX.home[c.year][L]);
+  const Ls = Object.keys(IX.years[c.year]), sum = c.split === "all" && Ls.every(L => IX.home && IX.home[c.year] && IX.home[c.year][L] &&
+    !(spoilOn() && freshT(tms(IX.years[c.year][L].dates[1]) + 864e5)));   // spoilers with recent OE games: the league files (cut there)
   const HD = sum ? Ls.map(L => homeLeague(c.year, L)) : null;
   const [Ds, lp] = await Promise.all([HD || Promise.all(Ls.map(L => loadLeague(c.year, L))),
     loadLP().then(lp => HD ? (HD.forEach(D => linkHome(lp, D.L, D)), lp) : linkAll(lp).then(() => lp))]);
@@ -2435,9 +2524,12 @@ async function viewTeam(r, c){
   const rows = teamGames(games, t);
   const tms2 = cur ? teamMatches(lp, name).map(m => { const me = lpOE(lp, m.t1) === name ? 0 : 1; return Object.assign(m, {_me: me, _opp: lpName(lp, me ? m.t1 : m.t2), _won: m.done && m.w === me + 1}); }) : [];
   const nx = tms2.find(m => m.up), nxOpp = nx ? (nx._me ? nx.t1 : nx.t2) : null;
-  const nextCard = cur ? h("div", {class: "nextm", id: "nextm"}, h("h3", {}, "Next match"), nx ? [h("div", {class: "vs"}, h("span", {class: "note"}, "vs"), lpBadge(lp, c, nxOpp), h("b", {}, lpName(lp, nxOpp))),
+  // spoilers: this team's slot decided by a hidden result → the card is hidden; the opponent's → "Winner of …"
+  const nxm = nx ? [0, 1].map(k => slotMask(lp, nx, k)) : [null, null], nxHid = nx && nxm[nx._me], nxOm = nx && nxm[1 - nx._me];
+  const nextCard = !cur ? null : nxHid ? h("div", {class: "nextm", id: "nextm", "data-hidden": "1"}, h("h3", {}, "Next match"), h("b", {}, "Hidden (spoilers)"), h("span", {class: "note"}, "decided by a result of the last 3 days"), revealBtn(revealIds(nxHid.m)))
+    : h("div", {class: "nextm" + (nx ? " lnk" : ""), id: "nextm"}, nx ? h("a", {class: "cover", href: link("series", [nx.id], base(c)), "aria-label": `Next match: the series page`}) : null, h("h3", {}, "Next match"), nx ? [h("div", {class: "vs"}, h("span", {class: "note"}, "vs"), nxOm ? h("span", {class: "tag tbd"}, "?") : lpBadge(lp, c, nxOpp), h("b", {}, nxOm ? nxOm.txt : lpName(lp, nxOpp))),
     h("time", {datetime: nx.dt, title: utcTxt(nx.dt)}, `${lday(nx.t0)} · ${ltime(nx.t0)}`), h("span", {class: "note"}, `${nx.L === "INTL" && nx.E ? nx.E.name : nx.L} · ${nx.stage} · Bo${nx.bo}`),
-    nx.stream ? h("a", {class: "stream", href: nx.stream, target: "_blank", rel: "noopener noreferrer"}, streamTxt(nx.stream)) : null] : h("b", {}, "None scheduled")) : null;
+    nx.stream ? h("a", {class: "stream", href: nx.stream, target: "_blank", rel: "noopener noreferrer"}, streamTxt(nx.stream)) : null] : h("b", {}, "None scheduled"));
   const st = standings(D, games), me = st.find(x => x.t === t), rk = rankStandings(st), place = me ? rk.find(x => x.t === t).rank : null;
   const out = [h("div", {class: "head", id: "thead"}, tagBadge(name, "lg"), h("div", {}, h("h1", {}, name),
     h("div", {class: "chips"}, h("a", {class: "chip", href: leagueLink(c, L)}, D.label), h("span", {class: "chip"}, splitLabel(D, c)),
@@ -2936,7 +3028,7 @@ async function viewGame(r, c){
   const f = await findGame(c, r.args[0] || "", r.q.lg);
   if (!f){ drawChrome(r, c, null, null); return [notice("Game not found", "No tier-1 game has that id. Games from the last day or two can take a while to reach Oracle's Elixir: the schedule shows their series.", link("schedule", [], base(c)), "Schedule")]; }
   const {D, g} = f, c2 = D.y !== c.year ? {...c, year: D.y, split: "all"} : c;
-  const lp = await loadLP();
+  const [lp, V] = await Promise.all([loadLP(), loadVods()]);
   if (lp.S && lp.year === D.y) await linkGames(lp, D.L);
   drawChrome(r, c2, D.L, D);
   const TN = s => D.teams[g.t[s]], TG = s => IX.tags[TN(s)] || TN(s);
@@ -2947,6 +3039,13 @@ async function viewGame(r, c){
   const before = wins(SG.slice(0, k)), after = wins(SG.slice(0, k + 1));
   VIEW_TITLE = `${TG(0)} vs ${TG(1)} · ${D.label} ${g.dt.slice(0, 10)}${SG.length > 1 || bo > 1 ? " · game " + (k + 1) : ""}`;
   const serHref = M ? link("series", [M.id], base(c2)) : null;
+  if (hidG(g) || (M && hidM(M))){   // spoilers: the game without its result, and a Reveal first
+    return [h("div", {class: "head", id: "ghead"}, tagBadge(TN(0), "md", teamLink(c2, TN(0))), h("h1", {}, `${TN(0)} vs ${TN(1)}`), tagBadge(TN(1), "md", teamLink(c2, TN(1))),
+      h("div", {class: "chips", style: "width:100%"}, h("span", {class: "chip", id: "ghidden"}, "Result hidden (spoilers)"),
+        h("time", {class: "chip", datetime: g.dt.replace(" ", "T") + "Z", title: utcTxt(g.dt.replace(" ", "T"))}, `${lday(g.t0)} · ${ltime(g.t0)}`), h("a", {class: "chip", href: leagueLink(c2, D.L)}, D.label),
+        h(serHref ? "a" : "span", {class: "chip", href: serHref}, `Game ${k + 1}${bo ? " of Bo" + bo : ""}`), h("span", {class: "chip"}, "Patch " + g.pt))),
+      h("section", {class: "sec", id: "gcards"}, spoilNote("This game was played in the last 3 days: its result is hidden.", revealBtn([...(M ? revealIds(M) : []), ...SG.map(x => "g:" + x.id), "g:" + g.id])))];
+  }
   const out = [h("div", {class: "head", id: "ghead"}, tagBadge(TN(0), "md", teamLink(c2, TN(0))), h("h1", {}, `${TN(0)} vs ${TN(1)}`), tagBadge(TN(1), "md", teamLink(c2, TN(1))),
     h("div", {class: "chips", style: "width:100%"}, h("span", {class: "chip w"}, `${TN(g.w)} won`),
       h("time", {class: "chip", datetime: g.dt.replace(" ", "T") + "Z", title: utcTxt(g.dt.replace(" ", "T"))}, `${lday(g.t0)} · ${ltime(g.t0)}`), h("a", {class: "chip", href: leagueLink(c2, D.L)}, D.label),
@@ -2954,7 +3053,8 @@ async function viewGame(r, c){
       h(serHref ? "a" : "span", {class: "chip", id: "gser", href: serHref, "data-tip": `Series score before this game ${before[0]}–${before[1]}, after ${after[0]}–${after[1]}`},
         `Game ${k + 1}${bo ? " of Bo" + bo : ""} · ${TG(0)} ${after[0]}–${after[1]} ${TG(1)}`),
       h("span", {class: "chip"}, "Patch " + g.pt), h("span", {class: "chip"}, mmss(g.len)),
-      M && M.stream ? h("a", {class: "chip", href: M.stream, target: "_blank", rel: "noopener noreferrer", id: "gstream", "data-tip": "The league's stream (its VODs are there)"}, "Stream ↗") : null,
+      vodOf(V, g.id, M && M.id, k + 1) ? vodChip(vodOf(V, g.id, M && M.id, k + 1), "gvod")
+        : M && M.stream ? h("a", {class: "chip", href: M.stream, target: "_blank", rel: "noopener noreferrer", id: "gstream", "data-tip": "The league's stream (its VODs are there)"}, "Stream ↗") : null,
       g.bm ? h("a", {class: "chip", href: "https://lpl.qq.com/es/stats.shtml?bmid=" + encodeURIComponent(g.bm), target: "_blank", rel: "noopener noreferrer", id: "gofficial"}, "LPL stats ↗") : null))];
   // the series' games: previous / next and every game as a chip
   if (SG.length > 1) out.push(h("nav", {class: "chips gser", id: "gseries", "aria-label": "Games of the series"},
@@ -2992,6 +3092,9 @@ async function viewGame(r, c){
       g.elo ? h("p", {class: "note"}, `Elo ${Math.round(g.elo[0][0])} vs ${Math.round(g.elo[0][1])} → ${Math.round(g.elo[1][0])} vs ${Math.round(g.elo[1][1])}`) : null] : h("p", {class: "note"}, "No draft model score for this game.")),
     h("div", {class: "panel", id: "gwpc"}, h("h3", {}, "Over the game ", h("small", {}, TN(0))), lineChart({title: `${TN(0)} win probability over the game`, w: chartW(0.5), hh: 200, y: {min: 0, max: 1, ref: 0.5, fmt: v => pct(v)}, x: {ticks: [0, 10, 15, 20, 25, Math.round(g.min)].filter((t, j, xs) => xs.indexOf(t) === j && t <= g.min + 0.5), fmt: v => v + "′", min: 0, max: Math.max(g.min, 25)},
       series: [{key: "wp", label: TN(0), short: IX.tags[TN(0)] || TN(0), cls: "acc", emph: true, dots: 3.5, pts: wpPts}]})))));
+  // the live module's saved timeline of this game, when the site followed it live (by league, teams, date, game number)
+  // (with it, the coarse 10 / 15 / 20 / 25 gold and XP chart below steps aside)
+  out.push(framesSlot(D.L, [TN(0), TN(1)], g.dt, k + 1, [TG(0), TG(1)], {onShow: () => { const e = document.getElementById("ggold"); if (e) e.hidden = true; }}));
 
   /* ---- draft: pick / ban order with each pick's model win-chance change and regret; the draft path; lanes; regret ---- */
   const seqOf = (s, kind, i) => (s === g.fp ? SEQ_F : SEQ_S)[kind][i] + 1;
@@ -3133,8 +3236,21 @@ async function viewSeries(r, c){
     const hit = R.find(x => x.teams && x.teams.length === 2 && Math.abs(Date.parse(x.startTime) - m.t0) < 6 * 36e5 && x.teams.every(t => o.includes(t.oe) || o.includes(t.name)));
     if (hit) pre = {w: hit.winner == null ? null : o.indexOf(hit.teams[hit.winner].oe || hit.teams[hit.winner].name), s: T.map((_, k) => { const t = hit.teams.find(t2 => (t2.oe || t2.name) === o[k]); return t ? t.wins : null; })}; }
   const sc = m.done && !m.pre ? [m.s1, m.s2] : pre ? pre.s : [null, null], wk = m.done && !m.pre ? (m.w ? m.w - 1 : null) : pre ? pre.w : null;
-  const gs = m.games || [], n = sc[0] != null && sc[1] != null ? sc[0] + sc[1] : 0, sel = +r.q.g || null;
+  const gs = m.games || [], PG = lp.pre.get(m.id) || new Map(), V = await loadVods();
+  const n = Math.max(sc[0] != null && sc[1] != null ? sc[0] + sc[1] : 0, ...[...PG.keys()], 0), sel = +r.q.g || null;
   VIEW_TITLE = `${sh(0)} vs ${sh(1)} · ${m.L === "INTL" && m.E ? m.E.name : m.L} ${m.dt.slice(0, 10)}`;
+  // spoilers: a hidden result (or a slot decided by one) shows the series without it, and a Reveal first
+  const hidS = hidM(m) || (!!pre && spoilOn() && freshT(m.t0) && !SP.ids.has(m.id)), mk = [0, 1].map(k => slotMask(lp, m, k));
+  if (hidS || mk.some(Boolean)){
+    const nmk = k => mk[k] ? mk[k].txt : nm(k);
+    if (mk.some(Boolean)) VIEW_TITLE = `${mk[0] ? "?" : sh(0)} vs ${mk[1] ? "?" : sh(1)} · ${m.L === "INTL" && m.E ? m.E.name : m.L} ${m.dt.slice(0, 10)}`;
+    return [h("div", {class: "head", id: "shead"}, mk[0] ? null : lpBadge(lp, cy, T[0]), h("h1", {}, `${nmk(0)} vs ${nmk(1)}`), mk[1] ? null : lpBadge(lp, cy, T[1]),
+      h("div", {class: "chips", style: "width:100%"}, h("span", {class: "chip", id: "shidden"}, hidS ? "Result hidden (spoilers)" : "Teams hidden (spoilers)"),
+        h("time", {class: "chip", datetime: m.dt, title: utcTxt(m.dt)}, `${lday(m.t0)} · ${ltime(m.t0)}`), h("span", {class: "chip"}, `${m.L === "INTL" && m.E ? m.E.name : m.L} · ${m.stage || (m.E && m.E.name) || ""}`),
+        h("span", {class: "chip"}, "Bo" + (m.bo || 1)), m.stream ? h("a", {class: "chip", href: m.stream, target: "_blank", rel: "noopener noreferrer"}, "Stream ↗") : null)),
+      h("section", {class: "sec", id: "sgames"}, spoilNote(hidS ? "This series finished in the last 3 days: its result is hidden." : "A team in this series was decided by a result of the last 3 days.",
+        revealBtn(hidS ? revealIds(m) : mk.filter(Boolean).flatMap(x => revealIds(x.m)))))];
+  }
   const out = [h("div", {class: "head", id: "shead"}, lpBadge(lp, cy, T[0]), h("h1", {}, `${nm(0)} ${sc[0] != null ? sc[0] + "–" + sc[1] : "vs"} ${nm(1)}`), lpBadge(lp, cy, T[1]),
     h("div", {class: "chips", style: "width:100%"}, wk != null ? h("span", {class: "chip w"}, `${nm(wk)} won`) : null,
       pre ? h("span", {class: "chip", id: "spre", "data-tip": "From the live feed: Leaguepedia and Oracle's Elixir haven't published the result yet"}, "Preliminary") : null,
@@ -3142,10 +3258,23 @@ async function viewSeries(r, c){
       h("span", {class: "chip"}, "Bo" + (m.bo || 1)), m.patch ? h("span", {class: "chip"}, "Patch " + m.patch) : null,
       m.stream ? h("a", {class: "chip", href: m.stream, target: "_blank", rel: "noopener noreferrer"}, "Stream ↗") : null))];
   const cards = gs.map((g, j) => { const e = gameCard(cy, m.D, g, null); e.setAttribute("data-n", String(j + 1)); if (sel === j + 1) e.classList.add("on"); return e; });
-  for (let j = gs.length; j < Math.max(n, gs.length); j++) cards.push(h("div", {class: "gc pend" + (sel === j + 1 ? " on" : ""), "data-n": String(j + 1), id: "sg" + (j + 1)},
-    h("div", {class: "top"}, h("span", {}, `Game ${j + 1}`), h("span", {class: "res"}, "pending")), h("p", {class: "note"}, m.L === "INTL" ? "International event: the site's game files cover the four leagues only." : "Not in Oracle's Elixir yet (usually a day or two): the full game page follows.")));
-  out.push(h("section", {class: "sec", id: "sgames"}, h("h2", {}, "Games", h("small", {}, gs.length ? `${gs.length} of ${n || gs.length} with full data` : m.L === "INTL" && (m.done || pre) ? "series result only" : m.done || pre ? "waiting for Oracle's Elixir" : "not played yet")),
-    cards.length ? h("div", {class: "sgrid"}, cards) : h("p", {class: "note"}, m.up ? "Not played yet." : "No game data.")));
+  const npre = [];
+  for (let j = gs.length; j < Math.max(n, gs.length); j++){
+    const pg = PG.get(j + 1);
+    if (pg){ const e = preCard(lp, cy, m, pg); e.id = "sg" + (j + 1); if (sel === j + 1) e.classList.add("on"); cards.push(e); npre.push(j + 1); continue; }
+    cards.push(h("div", {class: "gc pend" + (sel === j + 1 ? " on" : ""), "data-n": String(j + 1), id: "sg" + (j + 1)},
+      h("div", {class: "top"}, h("span", {}, `Game ${j + 1}`), h("span", {class: "res"}, "pending")), h("p", {class: "note"}, m.L === "INTL" ? "International event: the site's game files cover the four leagues only." : "Not in Oracle's Elixir yet (usually a day or two): the full game page follows.")));
+  }
+  // a VOD chip per game (Leaguepedia's links)
+  const vods = Array.from({length: Math.max(n, gs.length)}, (_, j) => { const pg = PG.get(j + 1); return [j + 1, vodOf(V, gs[j] && gs[j].id, m.id, j + 1) || (pg && pg.vod) || null]; }).filter(x => x[1]);
+  out.push(h("section", {class: "sec", id: "sgames"}, h("h2", {}, "Games", h("small", {}, gs.length ? `${gs.length} of ${n || gs.length} with full data` + (npre.length ? ` · ${npre.length} preliminary` : "") : npre.length ? `${npre.length} preliminary (Leaguepedia) · waiting for Oracle's Elixir` : m.L === "INTL" && (m.done || pre) ? "series result only" : m.done || pre ? "waiting for Oracle's Elixir" : "not played yet")),
+    cards.length ? h("div", {class: "sgrid"}, cards) : h("p", {class: "note"}, m.up ? "Not played yet." : "No game data."),
+    vods.length ? h("nav", {class: "chips", id: "svods", "aria-label": "VODs of the games", style: "margin-top:10px"}, vods.map(([k, u]) => h("a", {class: "chip", href: u, target: "_blank", rel: "noopener noreferrer", "data-n": String(k)}, `G${k} VOD ↗`))) : null));
+  // the live module's saved minute-by-minute timelines of the games Oracle's Elixir doesn't have yet
+  if (!m.up || npre.length){ const lg = m.L === "INTL" && m.E ? m.E.name : m.L, tn = T.map(t => lpOE(lp, t) || lpName(lp, t));
+    for (let j = gs.length; j < (Math.max(n, gs.length) || m.bo || 1); j++){ const pg = PG.get(j + 1);
+      out.push(framesSlot(lg, tn, pg ? pg.dt : m.dt, j + 1, pg ? [pg.t[0], pg.t[1]].map(t => (lp.S.teams[t] || {}).short || lpName(lp, t)) : null, {id: "smin" + (j + 1), title: `Game ${j + 1} · minute by minute`})); } }
+  if (m.up && !gs.length && !npre.length) out.push(seriesForm(lp, cy, m, D));
   if (gs.length){
     const o0 = lpOE(lp, T[0]), side = g => m.D.teams[g.t[0]] === o0 ? 0 : 1;
     out.push(h("div", {class: "two", id: "sgchart"},
@@ -3156,6 +3285,183 @@ async function viewSeries(r, c){
   }
   if (sel) setTimeout(() => { const e = document.querySelector(`#sgames [data-n="${sel}"]`); if (e && e.scrollIntoView) e.scrollIntoView({block: "center"}); }, 0);
   return out;
+}
+
+
+/* ---------- per-game extras: preliminary scoreboards (pro-prelim.json, Leaguepedia, games Oracle's Elixir doesn't have yet),
+   VOD links (pro-vods.json, Leaguepedia), saved live timelines (/api/live/frames, web/live-api.js) ---------- */
+let VODP = null;
+function loadVods(){
+  if (!VODP) VODP = PAGE.inline ? Promise.resolve(null) : fetch("pro-vods.json").then(r => r.ok ? r.json() : null).catch(() => null);
+  return VODP;
+}
+const vodHref = (V, e) => { if (!V || !e) return null; const u = V.u[e[0]]; return u ? u + (e[1] ? (u.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(e[1]) : "") : null; };
+/* an OE game's VOD by its id, else game n of a schedule series */
+const vodOf = (V, gid, mid, n) => V ? vodHref(V, (gid && V.g[gid]) || (mid && V.m[mid] && V.m[mid][String(n)])) || null : null;
+const vodChip = (href, id) => href ? h("a", {class: "chip", href, target: "_blank", rel: "noopener noreferrer", id, "data-tip": "This game's VOD (Leaguepedia's link)"}, "VOD ↗") : null;
+/* a preliminary game of a schedule series (game n), when OE doesn't have it */
+const preOf = (lp, m, n) => lp.pre && m ? (lp.pre.get(m.id) || new Map()).get(n) || null : null;
+const pgameLink = (c, m, n) => link("pgame", [m.id, String(n)], base(c));
+
+/* saved per-minute timelines of the live module: by league, both teams, date (a day either way) and game number */
+const FRAMES = new Map();
+function loadFrames(L, teams, dt, n){
+  if (PAGE.inline || !L || teams.some(t => !t)) return Promise.resolve(null);
+  const q = new URLSearchParams({league: L, teams: teams.join(","), date: dt.slice(0, 10), game: String(n || 1), at: dt.replace(" ", "T").slice(0, 16) + "Z"}).toString();
+  if (!FRAMES.has(q)) FRAMES.set(q, fetch("/api/live/frames?" + q).then(r => r.ok ? r.json() : null).then(d => d && Array.isArray(d.rows) && d.rows.length > 1 ? d : null).catch(() => null));
+  return FRAMES.get(q);
+}
+const DRAKE_L = {ocean: "Ocean", infernal: "Infernal", mountain: "Mountain", cloud: "Cloud", hextech: "Hextech", chemtech: "Chemtech", elder: "Elder"};
+/* the minute-by-minute chart: blue's gold lead on top, the live pro model's P(blue wins) below (10:00 on; held after 25:00,
+   dashed), objectives on the time axis (dragons with their type, barons, towers, inhibitors) */
+function minuteChart(F, names, {w = chartW(1)} = {}){
+  const R = F.rows, bn = names[0], rn = names[1], dur = Math.max(R[R.length - 1][0], (F.duration || 0) / 60);
+  const L = 44, Rr = 14, T = 8, gh = 120, eh = 30, wh = 84, B = 22, hh = T + gh + eh + wh + B, X = m => L + (w - L - Rr) * m / dur;
+  const gd = R.map(r => [r[0], r[1] - r[2]]), gm = Math.max(1000, ...gd.map(p => Math.abs(p[1]))), g0 = T + gh / 2, GY = v => g0 - (gh / 2 - 4) * v / gm;
+  const w0 = T + gh + eh, WY = p => w0 + (wh - 6) * (1 - p) + 3;
+  const esr = s => esc(String(s));
+  let g = `<line class="ref" x1="${L}" x2="${w - Rr}" y1="${g0}" y2="${g0}"/>`;
+  for (const v of niceTicks(-gm, gm, 4)) if (Math.abs(v) <= gm) g += `<text x="${L - 6}" y="${(GY(v) + 3.5).toFixed(1)}" text-anchor="end">${v === 0 ? "0" : (v > 0 ? "+" : MINUS) + Math.abs(v / 1000) + "k"}</text>`;
+  g += `<text x="${L + 4}" y="${T + 10}" class="lbl">${esr(bn)} ahead</text><text x="${L + 4}" y="${T + gh - 3}" class="lbl">${esr(rn)} ahead</text>`;
+  for (const p of [0, 0.5, 1]) g += `<line class="${p === 0.5 ? "ref" : "gl"}" x1="${L}" x2="${w - Rr}" y1="${WY(p).toFixed(1)}" y2="${WY(p).toFixed(1)}"/><text x="${L - 6}" y="${(WY(p) + 3.5).toFixed(1)}" text-anchor="end">${p * 100}%</text>`;
+  for (let t = 0; t <= dur; t += dur > 40 ? 10 : 5) g += `<line class="gl" x1="${X(t).toFixed(1)}" x2="${X(t).toFixed(1)}" y1="${T}" y2="${hh - B}" opacity=".45"/><text x="${X(t).toFixed(1)}" y="${hh - 6}" text-anchor="middle">${t}′</text>`;
+  const path = pts => pts.map((p, k) => (k ? "L" : "M") + X(p[0]).toFixed(1) + " " + p[1].toFixed(1)).join("");
+  const gl = gd.map(p => [p[0], GY(p[1])]);
+  g += `<clipPath id="mcA"><rect x="0" y="0" width="${w}" height="${g0}"/></clipPath><clipPath id="mcB"><rect x="0" y="${g0}" width="${w}" height="${gh}"/></clipPath>`;
+  const area = path(gl) + `L${X(gd[gd.length - 1][0]).toFixed(1)} ${g0}L${X(gd[0][0]).toFixed(1)} ${g0}Z`;
+  g += `<path class="mfa" clip-path="url(#mcA)" d="${area}"/><path class="mfb" clip-path="url(#mcB)" d="${area}"/><path class="ln acc" d="${path(gl)}"/>`;
+  // WP: the live model from 10:00; held (dashed) after 25:00
+  const wl = R.filter(r => r[13] != null && !r[14]).map(r => [r[0], WY(r[13])]), wh2 = R.filter(r => r[13] != null && r[14]).map(r => [r[0], WY(r[13])]);
+  if (wl.length) g += `<path class="ln mwp" d="${path(wl)}"/>`;
+  if (wh2.length) g += `<path class="ln mwp held" d="${path((wl.length ? [wl[wl.length - 1]] : []).concat(wh2))}"/>`;
+  g += `<text x="${L + 4}" y="${w0 + 10}" class="lbl">${esr(bn)} win chance (live model)</text>`;
+  // hover targets: one column per row
+  const hit = R.map((r, k) => { const x0 = k ? (X(R[k - 1][0]) + X(r[0])) / 2 : L, x1 = k < R.length - 1 ? (X(r[0]) + X(R[k + 1][0])) / 2 : w - Rr, d = r[1] - r[2];
+    const tip = `${mmss(r[0] * 60)} · gold ${d === 0 ? "even" : (d > 0 ? bn : rn) + " +" + grp(Math.abs(d))} (${grp(r[1])} – ${grp(r[2])}) · kills ${r[3]}–${r[4]} · towers ${r[5]}–${r[6]} · dragons ${r[11]}–${r[12]}` +
+      (r[13] != null ? ` · ${bn} ${pct(r[13], 1)}${r[14] ? " (held at 25:00)" : ""}` : "");
+    return `<rect class="hit" x="${x0.toFixed(1)}" y="${T}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${gh + eh + wh}" data-tip="${esc(tip)}"/>`; }).join("");
+  // objectives on the time axis
+  const E = (F.events || []).slice(), ey = T + gh + eh / 2;
+  const mk = E.map(([m, side, kind, type]) => { const x = X(m).toFixed(1), cls = `mev ${side === "red" ? "r" : "b"} ${kind}`, who = side === "red" ? rn : bn;
+    const tip = `${mmss(m * 60)} · ${who}: ${kind === "dragon" ? (DRAKE_L[type] || "") + " dragon" : kind === "inhib" ? "inhibitor" : kind}`;
+    const y = side === "red" ? ey + 6 : ey - 6;
+    const shape = kind === "dragon" ? `<circle class="${cls}" cx="${x}" cy="${y}" r="5"/><text class="mdt" x="${x}" y="${y + 3}" text-anchor="middle">${esc((DRAKE_L[type] || "?")[0])}</text>`
+      : kind === "baron" ? `<rect class="${cls}" x="${x - 5}" y="${y - 5}" width="10" height="10" rx="2"/><text class="mdt" x="${x}" y="${y + 3}" text-anchor="middle">B</text>`
+      : kind === "inhib" ? `<path class="${cls}" d="M${x} ${y - 5}l5 5-5 5-5-5z"/>` : `<path class="${cls}" d="M${x} ${y - 4}l4 7h-8z"/>`;
+    return `<g data-tip="${esc(tip)}" data-ev="${kind}">${shape}</g>`; }).join("");
+  const title = `${bn} vs ${rn}: gold lead and live win chance by minute, with objectives`;
+  const svg = svgNode(`<svg class="chart mchart" viewBox="0 0 ${w} ${hh}" role="img" aria-label="${esc(title)}"><title>${esc(title)}</title>${g}<g class="hits">${hit}</g><g class="evs">${mk}</g></svg>`);
+  const rows = R.map(r => [mmss(r[0] * 60), sgn(r[1] - r[2]), r[13] == null ? "–" : pct(r[13], 1)]);
+  return h("div", {class: "fig", id: "mchart-fig"}, svg, srTable(title, ["Time", `${bn} gold lead`, `${bn} win chance`], rows));
+}
+/* the timeline panel of a game: its names in blue / red order; `into` is filled when the file arrives (nothing without one) */
+function framesPanel(F, names, {id = "gmin", title = "Minute by minute"} = {}){
+  const src = F.approx ? "the site's live feed (followed from mid-game: early minutes approximate)" : "the site's live feed";
+  return h("section", {class: "sec", id}, h("h2", {}, title, h("small", {}, `gold lead · win chance by the live pro model · objectives · from ${src}`)),
+    h("div", {class: "panel"}, minuteChart(F, names)));
+}
+function framesSlot(L, teams, dt, n, names, opts){
+  const slot = h("div", {class: "fslot", "data-frames": "pending"});
+  loadFrames(L, teams, dt, n).then(F => { if (!F){ slot.setAttribute("data-frames", "none"); return; }
+    // blue first: the file's sides say which of its teams played blue
+    const bi = F.sides && F.sides[0] === "red" ? 1 : 0, T = F.teams || [];
+    const nm = names || [T[bi], T[1 - bi]].map(t => t ? t.oe || t.site || t.name : "?");
+    slot.setAttribute("data-frames", "shown"); slot.replaceChildren(framesPanel(F, nm, opts)); if (opts && opts.onShow) opts.onShow(F); });
+  return slot;
+}
+
+/* a preliminary game (Leaguepedia's scoreboard) as a card: both teams, champions, winner, length; links to its page */
+function preCard(lp, c, m, pg){
+  const nm = s => lpName(lp, pg.t[s]);
+  const tm = s => h("div", {class: "tm" + (pg.w === s ? " won" : "")}, lpBadge(lp, c, pg.t[s]), h("b", {}, nm(s)), h("span", {class: "x"}, pg.p[s].map(p => portrait(p && p.champ, "xs"))));
+  return h("a", {class: "gc pre", href: pgameLink(c, m, pg.n), "data-pgame": `${m.id}#${pg.n}`, "data-n": String(pg.n), title: `Game ${pg.n}: ${nm(pg.w)} won in ${pg.len ? mmss(pg.len) : "–"} (preliminary, Leaguepedia)`},
+    h("div", {class: "top"}, h("time", {datetime: pg.dt}, fmtDate(pg.dt)), h("span", {}, `Game ${pg.n}`), h("span", {class: "res pre", "data-tip": "From Leaguepedia's scoreboard: Oracle's Elixir doesn't have this game yet"}, "preliminary")),
+    tm(0), tm(1),
+    h("div", {class: "ft"}, h("span", {}, pg.len ? mmss(pg.len) : "–"), h("span", {}, `kills ${pg.tt.k[0]}–${pg.tt.k[1]}`), h("span", {}, `gold ${kfmt2(pg.tt.gold[0] - pg.tt.gold[1])}`)));
+}
+const kfmt2 = v => v == null || !isFinite(v) ? "–" : (v > 0 ? "+" : v < 0 ? MINUS : "±") + (Math.abs(v) / 1000).toFixed(1) + "k";
+
+/* preliminary game page: #/pgame/<series id>/<game number>: Leaguepedia's scoreboard (champions, bans, KDA, gold, CS, damage,
+   the winner and length) plus the draft model's win chance from the picks, until Oracle's Elixir has the game; then the OE
+   game page replaces it (same series, same game number) */
+async function viewPGame(r, c){
+  const lp = await loadLP(), mid = r.args[0] || "", n = +r.args[1] || 1;
+  const m = lp.S ? lp.all.find(x => x.id === mid) : null;
+  const cy = lp.S ? lpCtx(lp, c) : c, L = m && m.L !== "INTL" && IX.years[lp.year] && IX.years[lp.year][m.L] ? m.L : null;
+  if (m && m.done && L){ await linkGames(lp, L); const g = m.games && m.games[n - 1];
+    if (g){ location.replace(gameLink(cy, g, m.D)); return viewGame({view: "game", args: [g.id], q: {lg: L}}, cy); } }
+  const pg = preOf(lp, m, n);
+  if (!m || !pg){ drawChrome(r, c, null, null); return [notice("Game not found", "No preliminary data for that game: Leaguepedia may not have its scoreboard yet.", m ? link("series", [m.id], base(cy)) : link("schedule", [], base(c)), m ? "The series" : "Schedule")]; }
+  const D = L ? await loadLeague(lp.year, L) : null;
+  drawChrome(r, cy, L, D);
+  const V = await loadVods();
+  const T = pg.t, nm = s => lpName(lp, T[s]), sh = s => (lp.S.teams[T[s]] || {}).short || nm(s), tt = pg.tt;
+  if (hidM(m)) return [h("div", {class: "head", id: "ghead"}, lpBadge(lp, cy, T[0]), h("h1", {}, `${nm(0)} vs ${nm(1)}`), lpBadge(lp, cy, T[1]),
+      h("div", {class: "chips", style: "width:100%"}, h("span", {class: "chip", id: "ghidden"}, "Result hidden (spoilers)"), h("span", {class: "chip pre"}, "Preliminary (Leaguepedia)"),
+        h("time", {class: "chip", datetime: pg.dt, title: utcTxt(pg.dt)}, `${lday(tms(pg.dt))} · ${ltime(tms(pg.dt))}`), h("a", {class: "chip", href: link("series", [m.id], base(cy))}, `Game ${n}${m.bo ? " of Bo" + m.bo : ""}`))),
+    h("section", {class: "sec", id: "gcards"}, spoilNote("This game was played in the last 3 days: its result is hidden.", revealBtn(revealIds(m))))];
+  const games = [...(lp.pre.get(m.id) || new Map()).values()].sort((a, b) => a.n - b.n), before = [0, 0];
+  for (const x of games) if (x.n < n) before[T.indexOf(x.t[x.w])] += 1;
+  const after = before.slice(); after[pg.w] += 1;
+  VIEW_TITLE = `${sh(0)} vs ${sh(1)} · ${m.L === "INTL" && m.E ? m.E.name : m.L} ${pg.dt.slice(0, 10)} · game ${n}`;
+  const vod = pg.vod || vodOf(V, null, m.id, n);
+  const out = [h("div", {class: "head", id: "ghead"}, lpBadge(lp, cy, T[0]), h("h1", {}, `${nm(0)} vs ${nm(1)}`), lpBadge(lp, cy, T[1]),
+    h("div", {class: "chips", style: "width:100%"}, h("span", {class: "chip w"}, `${nm(pg.w)} won`),
+      h("span", {class: "chip pre", id: "gpre", "data-tip": "From Leaguepedia's scoreboard: Oracle's Elixir doesn't have this game yet. Its full page (lanes at 15, WPA, the in-game model) follows when it does."}, "Preliminary (Leaguepedia)"),
+      h("time", {class: "chip", datetime: pg.dt, title: utcTxt(pg.dt)}, `${lday(tms(pg.dt))} · ${ltime(tms(pg.dt))}`),
+      h("span", {class: "chip"}, `${m.L === "INTL" && m.E ? m.E.name : m.L}${m.stage ? " · " + m.stage : ""}`),
+      h("a", {class: "chip", id: "gser", href: link("series", [m.id], base(cy)), "data-tip": `Series score before this game ${before[0]}–${before[1]}, after ${after[0]}–${after[1]}`}, `Game ${n}${m.bo ? " of Bo" + m.bo : ""} · ${sh(0)} ${after[0]}–${after[1]} ${sh(1)}`),
+      pg.patch ? h("span", {class: "chip"}, "Patch " + pg.patch) : null, pg.len ? h("span", {class: "chip"}, mmss(pg.len)) : null,
+      vod ? vodChip(vod, "gvod") : m.stream ? h("a", {class: "chip", href: m.stream, target: "_blank", rel: "noopener noreferrer", id: "gstream", "data-tip": "The league's stream (its VODs are there)"}, "Stream ↗") : null))];
+  if (games.length > 1) out.push(h("nav", {class: "chips gser", id: "gseries", "aria-label": "Games of the series"},
+    games.map(x => h("a", {class: "gl", href: pgameLink(cy, m, x.n), "aria-current": x.n === n ? "page" : null, style: `--th:${hue(lpName(lp, x.t[x.w]))}`, title: `Game ${x.n}: ${lpName(lp, x.t[x.w])} won`}, h("i", {"aria-hidden": "true"}), `G${x.n} ${(lp.S.teams[x.t[x.w]] || {}).short || lpName(lp, x.t[x.w])}`)),
+    h("a", {class: "chip", href: link("series", [m.id], base(cy))}, "Series")));
+  const vs = k => tt[k] && (tt[k][0] != null || tt[k][1] != null) ? `${tt[k][0] == null ? "–" : tt[k][0]}–${tt[k][1] == null ? "–" : tt[k][1]}` : "–";
+  const gl = tt.gold[0] != null && tt.gold[1] != null ? tt.gold[0] - tt.gold[1] : null;
+  out.push(h("div", {class: "cards6", id: "gcards"},
+    card("Result", h("span", {class: "hl"}, lpBadge(lp, cy, T[pg.w]), ` ${sh(pg.w)} won`), `${pg.len ? mmss(pg.len) : "–"} · ${pg.w ? "red" : "blue"} side`, "up"),
+    card("Gold at the end", gl == null ? "–" : Math.abs(gl) < 1 ? "even" : `${sh(gl > 0 ? 0 : 1)} +${grp(Math.abs(gl))}`, `${tt.gold[0] == null ? "–" : kfmt(tt.gold[0])} – ${tt.gold[1] == null ? "–" : kfmt(tt.gold[1])} · at 15: –`),
+    card("Kills", vs("k"), "first blood –"), card("Towers", vs("tow"), `inhibitors ${vs("inh")}`),
+    card("Dragons", vs("drg"), "types in the timeline below when the site followed the game"),
+    card("Barons", vs("bar"), `grubs ${vs("grb")} · heralds ${vs("her")}${(tt.atk && (tt.atk[0] || tt.atk[1])) ? ` · Atakhan ${vs("atk")}` : ""}`)));
+  // win probability: the draft model from the picks; the in-game model needs OE's @15 data
+  const splitBar = (p, lab) => h("div", {"data-tip": `${lab}: ${nm(0)} ${pct(p, 1)}, ${nm(1)} ${pct(1 - p, 1)}`}, h("div", {class: "note"}, lab),
+    h("div", {class: "split", role: "img", "aria-label": `${lab}: ${nm(0)} ${pct(p, 1)}, ${nm(1)} ${pct(1 - p, 1)}`}, h("i", {class: "b", style: `width:${100 * p}%`}, `${sh(0)} ${pct(p)}`), h("i", {class: "r", style: `width:${100 * (1 - p)}%`}, `${pct(1 - p)} ${sh(1)}`)));
+  out.push(h("section", {class: "sec", id: "gwp"}, h("h2", {}, "Win probability", h("small", {}, "the site's pro draft model on the picks")), h("div", {class: "two"},
+    panel("Before the game", pg.dwp ? [splitBar(pg.dwp[0], "Draft only (equal teams)"), pg.dwp[1] != null ? splitBar(pg.dwp[1], "Draft + rating") : null] : h("p", {class: "note"}, "No draft model score (a champion is unknown).")),
+    panel("In game", h("p", {class: "note", id: "gwp-ig"}, "In-game win probability at 10 / 15 / 20 / 25: – (needs Oracle's Elixir's snapshots)")))));
+  out.push(framesSlot(m.L === "INTL" && m.E ? m.E.name : m.L, T.map(t => lpOE(lp, t) || lpName(lp, t)), pg.dt, n, [sh(0), sh(1)]));
+  // draft: picks by role, bans
+  const dside = s => h("div", {class: "dside" + (s ? " red" : ""), "data-side": s ? "red" : "blue"},
+    h("div", {class: "dh"}, lpBadge(lp, cy, T[s]), h("b", {}, nm(s)), h("span", {class: "note"}, s ? "red" : "blue"), h("span", {class: "res " + (pg.w === s ? "up" : "dn")}, pg.w === s ? "WIN" : "LOSS")),
+    pg.p[s].map((p, ro) => p ? h("div", {class: "pick", "data-role": ROLES[ro]}, roleIcon(ro), portrait(p.champ, "sm"), h("span", {}, nameOf(p.champ)), h("span", {class: "note"}, p.name)) : null),
+    h("div", {class: "bans", "aria-label": "Bans"}, h("span", {class: "note"}, "Bans"), (pg.bans[s] || []).map((ci, i) => h("span", {title: `Ban ${i + 1}: ${nameOf(ci)}`}, portrait(ci, "xs bn")))));
+  out.push(h("section", {class: "sec", id: "gdraft"}, h("h2", {}, "Draft", h("small", {}, "picks by role · bans (pick order: –)")), h("div", {class: "draft", id: "draft"}, dside(0), dside(1))));
+  // players: the box score; the lane columns need OE
+  const cols = [["k", "K / D / A"], ["kp", "KP"], ["cs", "CS"], ["gold", "Gold"], ["dmg", "Damage"], ["dsh", "Dmg%"], ["dpm", "DPM"], ["vs", "Vision"], ["gd15", "GD@15"], ["xpd15", "XP@15"], ["wpa", "WPA"]];
+  const trs = [];
+  for (const s of [0, 1]) pg.p[s].forEach((p, ro) => { if (!p) return; const [k, d, a, gold, cs, dmg, vis] = p.ps, tk = tt.k[s], td = pg.p[s].reduce((x, q) => x + (q && q.ps[5] || 0), 0);
+    const cell = key => ({k: `${k} / ${d} / ${a}`, kp: tk ? pct(((k || 0) + (a || 0)) / tk) : "–", cs: cs == null ? "–" : grp(cs), gold: gold == null ? "–" : grp(gold), dmg: dmg == null ? "–" : grp(dmg),
+      dsh: td && dmg != null ? pct(dmg / td, 1) : "–", dpm: dmg != null && pg.len ? grp(dmg / (pg.len / 60)) : "–", vs: vis == null ? "–" : String(vis)}[key] || "–");
+    trs.push(h("tr", {class: s && !ro ? "sep" : null, "data-player": p.name, "data-side": s}, h("th", {scope: "row"}, h("span", {class: "hl"}, roleIcon(ro), lpBadge(lp, cy, T[s]), h("b", {}, p.name))),
+      h("td", {class: "l"}, h("span", {style: "display:inline-flex;align-items:center;gap:6px"}, portrait(p.champ, "xs"), nameOf(p.champ))), cols.map(([key]) => h("td", {"data-k": key}, cell(key))))); });
+  out.push(h("section", {class: "sec", id: "gplayers"}, h("h2", {}, "Players", h("small", {}, "box score (Leaguepedia) · lane and WPA columns follow with Oracle's Elixir")),
+    dragScroll(h("div", {class: "tw", tabindex: "0", role: "region", "aria-label": "Players table (scrolls sideways)"}, h("table", {id: "ptable"}, h("caption", {class: "sr"}, "Players of both teams: preliminary box score"),
+      h("thead", {}, h("tr", {}, h("th", {class: "l", scope: "col"}, "Player"), h("th", {class: "l", scope: "col"}, "Champion"), cols.map(([, lab]) => h("th", {scope: "col"}, lab)))), h("tbody", {}, trs))))));
+  out.push(h("p", {class: "note attr", id: "gattr"}, "Preliminary scoreboard from Leaguepedia (lol.fandom.com), CC BY-SA 3.0."));
+  return out;
+}
+
+/* an unplayed series: each team's recent series (form strip) and rating */
+function seriesForm(lp, cy, m, D){
+  const T = [m.t1, m.t2];
+  const one = k => { const n = T[k]; if (!n) return panel("TBD", h("p", {class: "note"}, "Not decided yet."));
+    const oe = lpOE(lp, n), ms = oe ? teamMatches(lp, oe).filter(x => x.done && x.t0 < m.t0).map(x => { const me = lpOE(lp, x.t1) === oe ? 0 : 1; return Object.assign(x, {_me: me, _opp: lpName(lp, me ? x.t1 : x.t2), _won: x.w === me + 1}); }) : [];
+    const last = ms.slice(-10), w = last.filter(x => x._won).length;
+    const st = D && oe ? (D.st || standings(D, D.games)).find(x => x.name === oe || x.t === D.ti[oe]) : null;
+    return h("div", {class: "panel", "data-team": oe || n}, h("h3", {}, lpBadge(lp, cy, n), " ", lpName(lp, n), h("small", {}, st && st.elo != null ? ` rating ${Math.round(st.elo)} · #${st.eloRank}` : "")),
+      ms.length ? [formStrip(ms, oe), h("p", {class: "note"}, `Last ${last.length} series ${w}–${last.length - w}` + (st ? ` · ${st.w}–${st.l} in games this season` : ""))] : h("p", {class: "note"}, "No earlier series this season.")); };
+  return h("section", {class: "sec", id: "sform"}, h("h2", {}, "Form", h("small", {}, "recent series (up = won) · rating")), h("div", {class: "two"}, one(0), one(1)));
 }
 
 /* ---------- drafts: pick / ban priority, draft phases, flex picks, blind vs counter, team tendencies, model regret, search ---------- */
@@ -3622,10 +3928,13 @@ function goldChart(series, now){
 }
 function liveCard(m, c){
   const g = m.game, T = m.teams, ev = m.league.name;
+  // spoilers: the game in progress shows; the series score (the earlier games' results) waits for a reveal
+  const hidW = spoilOn() && (T[0].wins || T[1].wins) && !SP.ids.has("live:" + m.id);
   const tm = (k, cls) => h("div", {class: "lv-tm" + cls}, liveBadge(T[k], c),
-    h("b", {title: T[k].name}, h("span", {class: "nm"}, T[k].site ? T[k].oe || T[k].site : T[k].name), h("span", {class: "cd"}, T[k].code || T[k].name)), h("span", {class: "lv-w"}, String(T[k].wins)));
+    h("b", {title: T[k].name}, h("span", {class: "nm"}, T[k].site ? T[k].oe || T[k].site : T[k].name), h("span", {class: "cd"}, T[k].code || T[k].name)), h("span", {class: "lv-w", title: hidW ? "Series score hidden (spoilers): reveal it on the card" : null}, hidW ? "·" : String(T[k].wins)));
   const clock = g && g.clock != null ? mmss(g.clock) : "–";
   const kids = [h("div", {class: "lv-top"}, h("span", {class: "lv-on"}, "LIVE"), h("span", {class: "lv-ev"}, [ev, m.block, `G${m.gameNumber}`, m.bestOf ? `Bo${m.bestOf}` : null].filter(Boolean).join(" · ")),
+      hidW ? revealBtn(["live:" + m.id], "Series score") : null,
       m.stream ? h("a", {class: "stream", href: m.stream, target: "_blank", rel: "noopener noreferrer"}, streamTxt(m.stream)) : null),
     h("div", {class: "lv-sb"}, tm(0, ""), h("div", {class: "lv-mid"}, h("span", {class: "lv-clock", title: g && g.approx ? "Game clock (approximate: pauses before the page started following the game are not counted)" : "Game clock"}, clock + (g && g.approx ? "~" : "")),
       g && g.state === "paused" ? h("small", {}, "paused") : g && g.state === "finished" ? h("small", {}, "ended") : null), tm(1, " r"))];
@@ -3679,12 +3988,14 @@ function render(){
   const tok = ++RTOK, r = parseHash(), c = ctx(r.q);
   VIEW_TITLE = null;
   CTX = c;
-  const V = {home: viewHome, league: viewLeague, team: viewTeam, player: viewPlayer, game: viewGame, series: viewSeries, drafts: viewDrafts, "draft-search": viewSearch, schedule: viewSchedule}[r.view] || viewHome;
+  const V = {home: viewHome, league: viewLeague, team: viewTeam, player: viewPlayer, game: viewGame, series: viewSeries, pgame: viewPGame, drafts: viewDrafts, "draft-search": viewSearch, schedule: viewSchedule}[r.view] || viewHome;
   const main = $("main");
   if (!main.firstElementChild || !main.querySelector(".loading")){ /* keep the old view until the new one is ready */ }
+  HIDN = 0;
   IDLE = Promise.resolve().then(() => V(r, c)).then(nodes => {
     if (tok !== RTOK) return;
     main.textContent = ""; main.append(...nodes);
+    if (HIDN && !main.querySelector("#spoilnote")) main.prepend(spoilNote(`Results from the last 3 days hidden (${HIDN} ${HIDN === 1 ? "game" : "games"}): standings and records as of before them`, h("button", {type: "button", class: "spoilbtn", onclick: () => revealAll()}, "Reveal all")));
     paintLive();
     main.querySelectorAll("nav.tabs, #stby").forEach(dragScroll);   // tab rows overflow on phones: drag like the card rows (no visible slider)
     // home is the landing view: keep the page's own <title> (what search engines index; set by src/seo.py)
