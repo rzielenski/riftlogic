@@ -52,7 +52,11 @@ function readBody(req){
 
 const clientIp = req => String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "?").split(",")[0].trim();
 let play = null;   // the Play quiz API (play-api.js), created on first use
+// live tier-1 pro games (live-api.js): /api/live, /api/live/stream. Started now, not on first use, so finished series are
+// seen even when nobody is on the page; LIVE_OFF=1 turns its polling off (the tests set it)
+const live = require("./live-api.js")({ROOT, send, clientIp});
 async function api(req, res, url){
+  if (url.pathname === "/api/live" || url.pathname.startsWith("/api/live/")) return live(req, res, url);
   if (url.pathname.startsWith("/api/play/")){
     if (!play) play = require("./play-api.js")({ROOT, PLAY_DIR, TOKEN, send, readBody, clientIp});
     return play(req, res, url);
