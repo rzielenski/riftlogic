@@ -37,6 +37,7 @@
   --accent:#3FB7B4; --accent-ink:#04201F; --accent-soft:#123135;
   --gold:#D4AF63; --ok:#4CC287; --no:#F07580; --warn:#E5AE5A;
   --m1:#E4B94F; --m2:#B8C2CE; --m3:#CD8C5A;
+  --blue:#5B9BF0; --red:#F07580; --lane:#0B0D11; --lane-2:#12151B;
   --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
@@ -47,6 +48,7 @@
   --accent:#0B6E78; --accent-ink:#FFFFFF; --accent-soft:#DDEFF0;
   --gold:#8A6516; --ok:#1C7A48; --no:#B42F3E; --warn:#935800;
   --m1:#A07310; --m2:#66717E; --m3:#9A5626;
+  --blue:#2F6FD0; --red:#C23A4A; --lane:#E3E8EE; --lane-2:#D6DDE5;
 }
 [hidden]{display:none!important}
 *{box-sizing:border-box}
@@ -205,6 +207,45 @@ kbd{font:500 10.5px/1 var(--mono);color:var(--faint);border:1px solid var(--line
 .blist li.m3{box-shadow:inset 3px 0 0 var(--m3)}.blist li.m3 .rk,.blist li.m3 .s{color:var(--m3)}
 .blist li.me{outline:1px solid var(--accent)}
 .blist .empty{display:block;color:var(--faint);text-align:center;padding:24px 0;background:none}
+/* view switch: Quiz / Last hit */
+.views{display:inline-flex;justify-self:start;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--surface)}
+.views button{border:0;background:none;padding:0 16px;height:36px;font:600 13.5px/1 var(--sans);cursor:pointer;color:var(--ink-2)}
+.views button+button{border-left:1px solid var(--line)}
+.views button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+/* Last hit (mechanics drills, reasoning/play-mechanics/evidence.md) */
+.mech{padding:12px;display:grid;gap:10px;min-width:0}
+.mbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:34px}
+.mbar .grow{flex:1}
+.mchips{display:flex;flex-wrap:wrap;gap:6px}
+.mchips button{border:1px solid var(--line-strong);border-radius:999px;padding:0 12px;min-height:32px;font:600 13px/1 var(--sans);color:var(--ink-2);background:var(--surface);cursor:pointer}
+.mchips button:hover{border-color:var(--accent)}
+.mchips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mstat{font:500 12.5px/1 var(--sans);color:var(--muted);white-space:nowrap}
+.mstat b{color:var(--ink);font:600 13px/1 var(--mono)}
+.mping{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+.mping select{font:600 12.5px/1 var(--mono);color:var(--ink);background:var(--surface-2);border:1px solid var(--line-strong);border-radius:6px;height:30px;padding:0 6px}
+.mwrap{position:relative;width:100%;aspect-ratio:1800/1000;border-radius:10px;overflow:hidden;background:var(--lane);border:1px solid var(--line)}
+.mwrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+.mwrap canvas.amove{cursor:cell}
+.mover{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.mover[hidden]{display:none}
+.mcard{display:grid;justify-items:center;gap:12px;text-align:center;padding:18px;max-width:560px}
+.mcard .hero{font-size:24px}
+.mcard .sub{margin:0}
+.mbig{font:700 48px/1 var(--mono);color:var(--gold);font-variant-numeric:tabular-nums}
+.mbig small{font-size:22px;color:var(--muted)}
+.mrow{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;font-size:13px;color:var(--muted)}
+.mrow b{color:var(--ink);font:600 13px/1 var(--mono)}
+.mrow .e{color:var(--warn)}.mrow .l{color:var(--no)}
+.mstrip{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:420px}
+.mstrip i{width:14px;height:14px;border-radius:4px;display:block;background:var(--faint)}
+.mstrip i.cs{background:var(--ok)}.mstrip i.early{background:var(--warn)}.mstrip i.late{background:var(--no)}
+.mstrip i.siege{border-radius:2px;outline:2px solid color-mix(in srgb,var(--ink) 35%,transparent);outline-offset:1px}
+.mtip{font-size:12.5px;color:var(--ink-2);max-width:460px}
+.mkeys{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--faint)}
+.mkeys kbd{margin-right:3px}
+.mnote{padding:28px 16px;text-align:center;color:var(--muted)}
+@media (hover:none) and (pointer:coarse){.mkeys{display:none}}
 @media (prefers-reduced-motion:reduce){.lives svg{transition:none}}
 @media (max-width:420px){
   .side{padding:8px}
@@ -324,7 +365,7 @@ html[data-hx=play] .pl-go{animation:hx-pulse 1.1s var(--ease) .45s backwards}
 .rlnav-set svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rlnav-set:hover,.rlnav-set[aria-expanded="true"]{color:var(--ink);background:var(--inset)}
 #rlset-pop[hidden]{display:none}#rlset-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;padding:10px 12px;border-radius:10px;background:var(--surface,#0E1014);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap}
-.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}
+.rlset-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--faint)}.rlset-row+.rlset-row{margin-top:8px}.rlset-rev{border:0;background:none;color:var(--accent);font:500 12px/1 inherit;padding:6px 4px;cursor:pointer}
 #rlset-pop .seg{display:inline-flex;flex-direction:row;flex-wrap:nowrap;width:auto;border:0;gap:2px;padding:2px;border-radius:8px;background:var(--inset)}#rlset-pop .seg>button{display:inline-block;width:auto;min-height:0;margin:0;border:0;background:none;color:var(--muted);font:500 12px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}#rlset-pop .seg>button[aria-pressed="true"]{background:var(--inset);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .rlnav-docs{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;color:var(--muted);text-decoration:none;font:500 13px/1 var(--sans)}
 .rlnav-docs svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -663,6 +704,9 @@ st.running = true; if (!rq) { last = 0; rq = W.requestAnimationFrame(frame); }
 else { stop(); if (st.hidden) idle(); else if (!st.typing) still(); }
 }
 const sync = () => { if (pop) pop.querySelectorAll("[data-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === mode))); };
+function syncSpoil() { if (!pop) return; let v = null; try { v = W.localStorage.getItem("riftlogic.spoilers"); } catch (_) {}
+pop.querySelectorAll("[data-spoil]").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-spoil") === (v === "shown" ? "shown" : "hidden")))); }
+syncSpoil();
 function setMode(m) {
 if (!/^(anim|still|off)$/.test(m)) return;
 mode = st.mode = m; st.paused = m !== "anim"; st.off = m === "off";
@@ -680,7 +724,13 @@ const pause = v => setMode(v ? "still" : "anim");
 if (btn && pop) {
 const open = v => { pop.hidden = !v; btn.setAttribute("aria-expanded", String(v)); };
 on(btn, "click", e => { e.stopPropagation(); open(pop.hidden); });
-on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg")); });
+on(pop, "click", e => { e.stopPropagation(); const b = e.target.closest && e.target.closest("[data-bg]"); if (b) setMode(b.getAttribute("data-bg"));
+const sp = e.target.closest && e.target.closest("[data-spoil],[data-spoil-reveal]");
+if (sp) {
+try { if (sp.hasAttribute("data-spoil-reveal")) W.localStorage.setItem("riftlogic.spoilers.at", String(Date.now()));
+else if (sp.getAttribute("data-spoil") === "shown") W.localStorage.setItem("riftlogic.spoilers", "shown"); else W.localStorage.removeItem("riftlogic.spoilers"); } catch (_) {}
+syncSpoil(); try { W.dispatchEvent(new W.CustomEvent("rl:spoilers")); } catch (_) {}
+} });
 on(D, "click", () => open(false));
 on(D, "keydown", e => { if (e.key === "Escape" && !pop.hidden) { open(false); btn.focus(); } });
 }
@@ -888,6 +938,9 @@ D.fonts && D.fonts.ready && D.fonts.ready.then(() => D.querySelectorAll(".hx-seg
 D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
 })();</script>
 <div class="app">
+  <div class="views" role="tablist" aria-label="Play">
+    <button type="button" role="tab" id="v-quiz" data-view="quiz" aria-selected="true" aria-controls="main">Quiz</button><button type="button" role="tab" id="v-mech" data-view="mech" aria-selected="false" aria-controls="mech">Last hit</button>
+  </div>
   <main class="pl-grid" id="main">
     <section class="pl-card pl-stage" id="stage" aria-label="Game">
       <div class="hud" id="hud">
@@ -907,6 +960,16 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
       <ol class="blist" id="blist" aria-live="polite"></ol>
     </aside>
   </main>
+  <section class="pl-card mech" id="mech" aria-label="Last hit" hidden>
+    <div class="mbar">
+      <div class="mchips" role="group" aria-label="Drill" id="mdrills"></div>
+      <span class="grow"></span>
+      <span class="mstat" id="mstage"></span>
+      <label class="mping" title="Your usual in-game ping: commands land this much later, as in game">Ping <select id="mping" aria-label="Ping"><option value="0">0</option><option value="30">30</option><option value="60">60</option><option value="90">90</option></select></label>
+    </div>
+    <div class="mwrap" id="mwrap"><canvas id="mcv" role="img" aria-label="Lane: your champion, minion waves and a turret"></canvas><div class="mover" id="mover"></div></div>
+    <div class="mkeys"><span><kbd>Right-click</kbd>attack / move</span><span><kbd>A</kbd>+ click attack-move</span><span><kbd>S</kbd>stop</span><span><kbd>Esc</kbd>end round</span></div>
+  </section>
   <div class="pl-top"><button type="button" class="btn ghost" id="theme" aria-label="Switch colour theme">Light</button></div>
 </div>
 <script>
@@ -1231,6 +1294,7 @@ async function doShare(btn){
 
 /* ---------- keyboard ---------- */
 document.addEventListener("keydown", e => {
+  if (document.documentElement.getAttribute("data-view") === "mech") return;
   const t = e.target; if (t && (t.tagName === "INPUT" || t.isContentEditable) || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
   if (S.mode === "play" && S.q && !S.answeredQ){
@@ -1282,7 +1346,731 @@ document.querySelectorAll("#board .tabs button").forEach(b => b.addEventListener
 
 hud(); startScreen();
 const boardReady = loadBoard("day");
-window.__play = {ready: Promise.all([iconsReady, boardReady]), state: () => ({...S, seen: S.seen.size, playMode: MODE}), start, answer, advance, loadBoard, setMode};
+window.__play = {ready: Promise.all([iconsReady, boardReady]), state: () => ({...S, seen: S.seen.size, playMode: MODE}), start, answer, advance, loadBoard, setMode,
+  icons: () => ICONS, iconsReady};
+})();
+</script>
+<script>
+/* Rift Logic Play · Last hit: the deterministic simulation behind the mechanics drills (reasoning/play-mechanics/evidence.md).
+ *
+ * One round = a few minion waves in one lane. The player's champion last-hits enemy minions with League's controls
+ * (right-click a minion = attack it and keep attacking, right-click the ground = move / cancel a windup, A + click =
+ * attack-move to the minion nearest the cursor, S = stop). Drills:
+ *   lane   both waves fight with the real minion stats (HP, AD, armor, windups, missiles, %-current-health bonus vs minions)
+ *   tower  an enemy wave under your outer turret, no allied minions: turret shots at the wiki's % of maximum health
+ *   fire   lane + an enemy champion behind their wave throwing real skillshots at you (speed, width, cast time, range);
+ *          "first enemy hit" missiles stop on your allied minions
+ * Every number comes from MECH (src/play_export.py mech_data(): calc.json, kb.json, the wiki pages and the CommunityDragon
+ * minion bins in data/raw). Seeded and fixed-step (60 ticks/s), so the same seed + the same commands replay exactly.
+ *
+ *   const sim = RLMech.create(MECH, {seed, drill, stage, champ, ping});
+ *   sim.cmd({type: "attack", id} | {type: "move", x, y} | {type: "amove", x, y} | {type: "stop"});
+ *   sim.step(seconds);  sim.S (state: units, missiles, shots, fx, stats);  sim.done();  sim.summary();
+ * Works in node (module.exports) and in the page (window.RLMech).
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.RLMech = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+  const TICK = 1 / 60;
+  const W = 1800, H = 1000, LANE_Y = 500;          // the visible slice of the lane, in game units
+  // Mulberry32: small, fast, seedable
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  // League's per-level stat growth (the same curve as web/engine.js `growth`)
+  const growthFactor = L => (L - 1) * (0.7025 + 0.0175 * (L - 1));
+  const upgradesAt = (D, sec) => sec < D.upgrade.first ? 0 : 1 + Math.floor((sec - D.upgrade.first) / D.upgrade.every);
+  // minion stats after u upgrades (wiki {{pp|type=upgrades}} formulas, see MECH.minions[k].src)
+  function minionStats(D, kind, u) {
+    const m = D.minions[kind];
+    const hp = Math.min(m.hp.cap, m.hp.base + m.hp.per * u);
+    const ad = Math.min(m.ad.cap, m.ad.base + m.ad.per1 * Math.min(u, m.ad.until) + m.ad.per2 * Math.max(0, u - m.ad.until));
+    const armor = m.armor ? Math.min(m.armor.cap, u <= m.armor.until ? 0 : m.armor.k * (u - m.armor.until - 1) / 2 * (u - m.armor.until)) : 0;
+    const gold = m.gold + (m.goldPerUpgrade || 0) * Math.max(0, u - 1);
+    return {hp, ad, armor, gold};
+  }
+  function champStats(D, name, level) {
+    const c = D.champs[name], g = growthFactor(level);
+    const ad = c.ad + c.adg * g + (c.item ? c.item.ad : 0);
+    const as = c.as + c.asr * (c.asg / 100) * g;
+    const attackTime = 1 / as, base = c.wu / c.as;
+    // windup: the base windup, shrinking with bonus attack speed by the champion's windup modifier (wiki: Basic attack)
+    return {ad, as, attackTime, windup: base + (c.wu * attackTime - base) * (c.wm == null ? 1 : c.wm), range: c.range, ms: c.ms, radius: c.radius, melee: !!c.melee, missile: c.melee ? 0 : c.msl};
+  }
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const physical = (dmg, armor) => dmg * 100 / (100 + Math.max(0, armor));
+  // distance from point p to segment a-b
+  function segDist(ax, ay, bx, by, px, py) {
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+    return Math.hypot(ax + t * dx - px, ay + t * dy - py);
+  }
+
+  function create(D, opt = {}) {
+    const R = rng(opt.seed == null ? 1 : opt.seed);
+    const drill = opt.drill || "lane";
+    const stage = Math.max(1, Math.min(D.stages.length, opt.stage || 1));
+    const st = D.stages[stage - 1];
+    const minute = st.minute, sec0 = minute * 60;
+    const level = D.levels[Math.min(D.levels.length - 1, Math.floor(minute))];
+    const pool = opt.pool || D.pool;
+    const champ = opt.champ && D.champs[opt.champ] ? opt.champ : pool[Math.floor(R() * pool.length)];
+    const C = champStats(D, champ, level);
+    const u = upgradesAt(D, sec0);
+    // the wave numbers this round plays: waves spawn every 30 s from 0:30, a siege minion on every 3rd wave (before 14:00)
+    // two consecutive waves around this minute, the second one a siege-minion wave (every 3rd wave), so each round has one cannon
+    const n0 = Math.max(1, Math.floor((sec0 - D.waves.first) / D.waves.every) + 1);
+    const wave0 = n0 + ((D.waves.siegeEvery * 3 - 1 - n0) % D.waves.siegeEvery + D.waves.siegeEvery) % D.waves.siegeEvery;
+    const nWaves = 2;
+    const S = {t: 0, tick: 0, drill, stage, champ, level, minute, upgrades: u, units: [], missiles: [], shots: [], fx: [],
+      cs: 0, gold: 0, total: 0, early: [], late: [], missed: 0, hitsTaken: 0, shotsFired: 0, shotsBlocked: 0, results: [],
+      waveQueue: [], wavesSpawned: 0, nWaves, over: false, overAt: null, cmdQueue: [], log: [], ping: Math.max(0, opt.ping || 0) / 1000,
+      assist: !!st.assist, lastHitDmg: 0};
+    let nextId = 1;
+    const unit = o => { const x = Object.assign({id: nextId++, alive: true, target: null, windEnd: null, nextAtk: 0, vx: 0, vy: 0}, o); S.units.push(x); return x; };
+
+    // the player's champion
+    const me = unit({kind: "champ", team: 0, x: drill === "tower" ? 420 : 560, y: LANE_Y + 150, r: C.radius, ms: C.ms, name: champ, cmd: null, moveTo: null});
+    S.me = me; S.C = C;
+    S.lastHitDmg = C.ad;   // vs 0 armor; per-minion value in dmgTo()
+    const turret = drill === "tower" ? unit({kind: "turret", team: 0, x: 300, y: LANE_Y - 40, r: D.turret.radius, nextAtk: 0}) : null;
+    const foe = drill === "fire" ? unit({kind: "foe", team: 1, x: 1500, y: LANE_Y - 150, r: 65, nextCast: 2.2, casting: null}) : null;
+    S.turret = turret; S.foe = foe;
+
+    function waveKinds(n) {
+      const k = ["melee", "melee", "melee"];
+      if (n % D.waves.siegeEvery === 0) k.push("siege");
+      return k.concat(["caster", "caster", "caster"]);
+    }
+    function spawnWave(n) {
+      S.wavesSpawned++;
+      // your surviving minions walk on toward the enemy tower (off this slice), so every wave meets at the same place
+      for (const x of S.units) if (x.alive && x.team === 0 && x.hp != null) { x.alive = false; x.gone = true; x.diedAt = S.t; }
+      const kinds = waveKinds(n), gap = D.waves.spacing * D.minions.melee.ms;
+      const sides = drill === "tower" ? [1] : [0, 1];
+      for (const team of sides) {
+        kinds.forEach((kind, i) => {
+          const m = D.minions[kind], s = minionStats(D, kind, u);
+          const x = team === 0 ? -80 - i * gap : W + 80 + i * gap;
+          const y = LANE_Y + [-36, 36, 0, 0, -36, 36, 0, 0][i % 8] * (team === 0 ? 1 : -1);
+          unit({kind, team, x, y, r: m.radius, pr: m.pathRadius, ms: m.ms, hp: s.hp, max: s.hp, ad: s.ad, armor: s.armor, gold: s.gold,
+            wave: n, you: {hits: []}, dmgLog: []});
+          if (team === 1) S.total++;
+        });
+      }
+    }
+    for (let i = 0; i < nWaves; i++) S.waveQueue.push(wave0 + i);
+    spawnWave(S.waveQueue.shift());
+
+    const enemies = team => S.units.filter(x => x.alive && x.team !== team && (x.kind === "melee" || x.kind === "caster" || x.kind === "siege" || x.kind === "turret"));
+    const inRange = (a, b, range) => dist(a, b) <= range + a.r + b.r;
+    const dmgTo = m => physical(C.ad, m.armor || 0);
+
+    // -------- damage and deaths
+    function damage(m, amount, src) {
+      if (!m.alive || m.kind === "turret") return;
+      m.hp -= amount;
+      m.dmgLog.push([S.t, amount, src === me ? 1 : 0, Math.max(0, m.hp)]);
+      if (src === me) m.you.hits.push([S.t, amount]);
+      if (m.hp <= 1e-9) die(m, src);
+    }
+    function die(m, src) {
+      m.alive = false; m.hp = 0; m.diedAt = S.t;
+      if (m.team !== 1) return;
+      let res;
+      if (src === me) { S.cs++; S.gold += m.gold; res = {r: "cs"}; S.fx.push({k: "gold", x: m.x, y: m.y, t: S.t, v: m.gold}); }
+      else {
+        // late: one of your attacks was on its way (windup or missile); early: you hit it and it survived, then others finished it
+        const land = pendingLand(m);
+        if (land != null) { const ms = Math.round((land - S.t) * 1000); S.late.push(ms); res = {r: "late", ms}; }
+        else if (m.you.hits.length) {
+          // without your last hit its health would be one attack higher, so that attack would have killed it only at the moment
+          // it actually died: you were early by (death − your last hit landing)
+          const th = m.you.hits[m.you.hits.length - 1][0];
+          const ms = Math.max(0, Math.round((S.t - th) * 1000)); S.early.push(ms); res = {r: "early", ms};
+        } else { S.missed++; res = {r: "missed"}; }
+        S.fx.push({k: "miss", x: m.x, y: m.y, t: S.t});
+      }
+      S.results.push(Object.assign({kind: m.kind, t: S.t}, res));
+    }
+    // when your pending attack on m would land (null if none)
+    function pendingLand(m) {
+      let best = null;
+      if (me.atkTgt === m && me.windEnd != null) {
+        const travel = C.melee ? 0 : Math.max(0, dist(me, m) - m.r) / C.missile;
+        best = me.windEnd + travel;
+      }
+      for (const p of S.missiles) if (p.src === me && p.tgt === m && p.alive) {
+        const land = S.t + Math.max(0, dist(p, m) - m.r) / p.speed;
+        best = best == null ? land : Math.min(best, land);
+      }
+      return best;
+    }
+
+    // -------- commands (applied after the simulated ping)
+    function cmd(c) { S.cmdQueue.push({at: S.t + S.ping, c}); S.log.push([S.tick, c]); }
+    function apply(c) {
+      if (c.type === "attack") {
+        const m = S.units.find(x => x.id === c.id && x.alive && x.team === 1 && x.kind !== "foe");
+        if (!m) return;
+        if (me.target !== m) cancelWindup();
+        me.target = m; me.moveTo = null;
+      } else if (c.type === "move") {
+        cancelWindup(); me.target = null; me.moveTo = {x: clampX(c.x), y: clampY(c.y)};
+        S.fx.push({k: "click", x: c.x, y: c.y, t: S.t});
+      } else if (c.type === "amove") {
+        const m = nearestEnemyMinion(c.x, c.y, D.amoveRadius);
+        if (m) { if (me.target !== m) cancelWindup(); me.target = m; me.moveTo = null; }
+        else { cancelWindup(); me.target = null; me.moveTo = {x: clampX(c.x), y: clampY(c.y)}; }
+        S.fx.push({k: "aclick", x: c.x, y: c.y, t: S.t});
+      } else if (c.type === "stop") { cancelWindup(); me.target = null; me.moveTo = null; }
+    }
+    // a move / stop during the windup cancels the attack, except in its last game tick (wiki: Basic attack, 1/30 s grace)
+    function cancelWindup() {
+      if (me.windEnd != null && S.t < me.windEnd - D.windupGrace) { me.windEnd = null; me.nextAtk = me.atkStart; }
+    }
+    const clampX = x => Math.max(40, Math.min(W - 40, x)), clampY = y => Math.max(40, Math.min(H - 40, y));
+    function nearestEnemyMinion(x, y, within) {
+      let best = null, bd = within;
+      for (const m of S.units) if (m.alive && m.team === 1 && m.hp != null) { const d = Math.hypot(m.x - x, m.y - y); if (d <= bd) { bd = d; best = m; } }
+      return best;
+    }
+    // what a right-click at (x, y) targets: the nearest enemy minion whose selection radius (bin) contains the cursor
+    function pick(x, y) {
+      let best = null, bd = Infinity;
+      for (const m of S.units) if (m.alive && m.team === 1 && m.hp != null) {
+        const d = Math.hypot(m.x - x, m.y - y); if (d <= D.minions[m.kind].sel && d < bd) { bd = d; best = m; }
+      }
+      return best;
+    }
+
+    // -------- per-tick AI
+    function moveToward(u, x, y, stopAt) {
+      const dx = x - u.x, dy = y - u.y, d = Math.hypot(dx, dy);
+      if (d <= stopAt + 1e-6) { u.vx = u.vy = 0; return true; }
+      const step = Math.min(d - stopAt, u.ms * TICK);
+      u.vx = dx / d * u.ms; u.vy = dy / d * u.ms;
+      u.x += dx / d * step; u.y += dy / d * step; return false;
+    }
+    function minionTick(m) {
+      const M = D.minions[m.kind];
+      if (m.target && (!m.target.alive || dist(m, m.target) > D.acquisition + m.r + m.target.r + 200)) { m.target = null; m.windEnd = null; }
+      if (!m.target) {
+        let best = null, bd = D.acquisition;
+        for (const e of enemies(m.team)) { const d = dist(m, e) - e.r - m.r; if (d < bd) { bd = d; best = e; } }
+        m.target = best;
+      }
+      if (m.windEnd != null) {
+        if (S.t >= m.windEnd - 1e-9) {
+          m.windEnd = null;
+          if (m.target && m.target.alive) {
+            if (!M.missile) hitMinion(m, m.target);
+            else S.missiles.push({src: m, tgt: m.target, x: m.x, y: m.y, speed: M.missile, alive: true, kind: m.kind});
+          }
+        }
+        m.vx = m.vy = 0; return;
+      }
+      if (m.target) {
+        if (inRange(m, m.target, M.range)) {
+          m.vx = m.vy = 0;
+          if (S.t >= m.nextAtk - 1e-9) { m.windEnd = S.t + M.windup; m.nextAtk = S.t + M.period; }
+        } else moveToward(m, m.target.x, m.target.y, M.range + m.r + m.target.r - 2);
+      } else {
+        // no target: walk down the lane toward the enemy base; off the visible slice = gone
+        moveToward(m, m.team === 0 ? W + 400 : -400, LANE_Y + (m.y - LANE_Y) * 0.98, 0);
+        if (m.team === 0 ? m.x > W + 300 : m.x < -300) { m.alive = false; m.gone = true; m.diedAt = S.t; }
+      }
+    }
+    function hitMinion(src, tgt) {
+      if (!tgt.alive) return;
+      if (tgt.kind === "turret") return;                  // turrets don't fall in a drill
+      const M = D.minions[src.kind];
+      damage(tgt, physical(src.ad + M.vsMinionPct * tgt.hp, tgt.armor || 0), src);
+    }
+    function turretTick(T) {
+      if (T.target && (!T.target.alive || !inRange(T, T.target, D.turret.range))) T.target = null;
+      if (!T.target) {
+        let best = null, bk = -1, bd = Infinity;
+        for (const e of S.units) if (e.alive && e.team === 1 && e.hp != null && inRange(T, e, D.turret.range)) {
+          const k = D.turret.priority.indexOf(e.kind), pr = k < 0 ? 99 : k, d = dist(T, e);
+          if (best == null || pr < bk || (pr === bk && d < bd)) { best = e; bk = pr; bd = d; }
+        }
+        T.target = best;
+      }
+      if (T.target && S.t >= T.nextAtk - 1e-9) {
+        T.nextAtk = S.t + D.turret.period;
+        S.missiles.push({src: T, tgt: T.target, x: T.x, y: T.y - 60, speed: D.turret.missile, alive: true, kind: "turret"});
+      }
+    }
+    function champTick() {
+      if (me.windEnd != null) {
+        const tg = me.atkTgt;
+        if (!tg || !tg.alive) { me.windEnd = null; me.nextAtk = me.atkStart; }      // the target died mid-windup: no attack
+        else if (S.t >= me.windEnd - 1e-9) {
+          me.windEnd = null;
+          if (C.melee) damage(tg, dmgTo(tg), me);
+          else S.missiles.push({src: me, tgt: tg, x: me.x, y: me.y, speed: C.missile, alive: true, kind: "champ"});
+        } else { me.vx = me.vy = 0; return; }
+      }
+      if (me.target && !me.target.alive) me.target = null;
+      if (me.target) {
+        const tg = me.target;
+        if (inRange(me, tg, C.range)) {
+          me.vx = me.vy = 0;
+          if (S.t >= me.nextAtk - 1e-9) { me.atkStart = me.nextAtk; me.windEnd = S.t + C.windup; me.nextAtk = S.t + C.attackTime; me.atkTgt = tg; }
+        } else moveToward(me, tg.x, tg.y, C.range + me.r + tg.r - 2);
+      } else if (me.moveTo) { if (moveToward(me, me.moveTo.x, me.moveTo.y, 0)) me.moveTo = null; }
+      else me.vx = me.vy = 0;
+    }
+    function missileTick(p) {
+      if (!p.alive) return;
+      const tg = p.tgt;
+      if (!tg.alive) { p.alive = false; return; }                   // the target died first: the missile fizzles
+      const d = dist(p, tg), reach = tg.r, step = p.speed * TICK;
+      if (d - reach <= step) {
+        p.alive = false;
+        if (p.kind === "champ") damage(tg, dmgTo(tg), me);
+        else if (p.kind === "turret") damage(tg, D.minions[tg.kind].towerPct * tg.max, p.src);
+        else hitMinion(p.src, tg);
+        return;
+      }
+      p.x += (tg.x - p.x) / d * step; p.y += (tg.y - p.y) / d * step;
+    }
+    // minions push apart (pathing radius), so a wave clumps like it does in game instead of stacking on one point
+    function separate() {
+      const ms = S.units.filter(x => x.alive && x.pr);
+      for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) {
+        const a = ms[i], b = ms[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, min = a.pr + b.pr;
+        if (d < min) { const push = (min - d) / 2, nx = dx / d, ny = dy / d; a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
+      }
+    }
+
+    // -------- the enemy champion's skillshots (fire drill)
+    function foeTick() {
+      const f = foe;
+      // stays behind its wave: ~300 units behind the front enemy minion, inside the visible slice
+      const front = S.units.filter(x => x.alive && x.team === 1 && x.hp != null).reduce((a, x) => Math.min(a, x.x), W);
+      const want = Math.max(1150, Math.min(W - 120, front + 320));
+      if (Math.abs(f.x - want) > 40 && !f.casting) { f.x += Math.sign(want - f.x) * Math.min(Math.abs(want - f.x), 330 * TICK); }
+      if (f.casting) {
+        if (S.t >= f.casting.fireAt - 1e-9) { fire(f.casting); f.casting = null; f.nextCast = S.t + st.pokeEvery * (0.75 + 0.5 * R()); }
+        return;
+      }
+      if (S.t >= f.nextCast && !S.over) {
+        const sp = D.spells[Math.floor(R() * D.spells.length)];
+        // aim: where you are, or where you'll be if you keep walking (the share of leading shots grows with the stage)
+        const lead = R() < st.lead;
+        const flight = sp.kind === "line" ? Math.max(0, dist(f, me) - me.r) / sp.speed : sp.delay;
+        const tt = sp.cast + flight;
+        let ax = me.x + (lead ? me.vx * tt : 0), ay = me.y + (lead ? me.vy * tt : 0);
+        const jitter = (R() - 0.5) * 2 * st.jitter; ax += jitter * 0.3; ay += jitter;
+        f.casting = {sp, ax, ay, at: S.t, fireAt: S.t + sp.cast};
+        S.shotsFired++;
+      }
+    }
+    function fire(c) {
+      const sp = c.sp, f = foe;
+      if (sp.kind === "line") {
+        let dx = c.ax - f.x, dy = c.ay - f.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+        S.shots.push({sp, x: f.x, y: f.y, x0: f.x, y0: f.y, dx, dy, trav: 0, alive: true, t0: S.t});
+      } else {
+        const d = Math.hypot(c.ax - f.x, c.ay - f.y), k = d > sp.range ? sp.range / d : 1;
+        S.shots.push({sp, x: f.x + (c.ax - f.x) * k, y: f.y + (c.ay - f.y) * k, alive: true, t0: S.t, boomAt: S.t + sp.delay, circle: true});
+      }
+    }
+    function shotTick(s) {
+      if (!s.alive) return;
+      const sp = s.sp;
+      if (s.circle) {
+        if (S.t >= s.boomAt - 1e-9) {
+          s.alive = false; s.doneAt = S.t;
+          if (Math.hypot(me.x - s.x, me.y - s.y) <= sp.radius + me.r) { S.hitsTaken++; s.hit = true; S.fx.push({k: "hit", x: me.x, y: me.y, t: S.t}); }
+        }
+        return;
+      }
+      const step = Math.min(sp.speed * TICK, sp.range - s.trav);
+      const nx = s.x + s.dx * step, ny = s.y + s.dy * step;
+      // the first enemy of the caster on this tick's path: your allied minions block "first enemy hit" missiles
+      let first = null, fd = Infinity;
+      const cands = [me].concat(sp.block ? S.units.filter(x => x.alive && x.team === 0 && x.hp != null) : []);
+      for (const u of cands) {
+        if (segDist(s.x, s.y, nx, ny, u.x, u.y) <= sp.hw + u.r) { const d = Math.hypot(u.x - s.x, u.y - s.y); if (d < fd) { fd = d; first = u; } }
+      }
+      if (first) {
+        s.alive = false; s.doneAt = S.t; s.x = first.x; s.y = first.y;
+        if (first === me) { S.hitsTaken++; s.hit = true; S.fx.push({k: "hit", x: me.x, y: me.y, t: S.t}); }
+        else { S.shotsBlocked++; s.blocked = true; }
+        return;
+      }
+      s.x = nx; s.y = ny; s.trav += step;
+      if (s.trav >= sp.range - 1e-6) { s.alive = false; s.doneAt = S.t; }
+    }
+
+    function tickOnce() {
+      // commands whose ping delay has passed
+      while (S.cmdQueue.length && S.cmdQueue[0].at <= S.t + 1e-9) apply(S.cmdQueue.shift().c);
+      for (const m of S.units) if (m.alive && m.hp != null) minionTick(m);
+      if (turret) turretTick(turret);
+      champTick();
+      if (foe) foeTick();
+      for (const p of S.missiles) missileTick(p);
+      for (const s of S.shots) shotTick(s);
+      separate();
+      S.missiles = S.missiles.filter(p => p.alive);
+      S.shots = S.shots.filter(s => s.alive || S.t - s.doneAt < 0.35);
+      S.fx = S.fx.filter(f => S.t - f.t < 1.2);
+      // the next wave arrives when this one's enemy minions are gone (a compressed version of the 30 s spawn timer)
+      const foes = S.units.some(x => x.alive && x.team === 1 && x.hp != null);
+      if (!foes && S.waveQueue.length) spawnWave(S.waveQueue.shift());
+      else if (!foes && !S.waveQueue.length && !S.over) { S.over = true; S.overAt = S.t; }
+      S.units = S.units.filter(x => x.alive || x.kind === "champ" || x.kind === "turret" || x.kind === "foe" || S.t - x.diedAt < 0.6);
+      S.t += TICK; S.tick++;
+    }
+    let acc = 0;
+    function step(sec) {
+      acc += sec;
+      let n = 0;
+      while (acc >= TICK - 1e-12 && n < 30) { tickOnce(); acc -= TICK; n++; }
+      if (n >= 30) acc = 0;                               // a long stall (background tab): don't try to catch up
+    }
+    function runTicks(n) { for (let i = 0; i < n; i++) tickOnce(); }
+    function done() { return S.over && S.t - S.overAt > 0.6; }
+    const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : 0;
+    function summary() {
+      return {drill, stage, champ, level, minute, cs: S.cs, total: S.total, gold: S.gold, early: S.early.length, earlyMs: avg(S.early),
+        late: S.late.length, lateMs: avg(S.late), missed: S.missed, hits: S.hitsTaken, shots: S.shotsFired, blocked: S.shotsBlocked,
+        pct: S.total ? S.cs / S.total : 0, results: S.results.slice(), time: +S.t.toFixed(2)};
+    }
+    return {S, cmd, step, runTicks, done, summary, pick, dmgTo, C, D, W, H, TICK};
+  }
+
+  // where a round goes next: harder after a clean round, easier after a poor one (adaptive difficulty)
+  function nextStage(D, stage, sum) {
+    const dodge = sum.shots ? sum.hits / sum.shots : 0;
+    if (sum.pct >= D.progress.up && dodge <= D.progress.maxHitShare) return Math.min(D.stages.length, stage + 1);
+    if (sum.pct < D.progress.down) return Math.max(1, stage - 1);
+    return stage;
+  }
+  return {create, nextStage, champStats, minionStats, upgradesAt, rng, TICK, W, H};
+});
+
+</script>
+<script>
+/* Last hit: the mechanics drills (reasoning/play-mechanics/evidence.md). The simulation is RLMech (src/play_mech_sim.js, inlined
+ * above); MECH is its data (src/play_export.py mech_data). No leaderboard: client-side mechanics scores are trivial to fake, so
+ * only personal bests are kept (localStorage). */
+(() => {
+"use strict";
+const MECH = {"minions":{"melee":{"windup":0.393,"period":0.8,"range":110.0,"radius":48.0,"pathRadius":35.744,"ms":350.0,"sel":115.0,"missile":0,"hp":{"base":430,"per":35,"cap":1550},"ad":{"base":11,"per1":0,"until":5,"per2":3,"cap":80},"armor":{"until":5,"k":0.085,"cap":20},"gold":20,"vsMinionPct":0.02,"towerPct":0.45},"caster":{"windup":0.47,"period":1.5,"range":550.0,"radius":48.0,"pathRadius":35.744,"ms":350.0,"sel":115.0,"missile":650.0,"hp":{"base":275,"per":9,"cap":600},"ad":{"base":19.5,"per1":1.5,"until":5,"per2":4,"cap":125},"gold":14,"vsMinionPct":0.035,"towerPct":0.7},"siege":{"windup":0.3,"period":1.0,"range":300.0,"radius":65.0,"pathRadius":55.744,"ms":350.0,"sel":140.0,"missile":1200.0,"hp":{"base":750,"per":85,"cap":5850},"ad":{"base":36,"per1":1.5,"until":60,"per2":0,"cap":126},"gold":50,"goldPerUpgrade":1,"vsMinionPct":0.05,"towerPct":0.14}},"turret":{"period":1.2005,"missile":1200,"range":750,"radius":88.4,"priority":["siege","melee","caster"]},"champs":{"Ezreal":{"name":"Ezreal","melee":0,"ad":60,"adg":3.75,"as":0.625,"asg":2.5,"asr":0.625,"wu":0.18839,"msl":2000.0,"range":550,"ms":325,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Sivir":{"name":"Sivir","melee":0,"ad":60,"adg":2.5,"as":0.625,"asg":1.6,"asr":0.625,"wu":0.12,"msl":1750.0,"range":500,"ms":335,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Syndra":{"name":"Syndra","melee":0,"ad":54,"adg":2.9,"as":0.658,"asg":2,"asr":0.625,"wu":0.1875,"msl":1800.0,"range":550,"ms":330,"radius":65.0,"item":{"id":"1056","name":"Doran's Ring","ad":0},"wm":1},"Viktor":{"name":"Viktor","melee":0,"ad":53,"adg":3.0,"as":0.658,"asg":2.11,"asr":0.658,"wu":0.18,"msl":2300.0,"range":525,"ms":335,"radius":65.0,"item":{"id":"1056","name":"Doran's Ring","ad":0},"wm":1},"Lux":{"name":"Lux","melee":0,"ad":54,"adg":3.3,"as":0.669,"asg":3,"asr":0.625,"wu":0.15625,"msl":1600.0,"range":550,"ms":330,"radius":65.0,"item":{"id":"1056","name":"Doran's Ring","ad":0},"wm":1},"Ahri":{"name":"Ahri","melee":0,"ad":53,"adg":3.0,"as":0.668,"asg":2.2,"asr":0.625,"wu":0.2,"msl":1750.0,"range":550,"ms":330,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Smolder":{"name":"Smolder","melee":0,"ad":58,"adg":2.3,"as":0.638,"asg":4,"asr":0.638,"wu":0.16622,"msl":1800.0,"range":550,"ms":330,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Annie":{"name":"Annie","melee":0,"ad":50,"adg":2.65,"as":0.61,"asg":1.36,"asr":0.625,"wu":0.19579,"msl":1500.0,"range":625,"ms":335,"radius":55.0,"item":{"id":"1056","name":"Doran's Ring","ad":0},"wm":1},"Lucian":{"name":"Lucian","melee":0,"ad":60,"adg":2.5,"as":0.638,"asg":2.5,"asr":0.638,"wu":0.15,"msl":2800.0,"range":500,"ms":335,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Garen":{"name":"Garen","melee":1,"ad":69,"adg":4.5,"as":0.625,"asg":3.65,"asr":0.625,"wu":0.18,"msl":347.79998779296875,"range":175,"ms":340,"radius":65.0,"item":{"id":"1054","name":"Doran's Shield","ad":0},"wm":0.5},"Katarina":{"name":"Katarina","melee":1,"ad":58,"adg":3.2,"as":0.658,"asg":2.74,"asr":0.658,"wu":0.15,"msl":467.0,"range":125,"ms":335,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Zed":{"name":"Zed","melee":1,"ad":63,"adg":3.4,"as":0.651,"asg":3.3,"asr":0.651,"wu":0.19759,"msl":467.0,"range":125,"ms":345,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Renekton":{"name":"Renekton","melee":1,"ad":69,"adg":4.15,"as":0.665,"asg":2.75,"asr":0.665,"wu":0.1773,"msl":0.0,"range":125,"ms":345,"radius":80.0,"item":{"id":"1054","name":"Doran's Shield","ad":0},"wm":1},"Irelia":{"name":"Irelia","melee":1,"ad":65,"adg":3.5,"as":0.656,"asg":2.5,"asr":0.656,"wu":0.19672,"msl":467.0,"range":200,"ms":335,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"Riven":{"name":"Riven","melee":1,"ad":64,"adg":3.0,"as":0.625,"asg":3.5,"asr":0.625,"wu":0.16667,"msl":347.79998779296875,"range":125,"ms":340,"radius":65.0,"item":{"id":"1055","name":"Doran's Blade","ad":10},"wm":1},"DrMundo":{"name":"Dr. Mundo","melee":1,"ad":61,"adg":2.5,"as":0.67,"asg":3.3,"asr":0.625,"wu":0.16031,"msl":0.0,"range":125,"ms":345,"radius":80.0,"item":{"id":"1054","name":"Doran's Shield","ad":0},"wm":1},"Malphite":{"name":"Malphite","melee":1,"ad":62,"adg":4.0,"as":0.736,"asg":3.4,"asr":0.638,"wu":0.24968,"msl":1000.0,"range":125,"ms":335,"radius":80.0,"item":{"id":"1054","name":"Doran's Shield","ad":0},"wm":1}},"pool":["Ezreal","Sivir","Syndra","Viktor","Lux","Ahri","Smolder","Annie","Lucian","Garen","Katarina","Zed","Renekton","Irelia","Riven","DrMundo","Malphite"],"spells":[{"c":"Ezreal","s":"Q","name":"Mystic Shot","cast":0.25,"range":1200.0,"kind":"line","speed":2000.0,"hw":60.0,"block":true},{"c":"Morgana","s":"Q","name":"Dark Binding","cast":0.25,"range":1300.0,"kind":"line","speed":1200.0,"hw":70.0,"block":true},{"c":"Blitzcrank","s":"Q","name":"Rocket Grab","cast":0.25,"range":1115.0,"kind":"line","speed":1800.0,"hw":70.0,"block":true},{"c":"Thresh","s":"Q","name":"Death Sentence","cast":0.5,"range":1100.0,"kind":"line","speed":1900.0,"hw":70.0,"block":true},{"c":"Brand","s":"Q","name":"Sear","cast":0.25,"range":1100.0,"kind":"line","speed":1600.0,"hw":60.0,"block":true},{"c":"Xerath","s":"E","name":"Shocking Orb","cast":0.25,"range":1125.0,"kind":"line","speed":1400.0,"hw":60.0,"block":true},{"c":"Ahri","s":"E","name":"Charm","cast":0.25,"range":1000.0,"kind":"line","speed":1550.0,"hw":60.0,"block":true},{"c":"Velkoz","s":"Q","name":"Plasma Fission","cast":0.25,"range":1100.0,"kind":"line","speed":1300.0,"hw":50.0,"block":true},{"c":"Kennen","s":"Q","name":"Thundering Shuriken","cast":0.175,"range":1050.0,"kind":"line","speed":1700.0,"hw":50.0,"block":true},{"c":"Ryze","s":"Q","name":"Overload","cast":0.25,"range":1000.0,"kind":"line","speed":1700.0,"hw":55.0,"block":true},{"c":"Caitlyn","s":"Q","name":"Piltover Peacemaker","cast":0.625,"range":1300.0,"kind":"line","speed":2200.0,"hw":60.0,"block":false},{"c":"Zyra","s":"E","name":"Grasping Roots","cast":0.25,"range":1100.0,"kind":"line","speed":1150.0,"hw":70.0,"block":false},{"c":"Xerath","s":"W","name":"Eye of Destruction","cast":0.25,"range":1000.0,"kind":"circle","radius":275,"delay":0.5,"block":false}],"levels":[1,1,2,3,4,5,5,6,6,7,7],"upgrade":{"first":30,"every":90},"waves":{"first":30,"every":30,"siegeEvery":3,"spacing":0.79},"windupGrace":0.03333333333333333,"acquisition":700.0,"amoveRadius":400,"stages":[{"minute":1.5,"pokeEvery":4.0,"lead":0.15,"jitter":60,"assist":true},{"minute":2.5,"pokeEvery":3.76,"lead":0.22,"jitter":56,"assist":true},{"minute":3.5,"pokeEvery":3.52,"lead":0.29,"jitter":52,"assist":false},{"minute":4.5,"pokeEvery":3.28,"lead":0.36,"jitter":48,"assist":false},{"minute":5.5,"pokeEvery":3.04,"lead":0.43,"jitter":44,"assist":false},{"minute":6.5,"pokeEvery":2.8,"lead":0.5,"jitter":40,"assist":false},{"minute":7.5,"pokeEvery":2.56,"lead":0.57,"jitter":36,"assist":false},{"minute":8.5,"pokeEvery":2.32,"lead":0.64,"jitter":32,"assist":false},{"minute":9.5,"pokeEvery":2.08,"lead":0.71,"jitter":28,"assist":false},{"minute":10.5,"pokeEvery":1.84,"lead":0.78,"jitter":24,"assist":false}],"progress":{"up":0.8,"down":0.5,"maxHitShare":0.34}};
+const $ = id => document.getElementById(id);
+const store = {get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (_) { return d; } },
+               set(k, v){ try { localStorage.setItem(k, v); } catch (_) {} }};
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})){
+    if (v == null || v === false) continue;
+    if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat(3)) if (k != null && k !== false) e.append(k.nodeType ? k : String(k));
+  return e;
+}
+const DRILLS = {mixed: "Mixed", lane: "Lane", tower: "Tower", fire: "Under fire"};
+const ROUND = ["lane", "tower", "fire"];
+const KIND = {melee: "Melee", caster: "Caster", siege: "Cannon"};
+let drill = DRILLS[store.get("riftlogic.play.mech.drill", "mixed")] ? store.get("riftlogic.play.mech.drill", "mixed") : "mixed";
+let ping = [0, 30, 60, 90].includes(+store.get("riftlogic.play.mech.ping", "30")) ? +store.get("riftlogic.play.mech.ping", "30") : 30;
+const stageOf = d => { const v = Math.floor(+store.get("riftlogic.play.mech.stage." + d, "1")); return v >= 1 && v <= MECH.stages.length ? v : 1; };
+const bests = (() => { try { return JSON.parse(store.get("riftlogic.play.mech.best", "{}")) || {}; } catch (_) { return {}; } })();
+const touchOnly = !!(window.matchMedia && matchMedia("(hover: none) and (pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches);
+const fx = on => { try { if (window.RLFX && window.RLFX.hold) window.RLFX.hold(on); } catch (_) {} };
+const clock = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
+
+/* ---------- view switch (Quiz / Last hit), #lasthit deep link ---------- */
+function setView(v, write){
+  if (v !== "mech") v = "quiz";
+  document.documentElement.setAttribute("data-view", v);
+  $("main").hidden = v === "mech"; $("mech").hidden = v !== "mech";
+  for (const b of document.querySelectorAll(".views button")) { const on = b.getAttribute("data-view") === v; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; }
+  if (write) { try { history.replaceState(null, "", v === "mech" ? "#lasthit" : location.pathname + location.search); } catch (_) {} }
+  if (v === "mech") { size(); if (state !== "play") { if (state !== "sum") showStart(); draw(); } }
+  else if (state === "play") abort();
+}
+for (const b of document.querySelectorAll(".views button")) {
+  b.addEventListener("click", () => setView(b.getAttribute("data-view"), true));
+  b.addEventListener("keydown", e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); const o = document.querySelector(`.views button[data-view="${b.getAttribute("data-view") === "mech" ? "quiz" : "mech"}"]`); o.focus(); setView(o.getAttribute("data-view"), true); } });
+}
+
+/* ---------- drill chips, ping ---------- */
+const chips = $("mdrills");
+for (const [k, label] of Object.entries(DRILLS)) chips.append(h("button", {type: "button", "data-d": k, "aria-pressed": String(k === drill), onclick: () => setDrill(k)}, label));
+function setDrill(d){
+  if (!DRILLS[d] || state === "play") return;
+  drill = d; store.set("riftlogic.play.mech.drill", d);
+  chips.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-d") === d)));
+  bar(); if (state !== "play") showStart();
+}
+$("mping").value = String(ping);
+$("mping").addEventListener("change", () => { ping = +$("mping").value || 0; store.set("riftlogic.play.mech.ping", String(ping)); });
+function bar(){
+  const b = bests[drill];
+  $("mstage").textContent = ""; $("mstage").append("Stage ", h("b", {}, stageOf(drill)), b ? " · Best " : "", b ? h("b", {}, b.stage) : "");
+}
+
+/* ---------- canvas ---------- */
+const cv = $("mcv");
+let ctx = null;                                   // created when the Last-hit view first draws
+let scale = 1, dpr = 1, cssW = 0;
+function size(){
+  const w = $("mwrap").clientWidth || 900; dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (w === cssW && cv.width) return;
+  cssW = w; scale = w / RLMech.W;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(w * RLMech.H / RLMech.W * dpr);
+}
+if (window.ResizeObserver) new ResizeObserver(() => { const w = $("mwrap").clientWidth; if (w && w !== cssW) { size(); draw(); } }).observe($("mwrap"));
+// theme colours (tokens), re-read when the theme changes
+let COL = {};
+function readCols(){ const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n).trim();
+  COL = {lane: g("--lane"), lane2: g("--lane-2"), blue: g("--blue"), red: g("--red"), ink: g("--ink"), muted: g("--muted"), faint: g("--faint"), gold: g("--gold"),
+    ok: g("--ok"), warn: g("--warn"), line: g("--line-strong"), bg: g("--bg"), mono: g("--mono") || "monospace"}; }
+readCols();
+new MutationObserver(() => { readCols(); draw(); }).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+const imgs = {};
+function portrait(c){
+  if (imgs[c]) return imgs[c].complete && imgs[c].naturalWidth ? imgs[c] : null;
+  const icons = window.__play && window.__play.icons ? window.__play.icons() : {}, u = icons["c:" + c];
+  if (!u) return null;
+  const im = new Image(); im.src = u; imgs[c] = im; return null;
+}
+let mouse = {x: -1e4, y: -1e4, in: false}, amove = false;
+
+function draw(){
+  if (document.documentElement.getAttribute("data-view") !== "mech") return;
+  if (!ctx) { try { ctx = cv.getContext("2d"); } catch (_) {} }
+  if (!ctx || !cv.width) return;
+  const S = sim && sim.S;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = COL.lane; ctx.fillRect(0, 0, cv.width, cv.height);
+  const k = dpr * scale, px = v => v / scale;          // world units per CSS pixel
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  // the lane
+  ctx.fillStyle = COL.lane2; ctx.fillRect(0, 300, RLMech.W, 400);
+  ctx.strokeStyle = COL.line; ctx.lineWidth = px(1); ctx.setLineDash([px(6), px(10)]);
+  ctx.beginPath(); ctx.moveTo(0, 500); ctx.lineTo(RLMech.W, 500); ctx.stroke(); ctx.setLineDash([]);
+  if (!S) return;
+  const t = S.t, C = sim.C;
+  // turret + its range
+  if (S.turret) {
+    const T = S.turret;
+    ctx.strokeStyle = COL.blue; ctx.globalAlpha = .35; ctx.setLineDash([px(4), px(6)]); ctx.lineWidth = px(1.5);
+    ctx.beginPath(); ctx.arc(T.x, T.y, MECH.turret.range + T.r, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.fillStyle = COL.blue; ctx.globalAlpha = .25; ctx.beginPath(); ctx.arc(T.x, T.y, T.r, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.lineWidth = px(3); ctx.strokeStyle = COL.blue; ctx.beginPath(); ctx.arc(T.x, T.y, T.r, 0, 7); ctx.stroke();
+    ctx.fillStyle = COL.blue; ctx.beginPath(); ctx.arc(T.x, T.y - 60, px(5), 0, 7); ctx.fill();
+  }
+  // attack range while attack-move is armed (as in game)
+  if (amove) { ctx.strokeStyle = COL.ok; ctx.globalAlpha = .5; ctx.lineWidth = px(1.5); ctx.beginPath(); ctx.arc(S.me.x, S.me.y, C.range + S.me.r, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+  const hover = state === "play" && mouse.in ? sim.pick(mouse.x, mouse.y) : null;
+  // minions
+  for (const m of S.units) {
+    if (m.hp == null) continue;
+    const dead = !m.alive, a = dead ? Math.max(0, 1 - (t - (m.diedAt || t)) / 0.6) : 1;
+    if (a <= 0) continue;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = m.team === 0 ? COL.blue : COL.red;
+    const br = m.pr || m.r;                              // bodies at their pathing radius, so a clump stays readable
+    if (m.kind === "siege") { const r = br; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(m.x - r, m.y - r, 2 * r, 2 * r, 14) : ctx.rect(m.x - r, m.y - r, 2 * r, 2 * r); ctx.fill(); }
+    else { ctx.beginPath(); ctx.arc(m.x, m.y, br, 0, 7); ctx.fill(); }
+    if (m.kind === "caster") { ctx.fillStyle = COL.lane; ctx.beginPath(); ctx.arc(m.x, m.y, br * .42, 0, 7); ctx.fill(); }
+    if (m === hover) { ctx.strokeStyle = COL.red; ctx.lineWidth = px(3); ctx.beginPath(); ctx.arc(m.x, m.y, br + px(5), 0, 7); ctx.stroke(); }
+    if (!dead) {
+      // health bar (League shows no numbers on minion bars)
+      const bw = m.kind === "siege" ? 100 : 72, bh = px(7), bx = m.x - bw / 2, by = m.y - br - px(12);
+      ctx.fillStyle = COL.bg; ctx.fillRect(bx - px(1), by - px(1), bw + px(2), bh + px(2));
+      ctx.fillStyle = m.team === 0 ? COL.blue : COL.red; ctx.fillRect(bx, by, bw * Math.max(0, m.hp / m.max), bh);
+      // the last-hit assist (League's own non-ranked indicator): only the first stages show it
+      if (S.assist && m.team === 1 && m.hp <= sim.dmgTo(m)) { ctx.strokeStyle = COL.ink; ctx.lineWidth = px(2); ctx.strokeRect(bx - px(2), by - px(2), bw + px(4), bh + px(4)); }
+    }
+    ctx.globalAlpha = 1;
+  }
+  // basic-attack missiles
+  for (const p of S.missiles) {
+    ctx.fillStyle = p.kind === "champ" ? COL.gold : p.kind === "turret" ? COL.ink : p.src.team === 0 ? COL.blue : COL.red;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.kind === "turret" ? px(6) : px(4), 0, 7); ctx.fill();
+  }
+  // the enemy champion (Under fire): its portrait is the champion whose spell it casts; a ring fills over the cast time
+  if (S.foe) {
+    const f = S.foe, c = f.casting ? f.casting.sp.c : (f.lastC || MECH.spells[0].c);
+    if (f.casting) f.lastC = f.casting.sp.c;
+    ring(f.x, f.y, f.r, c, COL.red);
+    if (f.casting) {
+      const q = Math.min(1, (t - f.casting.at) / Math.max(.05, f.casting.fireAt - f.casting.at));
+      ctx.strokeStyle = COL.red; ctx.lineWidth = px(4); ctx.beginPath(); ctx.arc(f.x, f.y, f.r + px(8), -Math.PI / 2, -Math.PI / 2 + q * 2 * Math.PI); ctx.stroke();
+    }
+  }
+  // skillshots: the missile (line) or the ground circle (Xerath W's indicator is visible to enemies)
+  for (const s of S.shots) {
+    const sp = s.sp, fade = s.alive ? 1 : Math.max(0, 1 - (t - s.doneAt) / .35);
+    ctx.globalAlpha = .75 * fade; ctx.fillStyle = COL.red; ctx.strokeStyle = COL.red;
+    if (s.circle) {
+      const q = Math.min(1, (t - s.t0) / sp.delay);
+      ctx.lineWidth = px(2); ctx.beginPath(); ctx.arc(s.x, s.y, sp.radius, 0, 7); ctx.stroke();
+      ctx.globalAlpha = (.12 + .35 * q) * fade; ctx.beginPath(); ctx.arc(s.x, s.y, sp.radius * q, 0, 7); ctx.fill();
+    } else {
+      const len = Math.min(s.trav || 0, 150), tx = s.x - s.dx * len, ty = s.y - s.dy * len;
+      ctx.lineCap = "round"; ctx.lineWidth = sp.hw * 2; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(s.x + .01, s.y); ctx.stroke(); ctx.lineCap = "butt";
+    }
+    ctx.globalAlpha = 1;
+  }
+  // you
+  ring(S.me.x, S.me.y, S.me.r, S.champ, COL.ok);
+  // effects: clicks, gold, misses, hits
+  for (const e of S.fx) {
+    const q = (t - e.t) / 1.2; if (q < 0 || q > 1) continue;
+    ctx.globalAlpha = 1 - q;
+    if (e.k === "click" || e.k === "aclick") { if (q > .35) { ctx.globalAlpha = 1; continue; } ctx.strokeStyle = e.k === "click" ? COL.ok : COL.red; ctx.lineWidth = px(2); ctx.beginPath(); ctx.arc(e.x, e.y, px(14) * (1 - q * 2), 0, 7); ctx.stroke(); }
+    else if (e.k === "gold") { ctx.fillStyle = COL.gold; ctx.font = `700 ${px(15)}px ${COL.mono}`; ctx.textAlign = "center"; ctx.fillText("+" + e.v, e.x, e.y - 70 - q * 60); }
+    else if (e.k === "miss") { ctx.strokeStyle = COL.muted; ctx.lineWidth = px(2.5); const r = px(9); ctx.beginPath(); ctx.moveTo(e.x - r, e.y - r); ctx.lineTo(e.x + r, e.y + r); ctx.moveTo(e.x + r, e.y - r); ctx.lineTo(e.x - r, e.y + r); ctx.stroke(); }
+    else if (e.k === "hit") { ctx.strokeStyle = COL.red; ctx.lineWidth = px(4); ctx.beginPath(); ctx.arc(S.me.x, S.me.y, S.me.r + px(6) + q * 40, 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  // HUD: CS and the game clock (left), champion, level, stage (right)
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.font = `600 13px ${COL.mono}`; ctx.textBaseline = "top";
+  ctx.fillStyle = COL.ink; ctx.textAlign = "left";
+  ctx.fillText(`CS ${S.cs}` + (S.drill === "fire" ? `   Hit ${S.hitsTaken}` : ""), 12, 10);
+  ctx.fillStyle = COL.muted; ctx.fillText(clock(S.minute * 60 + t), 12, 28);
+  ctx.textAlign = "right"; ctx.fillStyle = COL.ink;
+  ctx.fillText(`${MECH.champs[S.champ].name} · Lv ${S.level}`, cssW - 12, 10);
+  ctx.fillStyle = COL.muted; ctx.fillText(`${DRILLS[S.drill]} · Stage ${S.stage}`, cssW - 12, 28);
+  ctx.textBaseline = "alphabetic";
+
+  function ring(x, y, r, c, color){
+    const im = portrait(c);
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.closePath();
+    if (im) { ctx.clip(); ctx.drawImage(im, x - r, y - r, 2 * r, 2 * r); }
+    else { ctx.fillStyle = COL.lane; ctx.fill(); }
+    ctx.restore();
+    ctx.strokeStyle = color; ctx.lineWidth = px(3); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+  }
+}
+
+/* ---------- a round ---------- */
+let sim = null, state = "idle", raf = 0, last = 0, held = false, lastMove = 0, round = null;
+function over(...kids){ const o = $("mover"); o.textContent = ""; o.append(h("div", {class: "mcard"}, ...kids)); o.hidden = false; }
+function showStart(){
+  state = sim ? state : "idle"; bar();
+  if (touchOnly) { over(h("p", {class: "hero"}, "Last ", h("span", {}, "hit")), h("p", {class: "sub"}, "Needs a mouse and keyboard — open this on a computer.")); return; }
+  over(h("p", {class: "hero"}, "Last ", h("span", {}, "hit")),
+    h("p", {class: "sub"}, `${DRILLS[drill]} · Stage ${stageOf(drill)}`),
+    h("button", {type: "button", class: "btn pri pl-go", id: "mgo", onclick: start}, "Start ", h("kbd", {}, "Enter")));
+}
+function start(){
+  if (touchOnly || state === "play") return;
+  const d = drill === "mixed" ? ROUND[Math.floor(Math.random() * ROUND.length)] : drill;
+  const stage = stageOf(drill);
+  sim = RLMech.create(MECH, {seed: (Math.random() * 4294967296) >>> 0, drill: d, stage, ping});
+  round = {drill: d, stage, key: drill};
+  state = "play"; held = false; amove = false; cv.classList.remove("amove");
+  $("mover").hidden = true; fx(true); size();
+  last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+}
+function loop(){
+  const now = performance.now(), dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
+  if (state !== "play") return;
+  sim.step(dt);
+  draw();
+  if (sim.done()) return finish();
+  raf = requestAnimationFrame(loop);
+}
+function abort(){ cancelAnimationFrame(raf); state = "idle"; sim = null; fx(false); amove = false; draw(); showStart(); }
+function finish(){
+  cancelAnimationFrame(raf); fx(false); state = "sum"; amove = false; cv.classList.remove("amove");
+  const s = sim.summary(), next = RLMech.nextStage(MECH, round.stage, s);
+  store.set("riftlogic.play.mech.stage." + round.key, String(next));
+  const b = bests[round.key] || {stage: 0, pct: 0};
+  const better = round.stage > b.stage || (round.stage === b.stage && s.pct > b.pct);
+  if (s.pct >= MECH.progress.up && better) { bests[round.key] = {stage: round.stage, pct: +s.pct.toFixed(3)}; store.set("riftlogic.play.mech.best", JSON.stringify(bests)); }
+  bar(); draw(); summary(s, next);
+}
+// what to work on, from the round's mistakes (one line)
+function tip(s){
+  const C = sim.C, land = Math.round(1000 * (C.windup + (C.melee ? 0 : (C.range + 60) / C.missile)));
+  if (s.drill === "fire" && s.shots && s.hits / s.shots > MECH.progress.maxHitShare)
+    return `Hit by ${s.hits} of ${s.shots}: keep a minion between you and the caster — most of these stop on the first unit.`;
+  if (s.drill === "tower" && s.results.some(r => r.kind === "caster" && r.r !== "cs"))
+    return "Under the turret: casters take attack → turret shot → attack; melee take two turret shots → attack.";
+  if (s.late >= s.early && s.late > 0) return `Late by ~${s.lateMs} ms: your attack lands ~${land} ms after it starts (windup${C.melee ? "" : " + flight"}), start it sooner.`;
+  if (s.early > 0) return `Early by ~${s.earlyMs} ms: let one more minion hit land before you attack.`;
+  if (s.missed > 0) return `${s.missed} missed: stay in range and watch every low bar, not just one.`;
+  return "Clean round.";
+}
+function summary(s, next){
+  const res = s.results.map(r => h("i", {class: r.r + (r.kind === "siege" ? " siege" : ""), title: `${KIND[r.kind]} · ${r.r === "cs" ? "last hit" : r.r === "missed" ? "missed" : r.r + " by " + r.ms + " ms"}`}));
+  const b = bests[round.key];
+  over(h("p", {class: "sub"}, `${DRILLS[s.drill]} · Stage ${s.stage} · ${MECH.champs[s.champ].name} Lv ${s.level} · ${clock(s.minute * 60)}`),
+    h("div", {class: "mbig", id: "mcs"}, s.cs, h("small", {}, " / " + s.total)),
+    h("div", {class: "mrow"},
+      h("span", {}, "Gold ", h("b", {}, s.gold)),
+      h("span", {class: "e"}, "Early ", h("b", {}, s.early), s.early ? ` ~${s.earlyMs} ms` : ""),
+      h("span", {class: "l"}, "Late ", h("b", {}, s.late), s.late ? ` ~${s.lateMs} ms` : ""),
+      h("span", {}, "Missed ", h("b", {}, s.missed)),
+      s.drill === "fire" ? h("span", {}, "Hit by ", h("b", {}, `${s.hits}/${s.shots}`)) : null),
+    h("div", {class: "mstrip", "aria-label": "Every enemy minion: green last hit, amber early, red late, grey missed"}, res),
+    h("p", {class: "mtip", id: "mtip"}, tip(s)),
+    h("div", {class: "mrow"}, h("span", {}, next > s.stage ? "Next: stage " : next < s.stage ? "Next: stage " : "Again: stage ", h("b", {}, next), next > s.stage ? " ↑" : next < s.stage ? " ↓" : ""),
+      b ? h("span", {}, "Best ", h("b", {}, `stage ${b.stage} · ${Math.round(100 * b.pct)}%`)) : null),
+    h("button", {type: "button", class: "btn pri pl-go", id: "mnext", onclick: start}, "Next ", h("kbd", {}, "Space ↵")));
+  const nb = $("mnext"); if (nb) nb.focus({preventScroll: true});
+}
+
+/* ---------- input: League controls ---------- */
+function world(e){ const r = cv.getBoundingClientRect(); return {x: (e.clientX - r.left) / (r.width || 1) * RLMech.W, y: (e.clientY - r.top) / (r.height || 1) * RLMech.H}; }
+cv.addEventListener("contextmenu", e => e.preventDefault());
+cv.addEventListener("mousedown", e => {
+  if (state !== "play") return;
+  e.preventDefault();
+  const p = world(e);
+  if (e.button === 2) {
+    const m = sim.pick(p.x, p.y);
+    if (m) { sim.cmd({type: "attack", id: m.id}); held = false; }
+    else { sim.cmd({type: "move", x: p.x, y: p.y}); held = true; lastMove = performance.now(); }
+    if (amove) { amove = false; cv.classList.remove("amove"); }
+  } else if (e.button === 0 && amove) {
+    sim.cmd({type: "amove", x: p.x, y: p.y}); amove = false; cv.classList.remove("amove");
+  }
+});
+cv.addEventListener("mousemove", e => {
+  const p = world(e); mouse = {x: p.x, y: p.y, in: true};
+  // holding right-click keeps issuing moves (as in game), about every 100 ms
+  if (state === "play" && held && (e.buttons & 2) && performance.now() - lastMove > 100) { sim.cmd({type: "move", x: p.x, y: p.y}); lastMove = performance.now(); }
+});
+cv.addEventListener("mouseleave", () => { mouse.in = false; });
+window.addEventListener("mouseup", e => { if (e.button === 2) held = false; });
+document.addEventListener("keydown", e => {
+  if (document.documentElement.getAttribute("data-view") !== "mech") return;
+  const t = e.target; if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.isContentEditable) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (state === "play") {
+    if (k === "a" || k === "A") { e.preventDefault(); amove = true; cv.classList.add("amove"); }
+    else if (k === "s" || k === "S") { e.preventDefault(); sim.cmd({type: "stop"}); }
+    else if (k === "Escape") { e.preventDefault(); abort(); }
+    else if (k === " ") e.preventDefault();
+    return;
+  }
+  if ((k === "Enter" || k === " ") && !e.repeat) {
+    // Enter / Space on a focused drill chip starts that drill; on other buttons (tabs, theme) they keep their own meaning
+    const chip = t && t.closest && t.closest("#mdrills button");
+    if (t && t.tagName === "BUTTON" && !chip && t.id !== "mnext" && t.id !== "mgo") return;
+    e.preventDefault(); if (chip) setDrill(chip.getAttribute("data-d")); start();
+  }
+});
+
+window.__mech = {start, abort, setDrill, setView, state: () => state, sim: () => sim, stageOf, bests: () => bests, draw};
+setView(location.hash === "#lasthit" ? "mech" : "quiz", false);
+if (window.__play && window.__play.iconsReady) window.__play.iconsReady.then(() => draw());
 })();
 </script>
 
