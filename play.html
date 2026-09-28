@@ -938,9 +938,7 @@ D.fonts && D.fonts.ready && D.fonts.ready.then(() => D.querySelectorAll(".hx-seg
 D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
 })();</script>
 <div class="app">
-  <div class="views" role="tablist" aria-label="Play">
-    <button type="button" role="tab" id="v-quiz" data-view="quiz" aria-selected="true" aria-controls="main">Quiz</button><button type="button" role="tab" id="v-mech" data-view="mech" aria-selected="false" aria-controls="mech">Last hit</button>
-  </div>
+  
   <main class="pl-grid" id="main">
     <section class="pl-card pl-stage" id="stage" aria-label="Game">
       <div class="hud" id="hud">
@@ -1790,7 +1788,7 @@ const clock = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStar
 
 /* ---------- view switch (Quiz / Last hit), #lasthit deep link ---------- */
 function setView(v, write){
-  if (v !== "mech") v = "quiz";
+  if (v !== "mech" || !document.getElementById("v-mech")) v = "quiz";   // Last hit is switched off (src/play_export.py PLAY_MECH)
   document.documentElement.setAttribute("data-view", v);
   $("main").hidden = v === "mech"; $("mech").hidden = v !== "mech";
   for (const b of document.querySelectorAll(".views button")) { const on = b.getAttribute("data-view") === v; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; }

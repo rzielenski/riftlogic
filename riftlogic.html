@@ -1148,10 +1148,36 @@ function suggest(word, options){
   const dist = (a, b) => { const m = Array.from({length: a.length + 1}, (_, i) => [i]); for (let j = 1; j <= b.length; j++) m[0][j] = j;
     for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) m[i][j] = Math.min(m[i-1][j] + 1, m[i][j-1] + 1, m[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
     return m[a.length][b.length]; };
-  let best = null, bd = 3; for (const o of options){ const d = dist(w, String(o).toLowerCase()); if (d < bd){ bd = d; best = o; } }
+  /* score: the edit distance to the name, or (words of 4+ letters) to a prefix of it at least as long as the word less one, since
+     items and runes resolve from a prefix ("Rabadn" is 1 from "Rabado…": Rabadons, not 2 from Rakan); ties go to a name that holds
+     the word's letters in order (a dropped letter is the usual typo: "Jnx" → Jinx, not Jax), then the shorter name */
+  const subseq = (a, b) => { let i = 0; for (const ch of b) if (ch === a[i]) i++; return i === a.length; };
+  const score = o => { const s = String(o).toLowerCase(); let d = dist(w, s);
+    if (w.length >= 4) for (let L = w.length - 1; L < s.length && L <= w.length + 1; L++) d = Math.min(d, dist(w, s.slice(0, L)) + 0.5);
+    return d + (subseq(w, s) ? 0 : 0.25); };
+  // at most 1 edit for a word of 3 letters or fewer ("str" isn't "Sky")
+  let best = null, bd = w.length <= 3 ? 1.75 : 2.75, bl = Infinity; for (const o of options){ const d = score(o), l = String(o).length; if (d < bd || (d === bd && l < bl)){ bd = d; best = o; bl = l; } }
   return best;
 }
 const hint = (word, options) => { const s = suggest(word, options); return s ? ` Did you mean “${s}”?` : ""; };
+/* Names a program can type for champions, items, runes and summoner spells, for "did you mean" on an unknown name (2026-09-28:
+   "Ludns" got no hint because items and runes weren't candidates, and their keys are whole names: "ludensecho" is 5 edits from
+   "Ludns"). An item or rune offers every run of consecutive words of its name that resolves back to it, as typed in a program
+   ("Ludens", "LudensEcho", "Deathcap", "Rabadons"), so a typo is matched against the short forms people use. Built once, lazily. */
+let NAME_CANDS = null;
+function nameCands(){
+  if (NAME_CANDS) return NAME_CANDS;
+  const out = new Set(), words = s => String(s).replace(/['’]/g, "").split(/[^A-Za-z0-9]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1));
+  const runs = (name, resolve, key) => { const w = words(name); for (let i = 0; i < w.length; i++) for (let j = i + 1; j <= w.length; j++){ const d = w.slice(i, j).join("");
+    if (d.length < 3) continue; let r = null; try { r = resolve(d); } catch (e) { r = null; } if (r === key) out.add(d); } };
+  for (const c of Object.values(KB.champs)) if (!c.dummy) out.add(c.name.replace(/[^A-Za-z0-9]/g, ""));
+  for (const k of ITEMKEYS) runs(ITEMS[k].name, findItem, k);
+  for (const k of Object.keys(CALC.runes)) runs(CALC.runes[k].name, t => findRune(t, true), k);
+  for (const k of Object.keys(SUMM_NAMES)) out.add(k);
+  return (NAME_CANDS = [...out]);
+}
+/* champion names only (strings given to the stats functions) */
+const champHint = word => hint(word, Object.values(KB.champs).filter(c => !c.dummy).map(c => c.name));
 // named arguments a function doesn't know used to be ignored silently (canDodge(…, react: 0.2) ran with no reaction time)
 function checkNamed(named, allowed, fn){ for (const k of Object.keys(named||{})) if (!allowed.includes(k)) throw new Error(`${fn} has no option “${k}:”.${hint(k, allowed)} Its options: ${allowed.map(x=>x+":").join(", ")}`); }
 class LangError extends Error { constructor(msg, line){ super(msg); this.line=line; } }
@@ -2295,6 +2321,7 @@ function simulate(sidesIn, T, simNotes, fo){
   // for 1.25 s (StunDuration), 0.5 s (ReducedStunDuration) if the same target was stunned by it in the last 6 s.
   // Slicing Maelstrom marks each target up to 3 times: modelled as marks at 0, 0.5 and 1 s while the target stays inside.
   function passiveMarks(u, a, x, t){
+    { const km=!u.pet && CHAMP_MECH[u.c.champ]; if (km && km.abilityHit && x.alive) km.abilityHit(u, a, x, t); }   // champion kits: per ability hit (Kayle Q shred)
     if (u.c.champ!=="Kennen" || u.script || !x.alive) return;
     const P=CALC.champs.Kennen.P; if (!P || !P.dv || !P.dv.stunduration) return;
     const add=(tt)=>{ if (!x.alive || !u.alive) return; const k=x.kmark ||= {n:0, until:-1, last:-99};
@@ -2901,7 +2928,8 @@ function simulate(sidesIn, T, simNotes, fo){
   function takeEmpower(u, t){ const E=u.empower; if (!E) return null; u.empower=null; return E.until>t ? E : null; }
   // its landing: the ability resolves on the attack's target as the attack lands, with the numbers of its press
   function landEmpower(u, E, tgt, t){ const a=E.a;
-    resolveCast(u, {...a, parts:E.snap.parts, later:E.snap.later, heal:E.snap.heal, shield:E.snap.shield, aoe:false}, tgt, t, E.d0, E.L);
+    // the attack itself applies on-hit effects once (autoAttack), so an ability whose page lists "on-hit effects" (Kayle E) doesn't again
+    resolveCast(u, {...a, S:a.S && a.S.onHit ? {...a.S, onHit:null} : a.S, parts:E.snap.parts, later:E.snap.later, heal:E.snap.heal, shield:E.snap.shield, aoe:false}, tgt, t, E.d0, E.L);
     if (E.snap.heal) heal(u, u, E.snap.heal, t, a.slot); }
   function autoAttack(u, tgt, t){
     refresh(u,t);
@@ -4803,6 +4831,42 @@ function simulate(sidesIn, T, simNotes, fo){
             simNotes.add(`${u.name} R: hitting ${n} champion${n>1?"s":""} gives +${fmt(ar)} armor and +${fmt(mr)} MR for 8 s`); } } },
       afterCast(u, a){ if (a.slot==="E" && a.ccAll) a.cc=a.ccAll; },
     },
+    Kayle: {
+      /* Divine Ascent (wiki; game data, see KIT.Kayle): Zealous — each attack (on-attack) gives a Zeal stack for 5 s (refreshing all,
+         5 max): +6% bonus attack speed each; at 5 she is Exalted (+10% move speed). Aflame (11+): while Exalted, each attack also
+         launches a fire wave (on-attack, 2800 speed from 75 units behind her, 755 effective reach, 200 wide): 20 (+3 per level from
+         12) + 10% bonus AD + 25% AP magic to every enemy in its path, crits at their expected value. Transcendent (16): Zeal is always
+         full (in her stats). Starfire Spellblade passive: every attack deals its on-hit magic damage once E is learned. */
+      onAttack(u, tgt, t){ const P=CALC.champs.Kayle.P, K=u.kit, L=u.st.level, lv=(k, d)=>dvOf(P,k,1)||d;
+        const max=lv("enragemaxstacks", 5), trans = L >= lv("levelforpassiverank3", 16);
+        if (!trans){ const Z = K.zeal && K.zeal.until>t ? K.zeal : {n:0}; K.zeal={n:Math.min(max, Z.n+1), until:t+lv("enrageduration", 5)};
+          addBuff(u, "kayleZeal", K.zeal.until, {bonusAS:K.zeal.n*lv("enrageasperstack", 6)/100, ...(K.zeal.n>=max ? {mspct:lv("mstowardsenemy", 0.1)} : {})}, t);
+          simNotes.add(`${u.name}: Zealous — each attack gives a Zeal stack (5 s, up to ${max}): +${fmt(lv("enrageasperstack", 6))}% attack speed each; Exalted at ${max} (+${fmt(lv("mstowardsenemy", 0.1)*100)}% move speed)`); }
+        if (L < lv("levelforpassiverank2", 11) || !tgt || !(trans || K.zeal.n>=max)) return null;
+        const v=evalCalc({S:P, rank:1, st:u.st, flags:u.flags}, "passivewavedamage").v, x0=u.xS ?? u.x, dir=Math.sign((tgt.xS ?? tgt.x)-x0);
+        for (const x of enemiesOf(u,t)){ const dx=(x.xS ?? x.x)-x0;
+          if (x!==tgt && (Math.sign(dx)!==dir || Math.abs(dx) > 755+RAD(x) || side2(x,tgt) > 100+RAD(x))) continue;
+          const at=t+Math.max(0, Math.abs(dx)+75-RAD(x))/2800;
+          kitLater(u, x, at, {v:v*(1+u.st.crit*(critVs(u,x)-1)), type:"magic"}, "P fire wave"); }
+        simNotes.add(`${u.name}: Aflame — while Exalted each attack launches a fire wave: ${fmt(v)} magic to every enemy in its path (755 reach, 200 wide; crits at their expected value; projectile walls don't stop it here)`);
+        return null; },
+      attack(u, tgt, t){ const E=u.abAll.E; if (!E) return null;
+        simNotes.add(`${u.name} E: Starfire Spellblade — every attack deals its passive on-hit magic damage`);
+        return {bonus:[{v:evalCalc({S:E.S, rank:E.rank, st:u.st, flags:u.flags}, "epassivetotaldamage").v, type:"magic", what:"E on-hit"}]}; },
+      // Radiant Blast (wiki): enemies hit lose 15% armor and magic resistance for 4 s (game data ShredPercent, ShredDuration)
+      abilityHit(u, a, x, t){ if (a.slot!=="Q") return; const p=(dvOf(a.S,"shredpercent",a.rank)||15)/100;
+        (x.kitShred ||= {}).kayleQ={until:t+(dvOf(a.S,"shredduration",a.rank)||4), pct:p, mrPct:p};
+        simNotes.add(`${u.name} Q: Radiant Blast — −${fmt(p*100)}% armor and magic resistance for 4 s on the enemies hit`); },
+      // Starfire Spellblade at 11 (wiki Aflame bonus): the empowered attack explodes on its target, dealing its damage (the attack at
+      // its expected crit, the on-hit and the missing-health damage) to the other enemies within 350 (cr) and applying on-hit effects
+      onCast(u, a, tgt, t){ if (a.slot!=="E" || !tgt || u.st.level < (dvOf(CALC.champs.Kayle.P,"levelforpassiverank2",1)||11)) return;
+        for (const x of enemiesOf(u,t)){ if (x===tgt || Math.hypot(gap(x,tgt), side2(x,tgt)) > 350) continue;
+          deal(u, x, u.st.ad*(1+u.st.crit*(critVs(u,x)-1)), "physical", t, "ability", "E explosion");
+          const E=u.abAll.E; if (E) deal(u, x, evalCalc({S:E.S, rank:E.rank, st:u.st, flags:u.flags}, "epassivetotaldamage").v, "magic", t, "ability", "E explosion on-hit");
+          for (const p of a.parts) deal(u, x, partDmg(p, x), p.type, t, "ability", "E explosion");
+          applyOnHit(u, x, t, {}); }
+        simNotes.add(`${u.name} E: Aflame (11+) — the empowered attack explodes: its damage to enemies within 350 of the target, with on-hit effects`); },
+    },
     Chogath: {
       onCast(u, a, tgt, t){ if (a.slot!=="E") return; const n=dvOf(a.S,"maximumattacks",a.rank)||3, ctx={S:a.S, rank:a.rank, st:u.st, flags:u.flags};
         u.kit.spikes={n, until:t+(dvOf(a.S,"buffduration",a.rank)||6), flat:evalCalc(ctx,"flatdamagecalc").v, pct:evalCalc(ctx,"maxhealthpercentcalc").v, cc:a.cc||[]};
@@ -4885,6 +4949,10 @@ function simulate(sidesIn, T, simNotes, fo){
     // Void Stone (wiki): "Kassadin is permanently ghosted and takes 10% reduced magic damage" (post-mitigation, like other damage reduction)
     Kassadin: {
       init(u){ u.kit.rDR={until:Infinity, dr:0.1, only:"magic"}; simNotes.add(`${u.name}: Void Stone — 10% less magic damage taken (wiki)`); },
+      // Riftwalk stacks (KIT.Kassadin.R): +1 per cast for 15 s, refreshing, up to 4; the cast's damage uses the stacks before it
+      onCast(u, a, tgt, t){ if (a.slot!=="R") return; const K=u.kit, R=K.rw && K.rw.until>t ? K.rw : {n:0};
+        K.rw={n:Math.min(dvOf(a.S,"maxstacks",a.rank)||4, R.n+1), until:t+(dvOf(a.S,"rstackduration",a.rank)||15)};
+        simNotes.add(`${u.name} R: Riftwalk — each cast adds a stack for 15 s (up to 4): +35–55 (+7% AP) (+1% maximum mana) each on the next casts (the doubling mana cost isn't modelled: fights ignore mana)`); },
     },
     // Allure (wiki): W marks the target 5 s; "Evelynn's next basic attack or ability hit against the target consumes the mark, slowing
     // them by 45% for 0.75 seconds"; "Empowered Bonus [a mark at least 2.5 s old]: The target is charmed for a few seconds and the slow
@@ -6639,6 +6707,47 @@ const KIT = {
        basic attack windup at his attack speed (wiki "Attack speed": attack time × windup %, as .windup) */
     phys(c, slot, p){ if (slot!=="Q") return; const st=stats(c); p.castTime=attackTiming(c.champ, st, st.ranged).windup; p.castTimeSource="wiki: his attack windup"; },
   },
+  /* Phenomenal Evil Power (game data APPerStack 1): +1 AP per stack (Baleful Strike kills, champion hits, takedowns). The
+     practice tool starts at 0; x.stacks = n sets them (2026-09-28: Veigar had no way to carry stacks, so he was at 0 AP from them). */
+  Veigar: {
+    stacks: {name:"Phenomenal Evil Power", max:Infinity, dflt:()=>0, why:"from Baleful Strike kills, ability hits and takedowns; the practice tool starts at 0"},
+    stats(c, st, notes, e){ const n=kitStacks(c); if (!(n>0)) return; const v=n*(dvOf(CALC.champs.Veigar.P,"apperstack",1)||1)*(1+e.amp);
+      st.ap += v; notes.push(`Veigar: ${fmt(n)} Phenomenal Evil Power stacks: +${fmt(v)} AP${e.amp?` (with +${fmt(e.amp*100)}% AP)`:""}`); },
+  },
+  /* Riftwalk (wiki; game data StackDamage, APStackRatio, 1% maximum mana, RStackDuration 15, MaxStacks 4): each cast adds a stack
+     for 15 s (refreshing, 4 max); each stack adds 35–55 (+7% AP) (+1% maximum mana). x.R.damage(stacks: n) for the static number;
+     fight()/perform() count the casts (the doubling mana cost isn't modelled: fights ignore mana). */
+  Kassadin: {
+    R: {opts:{stacks:{min:0, max:4, dflt:0, what:"Riftwalk stacks from casts in the last 15 s (+1 per cast, up to 4)"}},
+      sim:(u)=>({stacks: u.kit.rw && u.kit.rw.until>u.kitT ? u.kit.rw.n : 0}),
+      parts(x){ const b=x.part("basedamage","magic"), n=Math.max(0, Math.min(x.dv("maxstacks")||4, x.o.stacks)); if (!n) return [b];
+        return [b, {...scale(x.part("bonusdamage","magic"), n, "stacks"), label:`Riftwalk stacks × ${n}`}]; }},
+  },
+  /* Cosmic Creator (game data buff {c9372c6b}): Stardust stacks feed Breath of Light's burst (+0.031% of maximum health per stack) and
+     Singularity's execute threshold. The practice tool starts at 0; x.stacks = n sets them. Breath of Light: fight() deals one second
+     of the beam per cast, so Q.damage is one second on a champion: the beam's damage per second and the burst each full second deals
+     (wiki: 60–100 (+30% AP) (+0.031% per Stardust of maximum health); 2026-09-28: the burst was missing). */
+  AurelionSol: {
+    stacks: {name:"Stardust", max:Infinity, dflt:()=>0, buff:"{c9372c6b}", why:"from Breath of Light bursts on champions, Singularity kills and Stardust pickups; the practice tool starts at 0"},
+    Q: {parts(x){ return [x.part("damagepersecond","magic"), {...x.part("burstdamage","magic"), label:"burst (each full second on the primary target)"},
+        ...(x.stacks>0 ? [{...x.part("burstbonustruedamagetochamps","magic"), pctOf:"max", label:`burst: ${fmt(x.stacks)} Stardust × 0.031% of maximum health`}] : [])]; }},
+  },
+  /* Divine Ascent (wiki Template:Data_Kayle/Divine_Ascent, data/raw/wiki_passives/Kayle_P.txt; game data LevelForPassiveRank1–3 6/11/16,
+     UpgradedAttackRange 525, FinalAttackRange 625, EnrageASPerStack 6, EnrageMaxStacks 5, MSTowardsEnemy 10%): the forms that change
+     her stats outside a fight. Arisen (6): ranged, 525 range. Transcendent (16): 625 range and Zealous always full (+30% bonus attack
+     speed, +10% move speed). Zeal stacks below 16 and the Aflame fire waves (11) are built in fight()/perform() (CHAMP_MECH.Kayle).
+     (2026-09-28: she had no kit, so she stayed a 175-range melee champion with no passive at every level.) */
+  Kayle: {
+    statsFinal(c, st, notes){ const P=CALC.champs.Kayle.P, lv=(k, d)=>dvOf(P,k,1)||d, L=st.level;
+      if (L < lv("levelforpassiverank1", 6)) return;
+      const trans = L >= lv("levelforpassiverank3", 16), R = trans ? lv("finalattackrange", 625) : lv("upgradedattackrange", 525);
+      st.range += R - CALC.champs.Kayle.base.range; st.ranged = true;
+      if (trans){ const n=lv("enragemaxstacks", 5), per=lv("enrageasperstack", 6)/100, ms=lv("mstowardsenemy", 0.1);
+        st.bonusas += n*per; st.as = Math.min(st.ascap, (st.baseas + st.asratio*st.bonusas)*st.asMult);
+        st.mspct += ms; st.msuncapped = st.msraw*(1+st.mspct); st.ms = msCap(st.msuncapped); st.bonusms = st.ms-st.basems;
+        notes.push(`Kayle: Transcendent (level ${L}) — ${fmt(R)} attack range, Zealous always full: +${fmt(n*per*100)}% attack speed, +${fmt(ms*100)}% move speed`); }
+      else notes.push(`Kayle: ${L >= lv("levelforpassiverank2", 11) ? "Aflame" : "Arisen"} (level ${L}) — ranged, ${fmt(R)} attack range; Zeal stacks (+${fmt(lv("enrageasperstack", 6))}% attack speed per attack, 5 max) build in fights`); },
+  },
   Smolder: {
     // P6 F4 (wiki MMOOOMMMM!: range "-600 Wave backwards range" / 4250 forward, speed 1700): the wave starts 600 behind him
     phys(c, slot, p){ if (slot==="R") p.originBehind=600; },
@@ -8277,6 +8386,7 @@ const EMPOWER_NEXT = {
   Nasus:{Q:{win:10, reset:true}},
   Garen:{Q:{win:4.5, reset:true}}, Darius:{W:{win:4, reset:true}}, Jax:{W:{win:10, reset:true}}, Leona:{Q:{win:6, reset:true}},
   Trundle:{Q:{win:7, reset:true}}, Kassadin:{W:{win:5, reset:true}}, Yorick:{Q:{win:5, reset:true}}, Volibear:{Q:{win:4, reset:true}},
+  Kayle:{E:{win:6, reset:true}},   // Starfire Spellblade (wiki: next attack within 6 s, attack reset; before 6 its 525 range isn't modelled)
 };
 /* P3 of the interaction audit (2026-09-24): the per-ability fields fight()/perform() read from calc.json phys (exported from the sheets'
    sim blocks by src/ P1; the interim table SIM_INTERIM_P3 is gone):
@@ -9076,7 +9186,7 @@ function dodgeAction(def, y, preBuff, ds, recast, att, dist, atkSlot){
       if (TR){ TR.notes.add(`${nm}: Annul, a spell shield that is up before the ability (ready: no ability blocked in the last ${fmt(idv(key,"Cooldown",40))} s) and blocks the first one (wiki)`);
         if (!(def.items||[]).includes(key)) TR.notes.add(`${label(def)} is assumed to have ${nm} ready (it isn't in its items)`); }
       return {label:nm, short:nm, void:[], ccImm:[], shield:{s:0, e:Infinity, pre:true}, text:`${nm}: a spell shield already up (Annul)`}; }
-    if (!key || !STASIS_ITEMS[key]) throw new Error(`using: ${typeof y==="string"?`"${y}"`:(ITEMS[y.key]||{}).name||y.key} isn't a dodge tool; the items canDodge knows are Zhonya's Hourglass and the Stopwatch ("Stopwatch" or SeekersArmguard): stasis from the press, and Banshee's Veil / Edge of Night: a spell shield`);
+    if (!key || !STASIS_ITEMS[key]) throw new Error(`using: ${typeof y==="string"?`"${y}"`:(ITEMS[y.key]||{}).name||y.key} isn't a dodge tool; the items canDodge knows are Zhonya's Hourglass and the Stopwatch ("Stopwatch" or SeekersArmguard): stasis from the press, and Banshee's Veil / Edge of Night: a spell shield.${typeof y==="string" ? hint(y, ["Zhonyas", "Stopwatch", "Banshees", "EdgeOfNight"]) : ""}`);
     const dv=((CALC.items[key]||{}).dv||{}).duration, dur=(dv && dv[1]) || 2.5, nm=STASIS_ITEMS[key];
     if (TR){ TR.notes.add(`${nm}: stasis for ${fmt(dur)} s from the press (game files Duration; wiki Stasis: untargetable and invulnerable)`);
       if (!(def.items||[]).includes(key)) TR.notes.add(`${label(def)} is assumed to have ${nm} ready (it isn't in its items)`); }
@@ -9411,7 +9521,7 @@ function statNote(S){
 }
 function statChamp(v, fn, what){
   const X=statsData(), id = v && v.t==="champ" && !v.dummy ? v.champ : typeof v==="string" ? IDX[norm(v)] : null;
-  if (!id) throw new Error(`${fn}(): ${what} is a champion (Syndra, Syndra(11) or "Syndra"), not ${typeof v==="string" ? `"${v}"` : typeName(v)}`);
+  if (!id) throw new Error(`${fn}(): ${what} is a champion (Syndra, Syndra(11) or "Syndra"), not ${typeof v==="string" ? `"${v}"` : typeName(v)}.${typeof v==="string" ? champHint(v) : ""}`.replace(/\.$/, ""));
   const i=X.pos[id]; if (i==null) throw new Error(`${fn}(): ${KB.champs[id].name} has no games in the stats data`);
   return {id, i, name:KB.champs[id].name};
 }
@@ -9943,7 +10053,7 @@ function dwpTeam(X, v, byRole, fn, key){
   const cs=[];
   arr.forEach((x, r)=>{
     const i=dwpChampIdx(x, fn, key);
-    if (i==null){ if (byRole && (x==="" || x==="?" || x==null)) return; throw new Error(`${fn}(): ${key}: holds champions (Ornn, "Lee Sin")${byRole ? ' or "?" for an open slot' : ""}, not ${typeof x==="string" ? `"${x}"` : typeName(x)}`); }
+    if (i==null){ if (byRole && (x==="" || x==="?" || x==null)) return; throw new Error(`${fn}(): ${key}: holds champions (Ornn, "Lee Sin")${byRole ? ' or "?" for an open slot' : ""}, not ${typeof x==="string" ? `"${x}"` : typeName(x)}${typeof x==="string" ? "."+champHint(x) : ""}`); }
     if (byRole) T[r]=i; else cs.push(i);
   });
   return byRole ? T : dwpAssign(X, cs, T);
@@ -9997,7 +10107,7 @@ function statPickwpa(a, named){
   if (a.length!==1) throw new Error(`pickwpa(champion, role:, side:, blue:, red:, pro:) takes one champion: the pick`);
   const {X, B, R, rd, rtxt} = dwpSetup(named, "pickwpa", ["role","side"]), side=dwpSide(named.side, "pickwpa"), T = side==="blue" ? B : R;
   const c=dwpChampIdx(a[0], "pickwpa", "the pick");
-  if (c==null) throw new Error(`pickwpa(): the pick is a champion (Rakan or "Rakan"), not ${typeName(a[0])}`);
+  if (c==null) throw new Error(`pickwpa(): the pick is a champion (Rakan or "Rakan"), not ${typeof a[0]==="string" ? `"${a[0]}"` : typeName(a[0])}${typeof a[0]==="string" ? "."+champHint(a[0]) : ""}`);
   if (B.includes(c) || R.includes(c)) throw new Error(`pickwpa(): ${KB.champs[STATS.champs[c]].name} is already in the draft`);
   const r = named.role!=null ? dwpRole(named.role, "pickwpa") : dwpBestRole(X, T, c);
   if (r<0) throw new Error(`pickwpa(): ${side} has no open role left`);
@@ -10075,7 +10185,9 @@ function Interpreter(ast, emitRaw){
       let key=null; try{ key=findItem(name); }catch(e){ throw new LangError(e.message, line); } if (key) return {t:"item", key};
       let r2=null; try{ r2=findRune(name,true); }catch(e){ throw new LangError(e.message, line); } if (r2) return {t:"rune", key:r2};
     }
-    const known = [...env.vars.keys(), ...(env.parent ? [...env.parent.vars.keys()] : []), ...Object.keys(funcs), ...Object.keys(BUILTINS), "Dummy", ...Object.keys(SUMM_NAMES), ...CLASSES, ...TAGS, ...Object.values(KB.champs).map(c=>c.name.replace(/[^A-Za-z0-9]/g,""))];
+    const known = [...env.vars.keys(), ...(env.parent ? [...env.parent.vars.keys()] : []), ...Object.keys(funcs), ...Object.keys(BUILTINS), "Dummy", ...CLASSES, ...TAGS, ...nameCands()];
+    // the Stopwatch isn't in the item data (it is Seeker's Armguard's active, which the engine models; wiki Stopwatch)
+    if (norm(name)==="stopwatch") throw new LangError(`“${name}” is not declared: the Stopwatch is SeekersArmguard here (its Time Stop active, once; canDodge also takes using: "Stopwatch"). Did you mean “SeekersArmguard”?`, line);
     throw new LangError(`“${name}” is not declared, and it isn't a champion, item, rune, class or tag.${hint(name, known)}`, line);
   }
 
