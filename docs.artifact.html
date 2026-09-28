@@ -63,8 +63,8 @@ nav.toc .grp:first-child{margin-top:2px}
   nav.toc details[open] summary::after{content:" ▴"}
   nav.toc ol{padding:0 8px 10px}
 }
-main{min-width:0;display:grid;gap:44px}
-section{display:grid;gap:12px;min-width:0;scroll-margin-top:72px}
+main{min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:44px}
+section{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0;scroll-margin-top:72px}
 h1{font:600 30px/1.15 var(--sans);letter-spacing:-.015em;margin:0 0 4px}
 h2{font:600 21px/1.25 var(--sans);letter-spacing:-.01em;margin:0;text-wrap:balance;padding-bottom:6px;border-bottom:1px solid var(--line)}
 h3{font:600 15px/1.35 var(--sans);margin:8px 0 0}
@@ -99,6 +99,7 @@ body{background:transparent}
 #fx,#fx-still,#fx-scrim{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block}
 #fx-scrim{background:var(--fx-scrim)}
 html.nofx #fx,html.bgoff #fx,html.bgoff #fx-still,html.bgoff #fx2d{display:none}#fx-still{background:center/100% 100% no-repeat}html.fxoff #fx{visibility:hidden}
+html.fxwait #fx{opacity:0}@media (prefers-reduced-motion:no-preference){#fx{transition:opacity .8s var(--ease)}}
 html.nofx,html.bgoff{background:radial-gradient(60% 50% at 15% 10%,rgba(79,216,210,.09),transparent 70%),radial-gradient(50% 45% at 85% 30%,rgba(212,175,99,.07),transparent 70%),radial-gradient(70% 60% at 50% 100%,rgba(91,147,232,.07),transparent 70%),var(--bg)}
 .hx-seg{position:relative;isolation:isolate}
 .hx-seg>button{position:relative;z-index:1}
@@ -471,10 +472,16 @@ try { gl = cv.getContext("webgl", GLOPT); } catch (_) { gl = null; }
 if (gl) { LCX = gl.getExtension ? gl.getExtension("WEBGL_lose_context") : null; makeScene(); } else st.reason = "no webgl";
 } else st.reason = live ? "no canvas" : "no matchMedia";
 }
-if (!st.off) initGL(); else st.reason = "off";
 const fb2 = () => { if (!live || !SCENE.fallback) return; try { SCENE.fallback(isLight()); st.fallback2d = true; } catch (_) {} };
 const nofx = () => { R.classList.add("nofx"); fb2(); };
-if (!st.gl && !st.off) nofx();
+let started = false, startRes = null;
+const ready = new Promise(r => { startRes = r; });
+function start() {
+if (started) return; started = true;
+if (!gl && !st.gl) { if (!st.off) initGL(); else st.reason = "off"; if (!st.gl && !st.off) nofx(); }
+size(); kick();
+raf(() => R.classList.remove("fxwait")); startRes();
+}
 const canRun = () => st.gl && !st.paused && !st.hidden && !st.reduced && !st.typing && !st.held;
 function size() {
 if (!st.gl) return;
@@ -568,9 +575,16 @@ if (!makeScene()) { nofx(); return; }
 size(); R.classList.remove("fxoff");
 if (canRun()) kick(); else if (needStill || !st.hidden) { needStill = false; light = lightT; ev = evT; draw(0); idle(); }
 });
-size(); sync(); kick();
+sync();
+if (!live) start();
+else {
+R.classList.add("fxwait");
+const go = () => { const t = setTimeout(start, 2500); W.requestIdleCallback ? W.requestIdleCallback(() => { clearTimeout(t); start(); }, {timeout: 2500}) : setTimeout(start, 200); };
+D.readyState === "complete" ? go() : on(W, "load", go, {once: true});
+}
 return {
 state: () => Object.assign({}, st, {raf: !!rq}),
+ready,                                              // resolves once the background has started (after load + idle)
 pause, paused: () => st.paused, canRun, setMode, mode: () => mode,
 hold(v) { st.held = !!v; kick(); },
 set(o) { if (o && "evalP" in o) { const v = +o.evalP; evT = o.evalP == null || !isFinite(v) ? -1 : Math.max(0, Math.min(1, v)); if (!st.running) still(); } }
@@ -1326,12 +1340,12 @@ print(topPicks(pro: true, by: "wpa", phase: "draft", n: 5, min: 100));
       <p>Solo queue has its own in-game model and its own WPA, built by <code>src/winprob_solo.py</code> from Riot match timelines (<code>data/timelines.db</code>: 49,856 ranked solo 16.x games, every game of the stats sample; a timeline's participant k is the k-th player of the match, checked on every game by recounting each player's kills and deaths from the kill events: 2 games that didn't match are left out). It is never mixed with the pro model: pro only has Oracle's Elixir snapshots at 10–25 minutes and no objective timing, solo has the whole game minute by minute.</p>
       <p><b>What the model sees</b> at minute m (only what is known at m:00): gold and XP by position against the lane opponent, kills, CS, champions dead on the clock (death timers from level and game time), turrets by tier, plates, inhibitors destroyed and currently down, drakes by type, soul point, soul, elders and the elder buff, void grubs, Rift Herald, Baron and the Baron buff, completed legendary items (purchases net of undo and sell), the solo draft model's logit and the comps' scaling. The draft logit is <b>cross-fitted</b>: each game is scored by a draft model fitted on the other four fifths of games, so a game's own result never enters its draft term. Scaling is each champion's win-rate slope against game length in these games (cross-fitted the same way). One logistic regression per game minute (fitted every second minute on minutes m−2…m+2, odd minutes interpolated; 40+ uses 40).</p>
       <p><b>Validation</b>: trained on the first 85% of games by date (42,377), scored on the last 15% (7,479; every minute from 3 on, pooled; log loss, lower is better):</p>
-      <table><tr><th>Model</th><th>Log loss</th><th>Brier</th><th>AUC</th><th>Log loss at 10 · 20 · 30 min</th></tr>
+      <div class="tscroll"><table><tr><th>Model</th><th>Log loss</th><th>Brier</th><th>AUC</th><th>Log loss at 10 · 20 · 30 min</th></tr>
         <tr><td>gold difference only</td><td>0.5246</td><td>0.1772</td><td>0.811</td><td>0.569 · 0.447 · 0.499</td></tr>
         <tr><td>pro-style (gold and XP by position, kills, CS, draft, scaling)</td><td>0.5112</td><td>0.1719</td><td>0.822</td><td>0.555 · 0.431 · 0.487</td></tr>
         <tr><td>team totals + objectives (<code>winprob(pro: false)</code>)</td><td>0.5009</td><td>0.1679</td><td>0.830</td><td>0.551 · 0.421 · 0.445</td></tr>
         <tr><td><b>full</b> (WPA uses it)</td><td><b>0.4994</b></td><td>0.1673</td><td>0.832</td><td>0.549 · 0.419 · 0.445</td></tr>
-        <tr><td>gradient boosting on the full features + minute</td><td>0.5106</td><td>0.1713</td><td>0.824</td><td>–</td></tr></table>
+        <tr><td>gradient boosting on the full features + minute</td><td>0.5106</td><td>0.1713</td><td>0.824</td><td>–</td></tr></table></div>
       <p>Calibration: predicted and observed agree within 1 pp in every decile (e.g. 15.0% → 15.9%, 50% → 50%, 85.0% → 85.1%; calibration error 0.35 pp pooled, 1–2 pp at single minutes). Gradient boosting did worse out of sample than the logistic model, so the logistic model is the one used everywhere (offline WPA and the browser). <b>Ablations</b> (log loss increase when a group is removed, pooled / at 35 min): drakes and soul +0.0075 / +0.016, scaling +0.0034, draft +0.0028, deaths on the clock +0.0023 / +0.034, turrets and inhibitors +0.0016 / +0.0074, Baron +0.0003 / +0.0035, items +0.0002 / +0.0043, grubs and herald +0.0002. Baron and items matter late; most of what they are worth early is already in the gold.</p>
       <p><b>Timeline scaling</b>: also measured is each champion's team out- or under-performing the state-based win probability as minutes pass (a champion × game-time residual slope, ridge-shrunk). It ranks sensibly (top: Jinx, Sivir, Aphelios, Yunara, Caitlyn; bottom: Locke, Akali, Lee Sin, Kai'Sa, Bard) but predicted held-out games less well than the length slope (0.5022 vs 0.4994 as the model's scaling term; both together 0.4991), so the model keeps the length slope and the timeline slope is only reported (<code>stats.json winprob.solo.scaling.timeline</code>).</p>
 <pre>print(winprob(pro: false, goldDiff: 3000, at: 20));
@@ -1446,7 +1460,7 @@ prove beats(Fizz, Syndra);</pre>
       <h2>Physics and dodging</h2>
       <p><code>canDodge(defender, ability, distance: d, using: defender.X, reaction: r, preBuff: bool, recast: bool, hitbox: units)</code> checks whether the defender can avoid an ability aimed perfectly at them from d units away.</p>
       <p><b>Where it comes from.</b> Range doesn't always mean the ability travels from the champion to the target. Every ability has a <code>delivery</code> (<code>a.Q.delivery</code>), read from the game files' targeting type and corrected by hand where they mislead (each correction cites its source):</p>
-      <div class="tbl"><table><thead><tr><th>delivery</th><th>what happens</th><th>time to land at d units</th><th>reach</th></tr></thead><tbody>
+      <div class="tbl tscroll"><table><thead><tr><th>delivery</th><th>what happens</th><th>time to land at d units</th><th>reach</th></tr></thead><tbody>
         <tr><td>skillshot</td><td>Fired from the caster in a direction (Ezreal Q, Lux Q).</td><td>cast + d ÷ speed + delay</td><td>range</td></tr>
         <tr><td>lobbed</td><td>Thrown from the caster to a chosen point; hits an area where it lands (Lux E, Ziggs Q, Gragas Q).</td><td>cast + d ÷ speed + delay</td><td>range + radius</td></tr>
         <tr><td>placed</td><td>Appears at a chosen point within range (Syndra Q, Xerath W, Karthus Q, Veigar W). Distance doesn't matter.</td><td>cast + delay</td><td>range + radius</td></tr>

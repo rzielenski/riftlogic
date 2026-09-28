@@ -318,6 +318,7 @@ body{background:transparent}
 #fx,#fx-still,#fx-scrim{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block}
 #fx-scrim{background:var(--fx-scrim)}
 html.nofx #fx,html.bgoff #fx,html.bgoff #fx-still,html.bgoff #fx2d{display:none}#fx-still{background:center/100% 100% no-repeat}html.fxoff #fx{visibility:hidden}
+html.fxwait #fx{opacity:0}@media (prefers-reduced-motion:no-preference){#fx{transition:opacity .8s var(--ease)}}
 html.nofx,html.bgoff{background:radial-gradient(60% 50% at 15% 10%,rgba(79,216,210,.09),transparent 70%),radial-gradient(50% 45% at 85% 30%,rgba(212,175,99,.07),transparent 70%),radial-gradient(70% 60% at 50% 100%,rgba(91,147,232,.07),transparent 70%),var(--bg)}
 .bar{background:var(--glass-hi);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3)}
 :where(.pane){position:relative}
@@ -694,10 +695,16 @@ try { gl = cv.getContext("webgl", GLOPT); } catch (_) { gl = null; }
 if (gl) { LCX = gl.getExtension ? gl.getExtension("WEBGL_lose_context") : null; makeScene(); } else st.reason = "no webgl";
 } else st.reason = live ? "no canvas" : "no matchMedia";
 }
-if (!st.off) initGL(); else st.reason = "off";
 const fb2 = () => { if (!live || !SCENE.fallback) return; try { SCENE.fallback(isLight()); st.fallback2d = true; } catch (_) {} };
 const nofx = () => { R.classList.add("nofx"); fb2(); };
-if (!st.gl && !st.off) nofx();
+let started = false, startRes = null;
+const ready = new Promise(r => { startRes = r; });
+function start() {
+if (started) return; started = true;
+if (!gl && !st.gl) { if (!st.off) initGL(); else st.reason = "off"; if (!st.gl && !st.off) nofx(); }
+size(); kick();
+raf(() => R.classList.remove("fxwait")); startRes();
+}
 const canRun = () => st.gl && !st.paused && !st.hidden && !st.reduced && !st.typing && !st.held;
 function size() {
 if (!st.gl) return;
@@ -791,9 +798,16 @@ if (!makeScene()) { nofx(); return; }
 size(); R.classList.remove("fxoff");
 if (canRun()) kick(); else if (needStill || !st.hidden) { needStill = false; light = lightT; ev = evT; draw(0); idle(); }
 });
-size(); sync(); kick();
+sync();
+if (!live) start();
+else {
+R.classList.add("fxwait");
+const go = () => { const t = setTimeout(start, 2500); W.requestIdleCallback ? W.requestIdleCallback(() => { clearTimeout(t); start(); }, {timeout: 2500}) : setTimeout(start, 200); };
+D.readyState === "complete" ? go() : on(W, "load", go, {once: true});
+}
 return {
 state: () => Object.assign({}, st, {raf: !!rq}),
+ready,                                              // resolves once the background has started (after load + idle)
 pause, paused: () => st.paused, canRun, setMode, mode: () => mode,
 hold(v) { st.held = !!v; kick(); },
 set(o) { if (o && "evalP" in o) { const v = +o.evalP; evT = o.evalP == null || !isFinite(v) ? -1 : Math.max(0, Math.min(1, v)); if (!st.running) still(); } }
@@ -10853,12 +10867,17 @@ return {run, parse, KB, CALC, ITEMS, ITEMKEYS, CLASSES, SLOTS, IDX, TAGS, KEYWOR
         _internals:{itemCalc, stats, MODELLED_ITEMS, simInterim}};
 }
 if (typeof module !== "undefined") module.exports = createRiftLogic;
-</script>
+
+;window.RL_DATA = () => [JSON.parse(document.getElementById("kb").textContent), JSON.parse(document.getElementById("calc").textContent)];</script>
 <script>
-(() => {
+(async () => {
 "use strict";
-const KB = JSON.parse(document.getElementById("kb").textContent);
-const CALC = JSON.parse(document.getElementById("calc").textContent);
+// RL_DATA() -> [kb, calc]: inline in the artifact build; the site build loads engine.js, kb.json and calc.json as cacheable files
+// (src/kb_export.py build_page)
+const [KB, CALC] = await Promise.resolve(window.RL_DATA()).catch(e => {
+  const o = document.getElementById("out"); if (o) o.textContent = `The engine or its data could not be loaded: ${e.message}. Reload to try again.`;
+  throw e;
+});
 const RL = createRiftLogic(KB, CALC);
 const {ITEMS, ITEMKEYS, CLASSES, SLOTS, IDX, TAGS, KEYWORDS, TYPES, STATLABEL, norm, fmt, fmtc, show, label, findItem} = RL;
 const EXAMPLES = {

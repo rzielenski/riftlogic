@@ -1,9 +1,11 @@
 // Rift Logic Play: server-authoritative quiz runs and the leaderboard (mounted by server.js under /api/play/).
-//   POST /api/play/start                    → {run, q, n, lives, score, streak, limit}       a new run and its first question
+//   POST /api/play/start {mode}             → {run, mode, q, n, lives, score, streak, limit}  a new run and its first question
+//                                             mode: all (default) | kill | num (numbers: cooldown, damage, higher/lower, haste, stats) | item
 //   POST /api/play/answer {run, qid, choice} → {correct, answer, x, points, score, lives, streak, over, …}
 //   POST /api/play/next {run}               → {q, n, limit}                                   the next question; its clock starts now
 //   POST /api/play/submit {run, name}       → {id, rank}                                      a finished run, once
-//   GET  /api/play/board?period=day|week|all → {period, rows: [{rank, name, score, date}]}    top 50, best per name
+//   GET  /api/play/board?period=day|week|all&mode=all|kill|num|item → {period, mode, rows: [{rank, name, score, date}]}
+//                                             top 50, best per name, one board per mode (scores stored before modes count as all)
 //   DELETE /api/play/score/ID               (Authorization: Bearer REPORT_TOKEN)              moderation
 // The question pool (web/play-pool.json, made by src/play_export.py with the engine) never leaves the server: a question goes
 // out without its answer, the answer only after the player has answered it. The clock is the server's: an answer later than
@@ -15,10 +17,16 @@ const fs = require("fs"), path = require("path"), crypto = require("crypto");
 
 // PLAY_TIME_SCALE (tests only) shrinks the limits so time-outs can be tested quickly
 const TS = +process.env.PLAY_TIME_SCALE > 0 ? +process.env.PLAY_TIME_SCALE : 1;
-const LIMIT_S = {kill: 8 * TS, mc: 10 * TS}, SLACK_MS = 1500 * TS, LIVES = 3, BASE = 100, BONUS = 50;
+// time to answer (s): room to think; the clock of a question starts when /next issues it, so reading an explanation costs nothing
+const LIMIT_S = {kill: 14 * TS, mc: 16 * TS, hilo: 12 * TS, haste: 16 * TS, stat: 15 * TS, item: 16 * TS}, SLACK_MS = 1500 * TS, LIVES = 3, BASE = 100, BONUS = 50;
+// speed bonus: the full 50 within the first 20% of the limit, then down linearly to 0 at the limit
+const FAST = 0.2, bonus = (elMs, limMs) => Math.round(BONUS * Math.min(1, Math.max(0, (limMs - elMs) / ((1 - FAST) * limMs))));
 const RUN_IDLE_MS = 30 * 60e3, MAX_RUNS = 5000, MAX_RUNS_PER_IP = 4;
 const START_PER_MIN = 12, START_PER_DAY = 400, SUBMIT_PER_MIN = 4, SUBMIT_PER_DAY = 40;
 const MAX_SCORE_BYTES = 50 * 1024 * 1024, BOARD_TTL_MS = 30e3, TOP = 50;
+// question kinds per mode, with weights: kill or no kill stays the most common in a mixed run
+const MODES = {all: {kill: 40, mc: 16, hilo: 12, haste: 8, stat: 12, item: 12}, kill: {kill: 1}, num: {mc: 30, hilo: 25, haste: 20, stat: 25}, item: {item: 1}};
+const KINDS = ["kill", "mc", "hilo", "haste", "stat", "item"];
 const NAME_RE = /^[A-Za-z0-9 _-]{3,16}$/;
 // a small built-in blocklist, matched as substrings after folding leetspeak and dropping spaces, _ and -
 const BLOCK = ["fuck", "fuk", "fck", "shit", "cunt", "bitch", "whore", "slut", "nigg", "nigr", "niga", "fag", "retard", "rape", "nazi", "hitler",
@@ -51,15 +59,22 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
     const f = path.join(ROOT, "play-pool.json");
     if (!fs.existsSync(f)) return null;
     const d = JSON.parse(fs.readFileSync(f, "utf8"));
-    POOL = {kill: d.kill || [], mc: d.mc || [], names: d.names || {}, items: d.items || {}, patch: d.patch};
+    POOL = {names: d.names || {}, items: d.items || {}, patch: d.patch};
+    for (const k of KINDS) POOL[k] = d[k] || [];
     return POOL;
   }
   // what the player sees: never the answer, the explanation or the engine program
   function view(q, kind){
     if (kind === "kill") return {id: q.id, kind, a: {c: q.a.c, l: q.a.l, it: q.a.it, combo: q.a.combo, g: q.a.g},
                                  t: {c: q.t.c, l: q.t.l, it: q.t.it, g: q.t.g, hp: q.t.hp, max: q.t.max, ar: q.t.ar, mr: q.t.mr}};
-    return {id: q.id, kind: "mc", c: q.c, s: q.s, name: q.name, type: q.kind, r: q.r, stat: q.stat || null, label: q.label || null, opts: q.opts, unit: q.unit};
+    if (kind === "mc") return {id: q.id, kind: "mc", c: q.c, s: q.s, name: q.name, type: q.kind, r: q.r, stat: q.stat || null, label: q.label || null, opts: q.opts, unit: q.unit};
+    if (kind === "hilo") return {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, stat: q.stat || null, v: q.v};
+    if (kind === "haste") return {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, ah: q.ah, opts: q.opts, unit: q.unit};
+    if (kind === "stat") return {id: q.id, kind, st: q.st, l: q.l, opts: q.opts};
+    return {id: q.id, kind: "item", a: {c: q.a.c, l: q.a.l, it: q.a.it, combo: q.a.combo, g: q.a.g},
+            t: {c: q.t.c, l: q.t.l, it: q.t.it, g: q.t.g, hp: q.t.hp, ar: q.t.ar, mr: q.t.mr}, opts: q.opts};
   }
+  const nOpts = (q, kind) => kind === "hilo" ? 2 : q.opts.length;
 
   /* ---------------- runs ---------------- */
   const runs = new Map();   // id → run
@@ -70,7 +85,9 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
   setInterval(sweep, 60e3).unref();
   function issue(run){
     const P = pool();
-    const kind = P.mc.length && (!P.kill.length || Math.random() < 0.5) ? "mc" : "kill";
+    const W = Object.entries(MODES[run.mode]).filter(([k]) => P[k].length);
+    let r = Math.random() * W.reduce((a, [, w]) => a + w, 0), kind = W[W.length - 1][0];
+    for (const [k, w] of W){ r -= w; if (r < 0){ kind = k; break; } }
     const list = P[kind];
     let q = null;
     for (let i = 0; i < 40 && !q; i++){ const c = list[Math.floor(Math.random() * list.length)]; if (!run.seen.has(c.id)) q = c; }
@@ -111,25 +128,26 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
     return 0;
   }
   // best per name (case-insensitive; the earlier of equal scores), highest first
-  function bests(period){
+  function bests(period, mode){
     const from = since(period), best = new Map();
     for (const e of scores){
-      if (Date.parse(e.date) < from) continue;
+      if (Date.parse(e.date) < from || (e.mode || "all") !== mode) continue;
       const k = e.name.toLowerCase(), b = best.get(k);
       if (!b || e.score > b.score || (e.score === b.score && e.date < b.date)) best.set(k, e);
     }
     return [...best.values()].sort((a, b) => b.score - a.score || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
   const boards = {};
-  function board(period){
-    const c = boards[period];
+  function board(period, mode){
+    const c = boards[period + mode];
     if (c && now() - c.at < BOARD_TTL_MS) return c.body;
-    const rows = bests(period).slice(0, TOP).map((e, i) => ({rank: i + 1, name: e.name, score: e.score, date: e.date.slice(0, 10)}));
-    const body = {period, rows, updated: new Date(now()).toISOString()};
-    boards[period] = {at: now(), body};
+    const rows = bests(period, mode).slice(0, TOP).map((e, i) => ({rank: i + 1, name: e.name, score: e.score, date: e.date.slice(0, 10)}));
+    const body = {period, mode, rows, updated: new Date(now()).toISOString()};
+    boards[period + mode] = {at: now(), body};
     return body;
   }
-  const rankFor = score => Object.fromEntries(["day", "week", "all"].map(p => [p, 1 + bests(p).filter(e => e.score > score).length]));
+  const rankFor = (score, mode) => Object.fromEntries(["day", "week", "all"].map(p => [p, 1 + bests(p, mode).filter(e => e.score > score).length]));
+  const modeOf = m => typeof m === "string" && MODES[m] ? m : "all";
 
   const json = async req => { try { const b = JSON.parse(await readBody(req)); return b && typeof b === "object" ? b : null; } catch (e) { return null; } };
   const runOf = (body) => body && typeof body.run === "string" ? runs.get(body.run) : null;
@@ -138,10 +156,12 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
     const p = url.pathname;
     if (p === "/api/play/board" && req.method === "GET"){
       const period = ["day", "week", "all"].includes(url.searchParams.get("period")) ? url.searchParams.get("period") : "day";
-      return send(res, 200, board(period));
+      return send(res, 200, board(period, modeOf(url.searchParams.get("mode"))));
     }
     if (p === "/api/play/start" && req.method === "POST"){
       if (!pool()) return send(res, 503, {error: "No question pool."});
+      const body = await json(req), mode = modeOf(body && body.mode);
+      if (!Object.keys(MODES[mode]).some(k => POOL[k].length)) return send(res, 503, {error: "No questions for this mode."});
       const ip = ipHash(clientIp(req));
       if (limited("s" + ip, START_PER_MIN, START_PER_DAY)) return send(res, 429, {error: "Too many runs from here — try again in a minute."});
       sweep();
@@ -149,11 +169,11 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
       while (mine.length >= MAX_RUNS_PER_IP) runs.delete(mine.shift().id);     // the oldest of this player's runs gives way
       if (runs.size >= MAX_RUNS) return send(res, 503, {error: "The game is busy — try again soon."});
       const id = crypto.randomBytes(12).toString("hex");
-      const run = {id, ip, created: now(), last: now(), n: 0, seen: new Set(), cur: null, lives: LIVES, score: 0, streak: 0, bestStreak: 0,
+      const run = {id, ip, mode, created: now(), last: now(), n: 0, seen: new Set(), cur: null, lives: LIVES, score: 0, streak: 0, bestStreak: 0,
                    answered: 0, correct: 0, over: false, submitted: false};
       runs.set(id, run);
       const first = issue(run);
-      return send(res, 200, {run: id, ...first, lives: run.lives, score: 0, streak: 0, patch: POOL.patch});
+      return send(res, 200, {run: id, mode, ...first, lives: run.lives, score: 0, streak: 0, patch: POOL.patch});
     }
     if (p === "/api/play/answer" && req.method === "POST"){
       const body = await json(req), run = runOf(body);
@@ -165,15 +185,15 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
       const timedOut = el > lim + SLACK_MS;
       const ans = cur.q.ans;
       const choice = cur.kind === "kill" ? (body.choice === true || body.choice === false ? body.choice : null)
-                                         : (Number.isInteger(body.choice) && body.choice >= 0 && body.choice < 4 ? body.choice : null);
+                                         : (Number.isInteger(body.choice) && body.choice >= 0 && body.choice < nOpts(cur.q, cur.kind) ? body.choice : null);
       const correct = !timedOut && choice !== null && choice === ans;
-      const points = correct ? BASE + Math.round(BONUS * Math.max(0, 1 - el / lim)) : 0;
+      const points = correct ? BASE + bonus(el, lim) : 0;
       run.answered++; run.last = t; run.cur = null;
       if (correct){ run.correct++; run.score += points; run.streak++; run.bestStreak = Math.max(run.bestStreak, run.streak); }
       else { run.lives--; run.streak = 0; }
       run.over = run.lives <= 0;
       const out = {correct, timedOut, answer: ans, x: cur.q.x, points, score: run.score, lives: run.lives, streak: run.streak, over: run.over};
-      if (run.over) Object.assign(out, {answered: run.answered, right: run.correct, bestStreak: run.bestStreak, rank: rankFor(run.score)});
+      if (run.over) Object.assign(out, {answered: run.answered, right: run.correct, bestStreak: run.bestStreak, rank: rankFor(run.score, run.mode)});
       return send(res, 200, out);
     }
     if (p === "/api/play/next" && req.method === "POST"){
@@ -194,11 +214,11 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
       const ip = ipHash(clientIp(req));
       if (limited("u" + ip, SUBMIT_PER_MIN, SUBMIT_PER_DAY)) return send(res, 429, {error: "Too many submissions from here — try again later."});
       if (scoreBytes >= MAX_SCORE_BYTES) return send(res, 507, {error: "Score storage is full."});
-      const e = {id: crypto.randomBytes(8).toString("hex"), name: v.name, score: run.score, answered: run.answered, correct: run.correct,
+      const e = {id: crypto.randomBytes(8).toString("hex"), name: v.name, mode: run.mode, score: run.score, answered: run.answered, correct: run.correct,
                  date: new Date(now()).toISOString(), run: run.id, ip};
       append(e); scores.push(e); run.submitted = true;
       for (const k of Object.keys(boards)) delete boards[k];                     // show it on the next read
-      return send(res, 201, {id: e.id, name: e.name, score: e.score, rank: rankFor(e.score)});
+      return send(res, 201, {id: e.id, name: e.name, mode: e.mode, score: e.score, rank: rankFor(e.score, e.mode)});
     }
     const m = p.match(/^\/api\/play\/score\/([0-9a-f]{16})$/);
     if (m && req.method === "DELETE"){

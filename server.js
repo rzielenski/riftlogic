@@ -130,7 +130,39 @@ async function warm(){   // precompress every served text file at startup, one a
   }
 }
 
-function serveStatic(req, res){
+// ---- caching: HTML revalidates every time (no-cache + ETag → 304), so a deploy shows up on the next load. Data and scripts
+// fetched as name?v=<first 10 hex of the file's sha256> (the pages' version map, stamped by tools/serve_json.py) are immutable
+// for a year, but only while v matches the file on disk: a stale v gets no-cache, so an old map can never pin new bytes. fonts/
+// (version in the file name) are immutable; images get a day plus a week of stale-while-revalidate; the daily-refreshed pro
+// schedule / rosters / logo index five minutes; everything else no-cache.
+const hashes = new Map();   // absolute path → {key, hex}
+function sha(abs){
+  const st = fs.statSync(abs), key = `${st.mtimeMs}:${st.size}`, h = hashes.get(abs);
+  if (h && h.key === key) return h.hex;
+  const hex = crypto.createHash("sha256").update(fs.readFileSync(abs)).digest("hex");
+  hashes.set(abs, {key, hex}); return hex;
+}
+const IMMUTABLE = "public, max-age=31536000, immutable", REVALIDATE = "no-cache";
+function cachePolicy(url){
+  let p; try { p = decodeURIComponent(url.pathname); } catch (e) { return REVALIDATE; }
+  const abs = path.join(ROOT, p), rel = path.relative(ROOT, abs).split(path.sep).join("/");
+  if (rel.startsWith("..") || /(^|\/)\./.test(rel)) return REVALIDATE;
+  const ext = (rel.match(/\.([a-z0-9]+)$/i) || [])[1] || "";
+  if (!ext || /^html?$/i.test(ext)) return REVALIDATE;
+  const v = url.searchParams.get("v");
+  if (v){
+    if (!/^[0-9a-f]{8,64}$/.test(v)) return REVALIDATE;
+    try { return fs.statSync(abs).isFile() && sha(abs).startsWith(v) ? IMMUTABLE : REVALIDATE; } catch (e) { return REVALIDATE; }
+  }
+  if (/^fonts\/[\w.-]+\.woff2$/.test(rel)) return IMMUTABLE;
+  // refreshed on their own (tools/refresh_pro.sh), so outside the version map: five minutes fresh, then revalidated
+  if (/^(pro-schedule\.json|pro-rosters\.json|logos\/index\.json)$/.test(rel)) return "public, max-age=300";
+  if (/^(webp|jpe?g|png|gif|avif|svg|ico)$/i.test(ext)) return "public, max-age=86400, stale-while-revalidate=604800";
+  return REVALIDATE;
+}
+
+function serveStatic(req, res, url){
+  const cache = cachePolicy(url);
   const want = req.headers.range == null ? accepts(req) : {br: false, gzip: false};
   let enc = null, body = null, notModified = false;
   // our ETags carry an encoding suffix ("sha-br"); the identity sha is what serve-handler compares for 304s
@@ -159,6 +191,7 @@ function serveStatic(req, res){
   }
   const {writeHead, end} = res;
   res.writeHead = function(code, headers = {}){
+    if (code === 200 || code === 206 || code === 304) headers["Cache-Control"] = cache;
     if (notModified && code === 200){   // If-Modified-Since hit (serve-handler only checks If-None-Match)
       for (const k of ["Content-Length", "Content-Type", "Content-Disposition", "Accept-Ranges"]) delete headers[k];
       code = 304;
@@ -170,7 +203,7 @@ function serveStatic(req, res){
     return writeHead.call(this, code, headers);
   };
   res.end = function(...a){   // serve-handler's own 304 (If-None-Match) skips writeHead: echo the client's ETag
-    if (res.statusCode === 304 && !res.headersSent && inm) res.setHeader("ETag", inm);
+    if (res.statusCode === 304 && !res.headersSent){ if (inm) res.setHeader("ETag", inm); res.setHeader("Cache-Control", cache); }
     return end.apply(this, a);
   };
   return handler(req, res, {...CONFIG, public: ROOT}, methods);
@@ -179,5 +212,5 @@ function serveStatic(req, res){
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname.startsWith("/api/")) return api(req, res, url).catch(e => send(res, 500, {error: "Server error"}));
-  return serveStatic(req, res);
+  return serveStatic(req, res, url);
 }).listen(PORT, () => { console.log(`Rift Logic on :${PORT} · reports → ${REPORT_DIR} · play scores → ${PLAY_DIR}`); if (process.env.RL_NO_WARM !== "1") warm(); });
