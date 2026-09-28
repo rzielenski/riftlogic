@@ -1782,6 +1782,8 @@ const SIM_ASSUMPTIONS = [
   "fight(): abilities are cast as soon as they're off cooldown (each ability locks its caster for its cast time: game data checked against the wiki's cast time field, calc.json phys.castTime; an ability with none frees the caster on the next step); mana is ignored, energy is not (Zed, Akali, Lee Sin, Kennen, Shen: abilities wait until it covers their cost); a champion whose ability makes it untargetable from the cast (the ability pages' windows: Zed R, Fizz E, Vladimir W, Master Yi Q, Kayn R, Ekko R, Evelynn R, Xayah R, Camille R, and Pantheon E's kit) is untargetable for that whole step",
   "fight(): crowd control per ability from the game data checked against the wiki (Rift Logic docs: Crowd control); stun, airborne, suppression, sleep and forced actions stop everything, root stops moving, silence stops casting, polymorph stops attacking and casting, disarm stops attacking, ground and root prevent starting a dash, slows cut move speed (only the strongest applies; slow resist; soft caps). Tenacity shortens all but airborne, suppression and drowsy (floor 0.3s); every CC interrupts channels",
   "fight(): default roles: ranged = kite (keep max attack range from shorter-ranged enemies, peel them with hard CC, knockbacks held for peel, dashes/blinks used to escape), melee = dive (walk or dash to the lowest-health enemy, use everything on it but knockbacks); knockbacks are held to peel an enemy that dives an ally (except role engage); a stacking-stun field (Viktor W) is held until the enemy commits (moving in within the field's radius + both hitboxes, in its attack reach, unable to move, or diving an ally), not cast on cooldown at range; set x.role = \"kite\" | \"dive\" | \"peel\" | \"engage\" | \"fight\"",
+  "fight(): champions of a side stand spread: apart sideways (default 350 units between neighbours; shortest attack range in the middle, then alternating outwards); movement and reach stay on the line, but an area, line or cone hits a second enemy only if it is also inside sideways: the caster aims at its target, so an area centred on the target (or on the caster, standing at its target's side) needs the 2-D distance within its radius, a line needs the sideways offset within its half-width + hitbox, a cone within its angle (fight loop 5v5, round 1: real team fights are spread out; on one line every area hit all five). spread: 0 = the old one-line fight",
+  "fight(): in a team fight (3 or more champions on each side) a champion holds its ultimate until it has been in combat for rHold: seconds (default 5): real team fights open with basic abilities and attacks, and only about 4 in 10 ultimates show up in the fight's death recaps (fight loop 5v5, round 2); in smaller fights, or with rHold: 0, R is cast as soon as it's ready. Ultimates that only heal or shield, and R used to peel or to escape, are not held",
   "fight(): area abilities hit every enemy within their radius on the line (lines and cones: every enemy within reach ahead of the caster; behind it only a rectangle's stated reach, Rell Q 220); ability damage over time lands up front",
   "fight(): attacks without a set target go to the enemy with the lowest health",
   "fight(): each ability does what its tooltip formula says; special mechanics (clones, stored damage, stacks, empowered recasts) are not simulated, except for the champions with a kit in the engine (KIT / CHAMP_MECH: Syndra, Viktor, Gwen, Dr. Mundo, Kai'Sa, Smolder, Ezreal, Katarina, Yone, Samira, Zed, Akali, Yasuo, Caitlyn)",
@@ -1903,6 +1905,15 @@ function simulate(sidesIn, T, simNotes, fo){
   const setcd=(u,k,t,s)=>{ u.rcd[k]=t+s; };
   const L=u=>u.st.level;
   sidesIn.forEach((arr,side)=>arr.forEach(c=>U.push(makeUnit(c,side))));
+  // ultimate hold (fight loop 5v5 round 2): a team fight has 3 or more champions on each side at the start
+  const RHOLD = [0,1].every(sd=>U.filter(z=>z.side===sd).length>=3) ? (fo.rHold ?? RHOLD_DEFAULT) : 0;
+  // lateral spacing (fight loop 5v5 round 1): each side's champions stand fo.spread apart sideways, the shortest attack range in the
+  // middle and the rest alternating outwards (ties by champion, then order given); pets stand beside their owner. Used only for
+  // who else an area, line or cone hits (hitList); movement and reach stay 1-D.
+  { const SP = fo.spread ?? SPREAD_DEFAULT;
+    for (const side of [0,1]) U.map((z,i)=>({z,i})).filter(o=>o.z.side===side)
+      .sort((a,b)=>a.z.st.range-b.z.st.range || (champKey(a.z.c)<champKey(b.z.c)?-1:champKey(a.z.c)>champKey(b.z.c)?1:0) || a.i-b.i)
+      .forEach(({z},k)=>{ z.y = Math.ceil(k/2)*(k%2?1:-1)*SP; }); }
   /* P8d: u.name is also the per-unit key of the fight's per-target state (Electrocute / Press the Attack / Eclipse / Sundered Sky /
      Stormsurge windows, Horizon Focus and passive marks, Heartsteel, Kalista's Soul-Mark, …), so two units with one label (two
      Ezreals, or champions all built in one helper and labelled "o") shared that state and the result depended on the labels. Every
@@ -2024,6 +2035,8 @@ function simulate(sidesIn, T, simNotes, fo){
   const RAD = u => u._rad ?? (u._rad = hitboxOf(u.c));  // gameplay radius per champion (character record; dummy grows with health); fixed for the fight, so cached per unit
   const face = u => u.side===0 ? 1 : -1;                // the direction of the enemy side
   const gap = (a,b) => Math.abs((a.xS ?? a.x)-(b.xS ?? b.x));   // xS: position at the start of the tick (simultaneous decisions)
+  const latY = x => x.y ?? (x.pet && x.pet.owner ? latY(x.pet.owner) : 0);   // sideways position (spread:); a pet stands beside its owner
+  const side2 = (a,b) => Math.abs(latY(a)-latY(b));
   // a crowd control applied during tick t takes effect from the next tick, so the order units act in within a tick doesn't matter
   const ccLive = (c,t) => c.until>t && !(c.at>=t);
   const ccOn = (u,t,type) => u.ccs.some(c=>c.type===type && ccLive(c,t));
@@ -3002,15 +3015,23 @@ function simulate(sidesIn, T, simNotes, fo){
     if (!a.aoe) return tgt && tgt.alive && !inStasis(tgt,t) && aimed(tgt) ? [tgt] : [];
     const p=a.p||{}, r=p.radius||0, foes=enemiesOf(u,t);
     let list;
+    // sideways (spread:, round 1 of the 5v5 loop): the caster aims at tgt and stands at its side, so another enemy's sideways offset
+    // is measured from tgt (from the caster when there is no target); global abilities ignore it
+    const ref = tgt || u, sw = x => p.global ? 0 : side2(x, ref);
     // P5: global (Karthus R): every targetable enemy CHAMPION (wiki "all targetable enemy champions"), so no pets
-    if (p.delivery==="self") list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6 && !(p.global && x.pet));
+    if (p.delivery==="self") list = foes.filter(x=>Math.hypot(gap(u,x), sw(x))<=abReach(u,a,x)+1e-6 && !(p.global && x.pet));
     // areas centred on the target (perfect aim): DECISIONS 29 — a {{tip|cr}} radius needs the other unit's centre inside, else + its hitbox
-    else if (tgt && r>0 && (p.kind==="area" || ["placed","lobbed","remote"].includes(p.delivery))) list = foes.filter(x=>gap(x,tgt)<=r+areaPad(p.radiusMode, RAD(x))+1e-6 && aimed(tgt));
+    else if (tgt && r>0 && (p.kind==="area" || ["placed","lobbed","remote"].includes(p.delivery))) list = foes.filter(x=>Math.hypot(gap(x,tgt), sw(x))<=r+areaPad(p.radiusMode, RAD(x))+1e-6 && aimed(tgt));
     else { // lines and cones: on one line, everything within reach — ahead of the caster (aimed at tgt); P5: behind it, a line or cone
       // from the caster reaches only its rectangle's `behind` (Rell Q 220, Qiyana Q 40, Viego Q 25; 0 for the rest) + the hitbox (er)
       const dir = tgt ? Math.sign((tgt.xS ?? tgt.x)-(u.xS ?? u.x)) : 0, fwd = dir!==0 && (p.delivery==="skillshot" || p.delivery==="cone");
       const behindOk = x => !fwd || Math.sign((x.xS ?? x.x)-(u.xS ?? u.x))!==-dir || gap(u,x) <= (p.behind||0) + areaPad(p.kind==="cone" ? p.angleMode : p.widthMode, RAD(x)) + 1e-6;
-      list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6 && behindOk(x));
+      // sideways: a line needs the offset within its half-width + the hitbox, a cone within its angle at that distance
+      const wide = x => { const o=sw(x); if (!o) return true;
+        if (p.coneAngle) return o <= gap(u,x)*Math.tan(Math.min(p.coneAngle,179)/2*Math.PI/180) + (p.halfWidth||0) + RAD(x) + 1e-6;
+        if (p.halfWidth) return o <= p.halfWidth + RAD(x) + 1e-6;
+        return true; };
+      list = foes.filter(x=>gap(u,x)<=abReach(u,a,x)+1e-6 && behindOk(x) && wide(x));
       if (L && L.deferred && L.castOk && tgt && foes.includes(tgt) && !list.includes(tgt)) list.push(tgt); }   // aimed at it at the press
     return list;
   }
@@ -6095,6 +6116,7 @@ function simulate(sidesIn, T, simNotes, fo){
     { const km=CHAMP_MECH[u.c.champ]; if (km && km.act && km.act(u, tgt, t, cc, role)) return; }   // champion kits: abilities with no damage of their own (Zed W)
     // offensive abilities in reach (dashes also close the gap)
     if (cc) for (const s of order(u)){ const a=u.ab[s]; if (!a || t<(u.cd[s]||0) || a.spellShield!=null) continue;
+      if (s==="R" && RHOLD>0 && (u.combatAt==null || t-u.combatAt < RHOLD-1e-9)) continue;   // team fight: R held until rHold s into combat
       { const km=CHAMP_MECH[u.c.champ]; if (km && km.castable && km.castable(u,a,tgt,t)!==true) continue; }   // champion kits: Yasuo R needs airborne, Samira R 6 Style
       if (enShort(u,a,t)) continue;                                           // energy champions wait for the cost (item 24)
       if (!a.parts.length && !a.cc.length && !(a.later && a.later.length)) continue;
@@ -8735,6 +8757,8 @@ function dashInfo(c, slot){
 }
 /* Player skill in fight()/fights() (x.skill, fight(…, skill: n | {side1, side2}), default 70): the defender's reaction time for
    skillshot/area dodges (skillDodged in simulate). Hyperbolic so that 100 → 0.10 s, 70 → 0.25 s and 0 → never (Infinity). */
+const RHOLD_DEFAULT = 5;     // fight(..., rHold:) default in team fights: seconds in combat before a champion casts its ultimate (fight loop 5v5 round 2)
+const SPREAD_DEFAULT = 350;   // fight(..., spread:) default: units between neighbouring champions sideways (fight loop 5v5 round 1)
 const SKILL_DEFAULT = (typeof globalThis !== "undefined" && typeof globalThis.RL_SKILL_DEFAULT === "number") ? globalThis.RL_SKILL_DEFAULT : 70;   // tools/rl.js --skill=N (A/B re-checks; 0 = perfect aim)
 function skillReaction(s){ return !(s>0) ? Infinity : 0.1 + 0.35*(100-Math.min(100, s))/s; }
 /* canDodge(…, opt): opt.ms overrides the defender's move speed (fight(): its current, slowed speed); JS callers only */
@@ -10393,7 +10417,7 @@ function Interpreter(ast, emitRaw){
   const GAP_NOTE = "fight(): level and gold gaps are offsets from the teams as built: levels + n (clamped 1–18; skill points follow unless ranks were set), gold − g per champion taken off the build from its last item backwards, an item only partly paid for keeping that share of its stats but no passive or active; one number is team 1's lead (+ lowers team 2, − lowers team 1)";
   function sweep(a, named){
     if (a.length!==3 || typeof a[2]!=="number") throw new Error("fights(team1, team2, seconds, starts: range(0, 1200, 50), levels: {9, 13, 16}, roles: f, bothSides: true)");
-    checkNamed(named, ["starts","levels","roles","bothSides","kite","room","formation","skill","perfectAim","levelGap","goldGap","levelGaps","goldGaps"], "fights(…)");
+    checkNamed(named, ["starts","levels","roles","bothSides","kite","room","formation","spread","rHold","skill","perfectAim","levelGap","goldGap","levelGaps","goldGaps"], "fights(…)");
     if (!(a[2]>0 && a[2]<=120)) throw new Error("a fight lasts between 0 and 120 seconds");
     const nums = (v, what, eg) => { const xs = v&&v.t==="list" ? v.items : typeof v==="number" ? [v] : null;
       if (!xs || !xs.length || xs.some(x=>typeof x!=="number")) throw new Error(`fights(…, ${what} …) takes a number or a list of numbers, e.g. ${what} ${eg}`); return xs; };
@@ -10404,8 +10428,8 @@ function Interpreter(ast, emitRaw){
     for (const f of fns) if (f!==null && !(f && f.t==="fn" && f.decl.params.length>=1 && f.decl.params.length<=3))
       throw new Error(`roles: takes a function you wrote (or a list of them): TeamComp f(TeamComp t), f(TeamComp t, int level) or f(TeamComp t, int level, int team); got ${typeName(f)}`);
     const both = named.bothSides!=null && truthy(named.bothSides);
-    const fo = fightOpts({kite:named.kite, room:named.room, formation:named.formation, skill:named.skill, perfectAim:named.perfectAim});
-    for (const k of ["kite","room","formation"]) if (named[k]==null) delete fo[k];
+    const fo = fightOpts({kite:named.kite, room:named.room, formation:named.formation, spread:named.spread, rHold:named.rHold, skill:named.skill, perfectAim:named.perfectAim});
+    for (const k of ["kite","room","formation","spread","rHold"]) if (named[k]==null) delete fo[k];
     // game-state gaps: levelGap:/goldGap: one fixed gap (as in fight); levelGaps:/goldGaps: a sweep axis of team 1's leads
     if (named.levelGap!=null && named.levelGaps!=null) throw new Error("fights(…): give levelGap: (one gap) or levelGaps: (a list to sweep), not both");
     if (named.goldGap!=null && named.goldGaps!=null) throw new Error("fights(…): give goldGap: (one gap) or goldGaps: (a list to sweep), not both");
@@ -10519,7 +10543,7 @@ function Interpreter(ast, emitRaw){
     return r;
   }
   function fightOpts(named){ const o={}; named=named||{};
-    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within","skill","perfectAim"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), kite: (false = nobody kites, even with role "kite"), room: (how far a unit can back off; default unlimited), formation: (false = everyone on the front line), skill: (player skill 0–100 for everyone, or {side1, side2}; default 70; a champion's own .skill wins), perfectAim: (true = every ability in reach lands, the pre-skill engine), and in fight() levelGap: / goldGap: (team 1's lead, or {team 1, team 2} offsets)`);
+    for (const k of Object.keys(named)) if (!["start","kite","room","formation","fightBack","healers","within","skill","perfectAim","spread","rHold"].includes(k)) throw new Error(`fight options are start: (distance between the two front lines, default 0), spread: (units between neighbouring champions sideways, default 350; 0 = everyone on one line), rHold: (seconds in combat before a champion casts its ultimate in a team fight of 3+ a side, default 5; 0 = at once), kite: (false = nobody kites, even with role "kite"), room: (how far a unit can back off; default unlimited), formation: (false = everyone on the front line), skill: (player skill 0–100 for everyone, or {side1, side2}; default 70; a champion's own .skill wins), perfectAim: (true = every ability in reach lands, the pre-skill engine), and in fight() levelGap: / goldGap: (team 1's lead, or {team 1, team 2} offsets)`);
     // player skill (skillDodged): on by default; perfectAim: true turns it off; skill: n or {n1, n2} for champions without their own .skill
     if (named.perfectAim!=null && truthy(named.perfectAim)) o.skill={perfect:true};
     else if (named.skill!=null){ const s=named.skill, xs = typeof s==="number" ? [s, s] : s && s.t==="list" && s.items.length===2 && s.items.every(v=>typeof v==="number") ? s.items.slice() : null;
@@ -10529,7 +10553,9 @@ function Interpreter(ast, emitRaw){
     if (named.formation!=null) o.formation=truthy(named.formation);
     if (named.start!=null){ if (typeof named.start!=="number" || named.start<0) throw new Error("start: is the distance between the two sides in units (0 or more)"); o.start=named.start; }
     if (named.kite!=null) o.kite=truthy(named.kite);
+    if (named.spread!=null){ if (typeof named.spread!=="number" || !(named.spread>=0 && named.spread<=2000)) throw new Error("spread: is the sideways distance between neighbouring champions of a side, 0 to 2000 units (default 350)"); o.spread=named.spread; }
     if (named.room!=null){ if (typeof named.room!=="number" || named.room<0) throw new Error("room: is a distance in units"); o.room=named.room; }
+    if (named.rHold!=null){ if (typeof named.rHold!=="number" || !(named.rHold>=0 && named.rHold<=120)) throw new Error("rHold: is the seconds a champion is in combat before it casts its ultimate in a team fight, 0 to 120 (default 5; 0 = as soon as it's ready)"); o.rHold=named.rHold; }
     return o; }
   function runFight(sides, T, fo){
     if (!(T>0 && T<=120)) throw new Error("a fight lasts between 0 and 120 seconds");
