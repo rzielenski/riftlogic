@@ -1,32 +1,29 @@
-// Rift Logic Play: server-authoritative quiz runs and the leaderboard (mounted by server.js under /api/play/).
-//   POST /api/play/start {mode}             → {run, mode, q, n, lives, score, streak, limit}  a new run and its first question
-//                                             mode: all (default) | kill | num (numbers: cooldown, damage, higher/lower, haste, stats) | item
-//   POST /api/play/answer {run, qid, choice} → {correct, answer, x, points, score, lives, streak, over, …}
-//   POST /api/play/next {run}               → {q, n, limit}                                   the next question; its clock starts now
-//   POST /api/play/submit {run, name}       → {id, rank}                                      a finished run, once
-//   GET  /api/play/board?period=day|week|all&mode=all|kill|num|item → {period, mode, rows: [{rank, name, score, date}]}
-//                                             top 50, best per name, one board per mode (scores stored before modes count as all)
-//   DELETE /api/play/score/ID               (Authorization: Bearer REPORT_TOKEN)              moderation
+// Rift Logic Play: server-authoritative quiz runs and the leaderboard (mounted by server.js under /api/play/). No time limits.
+//   POST /api/play/start {mode}             → {run, mode, q, n, lives, score, streak}  a new run and its first question
+//                                             mode: all (default) | kill | abil (ability numbers, higher/lower) | item (item stats, prices)
+//   POST /api/play/answer {run, qid, choice} → {correct, answer, x, points, score, lives, streak, over, …}   100 points a right answer
+//   POST /api/play/next {run}               → {q, n}                                   the next question
+//   POST /api/play/submit {run, name}       → {id, rank}                               a finished run, once
+//   GET  /api/play/board?period=day|week|all&mode=all|kill|abil|item → {period, mode, rules, rows: [{rank, name, score, date}]}
+//                                             top 50, best per name, one board per mode; only runs under the current rules (RULES)
+//   DELETE /api/play/score/ID               (Authorization: Bearer REPORT_TOKEN)       moderation
 // The question pool (web/play-pool.json, made by src/play_export.py with the engine) never leaves the server: a question goes
-// out without its answer, the answer only after the player has answered it. The clock is the server's: an answer later than
-// the question's limit + SLACK_MS counts as a miss, and the speed bonus comes from the server's own timestamps.
-// Scores: PLAY_DIR/scores-YYYY-MM.jsonl, append-only (a deletion is a tombstone line), loaded into memory at startup.
+// out without its answer, the answer only after the player has answered it.
+// Scores: PLAY_DIR/scores-YYYY-MM.jsonl, append-only (a deletion is a tombstone line), loaded into memory at startup. Each carries
+// the rules version it was played under (v); the boards show the current version only (v1, timed with a speed bonus, is kept but hidden).
 // Only a salted SHA-256 of the IP is stored, for rate limiting; the raw IP is never stored, logged or returned.
 "use strict";
 const fs = require("fs"), path = require("path"), crypto = require("crypto");
 
-// PLAY_TIME_SCALE (tests only) shrinks the limits so time-outs can be tested quickly
-const TS = +process.env.PLAY_TIME_SCALE > 0 ? +process.env.PLAY_TIME_SCALE : 1;
-// time to answer (s): room to think; the clock of a question starts when /next issues it, so reading an explanation costs nothing
-const LIMIT_S = {kill: 14 * TS, mc: 16 * TS, hilo: 12 * TS, haste: 16 * TS, stat: 15 * TS, item: 16 * TS}, SLACK_MS = 1500 * TS, LIVES = 3, BASE = 100, BONUS = 50;
-// speed bonus: the full 50 within the first 20% of the limit, then down linearly to 0 at the limit
-const FAST = 0.2, bonus = (elMs, limMs) => Math.round(BONUS * Math.min(1, Math.max(0, (limMs - elMs) / ((1 - FAST) * limMs))));
-const RUN_IDLE_MS = 30 * 60e3, MAX_RUNS = 5000, MAX_RUNS_PER_IP = 4;
+// rules v2: untimed, 100 points a right answer (v1 had time limits and a speed bonus)
+const RULES = 2, LIVES = 3, POINTS = 100;
+// a run is dropped after 2 h without a call (no clock runs meanwhile: a player may think as long as they like)
+const RUN_IDLE_MS = 2 * 3600e3, MAX_RUNS = 5000, MAX_RUNS_PER_IP = 4;
 const START_PER_MIN = 12, START_PER_DAY = 400, SUBMIT_PER_MIN = 4, SUBMIT_PER_DAY = 40;
 const MAX_SCORE_BYTES = 50 * 1024 * 1024, BOARD_TTL_MS = 30e3, TOP = 50;
 // question kinds per mode, with weights: kill or no kill stays the most common in a mixed run
-const MODES = {all: {kill: 40, mc: 16, hilo: 12, haste: 8, stat: 12, item: 12}, kill: {kill: 1}, num: {mc: 30, hilo: 25, haste: 20, stat: 25}, item: {item: 1}};
-const KINDS = ["kill", "mc", "hilo", "haste", "stat", "item"];
+const MODES = {all: {kill: 40, mc: 26, hilo: 8, stat: 12, item: 14}, kill: {kill: 1}, abil: {mc: 80, hilo: 20}, item: {item: 1}};
+const KINDS = ["kill", "mc", "hilo", "stat", "item"];
 const NAME_RE = /^[A-Za-z0-9 _-]{3,16}$/;
 // a small built-in blocklist, matched as substrings after folding leetspeak and dropping spaces, _ and -
 const BLOCK = ["fuck", "fuk", "fck", "shit", "cunt", "bitch", "whore", "slut", "nigg", "nigr", "niga", "fag", "retard", "rape", "nazi", "hitler",
@@ -67,12 +64,10 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
   function view(q, kind){
     if (kind === "kill") return {id: q.id, kind, a: {c: q.a.c, l: q.a.l, it: q.a.it, combo: q.a.combo, g: q.a.g},
                                  t: {c: q.t.c, l: q.t.l, it: q.t.it, g: q.t.g, hp: q.t.hp, max: q.t.max, ar: q.t.ar, mr: q.t.mr}};
-    if (kind === "mc") return {id: q.id, kind: "mc", c: q.c, s: q.s, name: q.name, type: q.kind, r: q.r, stat: q.stat || null, label: q.label || null, opts: q.opts, unit: q.unit};
-    if (kind === "hilo") return {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, stat: q.stat || null, v: q.v};
-    if (kind === "haste") return {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, ah: q.ah, opts: q.opts, unit: q.unit};
+    if (kind === "mc") return {id: q.id, kind: "mc", c: q.c, s: q.s, name: q.name, type: q.kind, r: q.r, rs: q.rs || null, opts: q.opts, unit: q.unit};
+    if (kind === "hilo") return {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, v: q.v};
     if (kind === "stat") return {id: q.id, kind, st: q.st, l: q.l, opts: q.opts};
-    return {id: q.id, kind: "item", a: {c: q.a.c, l: q.a.l, it: q.a.it, combo: q.a.combo, g: q.a.g},
-            t: {c: q.t.c, l: q.t.l, it: q.t.it, g: q.t.g, hp: q.t.hp, ar: q.t.ar, mr: q.t.mr}, opts: q.opts};
+    return {id: q.id, kind: "item", i: q.i, st: q.st, opts: q.opts, unit: q.unit};
   }
   const nOpts = (q, kind) => kind === "hilo" ? 2 : q.opts.length;
 
@@ -93,8 +88,8 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
     for (let i = 0; i < 40 && !q; i++){ const c = list[Math.floor(Math.random() * list.length)]; if (!run.seen.has(c.id)) q = c; }
     if (!q) q = list[Math.floor(Math.random() * list.length)];
     run.seen.add(q.id); run.n++;
-    run.cur = {q, kind, issued: now(), limit: LIMIT_S[kind]};
-    return {q: view(q, kind), n: run.n, limit: LIMIT_S[kind]};
+    run.cur = {q, kind};
+    return {q: view(q, kind), n: run.n};
   }
 
   /* ---------------- rate limits (by hashed IP) ---------------- */
@@ -131,7 +126,7 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
   function bests(period, mode){
     const from = since(period), best = new Map();
     for (const e of scores){
-      if (Date.parse(e.date) < from || (e.mode || "all") !== mode) continue;
+      if ((e.v || 1) !== RULES || Date.parse(e.date) < from || (e.mode || "all") !== mode) continue;
       const k = e.name.toLowerCase(), b = best.get(k);
       if (!b || e.score > b.score || (e.score === b.score && e.date < b.date)) best.set(k, e);
     }
@@ -142,7 +137,7 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
     const c = boards[period + mode];
     if (c && now() - c.at < BOARD_TTL_MS) return c.body;
     const rows = bests(period, mode).slice(0, TOP).map((e, i) => ({rank: i + 1, name: e.name, score: e.score, date: e.date.slice(0, 10)}));
-    const body = {period, mode, rows, updated: new Date(now()).toISOString()};
+    const body = {period, mode, rules: RULES, rows, updated: new Date(now()).toISOString()};
     boards[period + mode] = {at: now(), body};
     return body;
   }
@@ -181,18 +176,17 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
       if (run.over) return send(res, 409, {error: "This run is over."});
       const cur = run.cur;
       if (!cur || body.qid !== cur.q.id) return send(res, 409, {error: "Not the current question."});
-      const t = now(), el = t - cur.issued, lim = cur.limit * 1000;
-      const timedOut = el > lim + SLACK_MS;
+      const t = now();
       const ans = cur.q.ans;
       const choice = cur.kind === "kill" ? (body.choice === true || body.choice === false ? body.choice : null)
                                          : (Number.isInteger(body.choice) && body.choice >= 0 && body.choice < nOpts(cur.q, cur.kind) ? body.choice : null);
-      const correct = !timedOut && choice !== null && choice === ans;
-      const points = correct ? BASE + bonus(el, lim) : 0;
+      const correct = choice !== null && choice === ans;
+      const points = correct ? POINTS : 0;
       run.answered++; run.last = t; run.cur = null;
       if (correct){ run.correct++; run.score += points; run.streak++; run.bestStreak = Math.max(run.bestStreak, run.streak); }
       else { run.lives--; run.streak = 0; }
       run.over = run.lives <= 0;
-      const out = {correct, timedOut, answer: ans, x: cur.q.x, points, score: run.score, lives: run.lives, streak: run.streak, over: run.over};
+      const out = {correct, answer: ans, x: cur.q.x, points, score: run.score, lives: run.lives, streak: run.streak, over: run.over};
       if (run.over) Object.assign(out, {answered: run.answered, right: run.correct, bestStreak: run.bestStreak, rank: rankFor(run.score, run.mode)});
       return send(res, 200, out);
     }
@@ -214,7 +208,7 @@ module.exports = function playApi({ROOT, PLAY_DIR, TOKEN, send, readBody, client
       const ip = ipHash(clientIp(req));
       if (limited("u" + ip, SUBMIT_PER_MIN, SUBMIT_PER_DAY)) return send(res, 429, {error: "Too many submissions from here — try again later."});
       if (scoreBytes >= MAX_SCORE_BYTES) return send(res, 507, {error: "Score storage is full."});
-      const e = {id: crypto.randomBytes(8).toString("hex"), name: v.name, mode: run.mode, score: run.score, answered: run.answered, correct: run.correct,
+      const e = {id: crypto.randomBytes(8).toString("hex"), v: RULES, name: v.name, mode: run.mode, score: run.score, answered: run.answered, correct: run.correct,
                  date: new Date(now()).toISOString(), run: run.id, ip};
       append(e); scores.push(e); run.submitted = true;
       for (const k of Object.keys(boards)) delete boards[k];                     // show it on the next read

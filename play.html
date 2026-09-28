@@ -72,10 +72,10 @@ kbd{font:500 10.5px/1 var(--mono);color:var(--faint);border:1px solid var(--line
 .pl-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:start;min-width:0}
 @media (max-width:980px){.pl-grid{grid-template-columns:minmax(0,1fr)}}
 .pl-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);min-width:0}
-.pl-stage{padding:14px;display:grid;grid-template-rows:auto auto minmax(0,1fr);height:clamp(560px,78vh,620px);overflow:hidden}
+.pl-stage{padding:14px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;height:clamp(560px,78vh,620px);overflow:hidden}
 @media (max-width:520px){.pl-stage{padding:12px;height:auto;min-height:596px}}
 
-/* HUD: lives, score, streak, timer */
+/* HUD: lives, score, streak */
 .hud{display:flex;align-items:center;gap:14px;min-height:28px;font-size:13px;color:var(--muted)}
 .hud b{color:var(--ink);font:600 16px/1 var(--mono);font-variant-numeric:tabular-nums}
 .hud .grow{flex:1}
@@ -83,9 +83,6 @@ kbd{font:500 10.5px/1 var(--mono);color:var(--faint);border:1px solid var(--line
 .lives svg{width:18px;height:18px;fill:var(--no);transition:opacity .25s,transform .25s}
 .lives svg.gone{opacity:.18;fill:var(--faint);transform:scale(.8)}
 .badge{font:600 11px/1 var(--sans);letter-spacing:.02em;text-transform:uppercase;color:var(--warn);border:1px solid currentColor;border-radius:5px;padding:3px 6px}
-.tbar{height:5px;border-radius:3px;background:var(--inset);overflow:hidden;margin:10px 0 12px}
-.tbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--accent),var(--gold));transform-origin:left;transform:scaleX(0);will-change:transform}
-.tbar.low i{background:var(--no)}
 
 .screen{display:grid;grid-template-rows:minmax(0,1fr) auto auto;gap:12px;min-height:0}
 .q{min-height:0;display:grid;align-content:start;gap:12px}
@@ -208,7 +205,7 @@ kbd{font:500 10.5px/1 var(--mono);color:var(--faint);border:1px solid var(--line
 .blist li.m3{box-shadow:inset 3px 0 0 var(--m3)}.blist li.m3 .rk,.blist li.m3 .s{color:var(--m3)}
 .blist li.me{outline:1px solid var(--accent)}
 .blist .empty{display:block;color:var(--faint);text-align:center;padding:24px 0;background:none}
-@media (prefers-reduced-motion:reduce){.tbar i{transition:none!important}.lives svg{transition:none}}
+@media (prefers-reduced-motion:reduce){.lives svg{transition:none}}
 @media (max-width:420px){
   .side{padding:8px}
   .pt{width:38px;height:38px}
@@ -901,7 +898,6 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
         <span class="badge" id="mode" hidden>Practice</span>
         <span>Best <b id="best">0</b></span>
       </div>
-      <div class="tbar" id="tbar" aria-hidden="true"><i></i></div>
       <div class="screen" id="screen"></div>
     </section>
     <aside class="pl-card pl-board" id="board" aria-label="Leaderboard">
@@ -916,7 +912,7 @@ D.readyState === "loading" ? on(D, "DOMContentLoaded", boot) : boot();
 <script>
 (() => {
 "use strict";
-const PAGE = {"patch":"16.19.1","items":{"1001":"Boots","1054":"Doran's Shield","1055":"Doran's Blade","1056":"Doran's Ring","2065":"Shurelya's Battlesong","2501":"Overlord's Bloodmail","2502":"Unending Despair","2503":"Blackfire Torch","2504":"Kaenic Rookern","2510":"Dusk and Dawn","2512":"Fiendhunter Bolts","2517":"Endless Hunger","2520":"Bastionbreaker","2522":"Actualizer","2523":"Hexoptics C44","2524":"Bandlepipes","2525":"Protoplasm Harness","3004":"Manamune","3006":"Berserker's Greaves","3008":"Gluttonous Greaves","3009":"Boots of Swiftness","3020":"Sorcerer's Shoes","3026":"Guardian Angel","3031":"Infinity Edge","3032":"Yun Tal Wildarrows","3033":"Mortal Reminder","3036":"Lord Dominik's Regards","3046":"Phantom Dancer","3047":"Plated Steelcaps","3050":"Zeke's Convergence","3053":"Sterak's Gage","3065":"Spirit Visage","3068":"Sunfire Aegis","3071":"Black Cleaver","3072":"Bloodthirster","3073":"Experimental Hexplate","3074":"Ravenous Hydra","3075":"Thornmail","3078":"Trinity Force","3083":"Warmog's Armor","3084":"Heartsteel","3085":"Runaan's Hurricane","3087":"Statikk Shiv","3089":"Rabadon's Deathcap","3091":"Wit's End","3094":"Rapid Firecannon","3095":"Stormrazor","3100":"Lich Bane","3102":"Banshee's Veil","3107":"Redemption","3109":"Knight's Vow","3110":"Frozen Heart","3111":"Mercury's Treads","3115":"Nashor's Tooth","3116":"Rylai's Crystal Scepter","3118":"Malignance","3124":"Guinsoo's Rageblade","3135":"Void Staff","3137":"Cryptbloom","3139":"Mercurial Scimitar","3142":"Youmuu's Ghostblade","3143":"Randuin's Omen","3146":"Hextech Gunblade","3152":"Hextech Rocketbelt","3153":"Blade of The Ruined King","3156":"Maw of Malmortius","3157":"Zhonya's Hourglass","3158":"Ionian Boots of Lucidity","3161":"Spear of Shojin","3168":"Immortal Path","3170":"Swiftmarch","3171":"Crimson Lucidity","3173":"Chainlaced Crushers","3174":"Armored Advance","3175":"Spellslinger's Shoes","3181":"Hullbreaker","3190":"Locket of the Iron Solari","3222":"Mikael's Blessing","3302":"Terminus","3504":"Ardent Censer","3508":"Essence Reaver","3742":"Dead Man's Plate","3748":"Titanic Hydra","3814":"Edge of Night","4005":"Imperial Mandate","4401":"Force of Nature","4628":"Horizon Focus","4629":"Cosmic Drive","4633":"Riftmaker","4645":"Shadowflame","4646":"Stormsurge","6333":"Death's Dance","6610":"Sundered Sky","6616":"Staff of Flowing Water","6617":"Moonstone Renewer","6620":"Echoes of Helia","6621":"Dawncore","6631":"Stridebreaker","6653":"Liandry's Torment","6655":"Luden's Echo","6657":"Rod of Ages","6662":"Iceborn Gauntlet","6664":"Hollow Radiance","6665":"Jak'Sho, The Protean","6672":"Kraken Slayer","6673":"Immortal Shieldbow","6675":"Navori Flickerblade","6676":"The Collector","6692":"Eclipse","6694":"Serylda's Grudge","6695":"Serpent's Fang","6696":"Axiom Arc","6698":"Profane Hydra","6699":"Voltaic Cyclosword","8010":"Bloodletter's Curse","8020":"Abyssal Mask"},"names":{"Galio":"Galio","Corki":"Corki","LeeSin":"Lee Sin","Irelia":"Irelia","Lulu":"Lulu","Nasus":"Nasus","Alistar":"Alistar","Ezreal":"Ezreal","Jax":"Jax","Pyke":"Pyke","Xayah":"Xayah","Janna":"Janna","MonkeyKing":"Wukong","Ahri":"Ahri","Leblanc":"LeBlanc","Rakan":"Rakan","Pantheon":"Pantheon","Xerath":"Xerath","TwistedFate":"Twisted Fate","Zilean":"Zilean","Sivir":"Sivir","Khazix":"Kha'Zix","Lissandra":"Lissandra","Sona":"Sona","Malphite":"Malphite","Chogath":"Cho'Gath","Nautilus":"Nautilus","Draven":"Draven","Hecarim":"Hecarim","Veigar":"Veigar","Jinx":"Jinx","Sylas":"Sylas","Yone":"Yone","Cassiopeia":"Cassiopeia","Lux":"Lux","Naafiri":"Naafiri","Renekton":"Renekton","Jhin":"Jhin","Varus":"Varus","Seraphine":"Seraphine","Talon":"Talon","Tristana":"Tristana","Blitzcrank":"Blitzcrank","DrMundo":"Dr. Mundo","Qiyana":"Qiyana","Olaf":"Olaf","Zed":"Zed","Sion":"Sion","Gwen":"Gwen","Karma":"Karma","Lucian":"Lucian","Taliyah":"Taliyah","Ashe":"Ashe","Braum":"Braum","Caitlyn":"Caitlyn","Ambessa":"Ambessa","Samira":"Samira","Camille":"Camille","Ryze":"Ryze","Akali":"Akali","Fizz":"Fizz","Vi":"Vi","Poppy":"Poppy","Rell":"Rell","Aatrox":"Aatrox","Darius":"Darius","Zeri":"Zeri","Nami":"Nami","Gragas":"Gragas","Vladimir":"Vladimir","Thresh":"Thresh","Karthus":"Karthus","Tryndamere":"Tryndamere","Anivia":"Anivia","Gangplank":"Gangplank","JarvanIV":"Jarvan IV","Leona":"Leona","Shen":"Shen","Ekko":"Ekko","Fiora":"Fiora","Yasuo":"Yasuo","Akshan":"Akshan","Amumu":"Amumu","Annie":"Annie","Aurora":"Aurora","Azir":"Azir","Belveth":"Bel'Veth","Brand":"Brand","Briar":"Briar","Diana":"Diana","Evelynn":"Evelynn","Fiddlesticks":"Fiddlesticks","Garen":"Garen","Heimerdinger":"Heimerdinger","Illaoi":"Illaoi","Ivern":"Ivern","Kassadin":"Kassadin","Kayle":"Kayle","Kennen":"Kennen","Kindred":"Kindred","Kled":"Kled","KogMaw":"Kog'Maw","Lillia":"Lillia","Malzahar":"Malzahar","Maokai":"Maokai","MissFortune":"Miss Fortune","Mordekaiser":"Mordekaiser","Neeko":"Neeko","Nilah":"Nilah","Nocturne":"Nocturne","Ornn":"Ornn","Quinn":"Quinn","Rammus":"Rammus","RekSai":"Rek'Sai","Renata":"Renata Glasc","Riven":"Riven","Rumble":"Rumble","Sejuani":"Sejuani","Sett":"Sett","Shyvana":"Shyvana","Singed":"Singed","Skarner":"Skarner","Soraka":"Soraka","Swain":"Swain","TahmKench":"Tahm Kench","Taric":"Taric","Teemo":"Teemo","Trundle":"Trundle","Twitch":"Twitch","Urgot":"Urgot","Vayne":"Vayne","Velkoz":"Vel'Koz","Vex":"Vex","Volibear":"Volibear","Warwick":"Warwick","XinZhao":"Xin Zhao","Yorick":"Yorick","Zaahen":"Zaahen","Zac":"Zac","Ziggs":"Ziggs","AurelionSol":"Aurelion Sol","Morgana":"Morgana","Bard":"Bard","Nunu":"Nunu & Willump","MasterYi":"Master Yi","Yuumi":"Yuumi"},"abil":{"Aatrox":{"Q":"The Darkin Blade","W":"Infernal Chains","E":"Umbral Dash","R":"World Ender"},"Xayah":{"Q":"Double Daggers","W":"Deadly Plumage","E":"Bladecaller","R":"Featherstorm"},"Thresh":{"Q":"Death Sentence","W":"Dark Passage","E":"Flay","R":"The Box"},"Leblanc":{"Q":"Sigil of Malice","W":"Distortion","E":"Ethereal Chains","R":"Mimic"},"Hecarim":{"Q":"Rampage","W":"Spirit of Dread","E":"Devastating Charge","R":"Onslaught of Shadows"},"Ekko":{"Q":"Timewinder","W":"Parallel Convergence","E":"Phase Dive","R":"Chronobreak"},"Yone":{"Q":"Mortal Steel","W":"Spirit Cleave","E":"Soul Unbound","R":"Fate Sealed"},"Akali":{"Q":"Five Point Strike","W":"Twilight Shroud","E":"Shuriken Flip","R":"Perfect Execution"},"Taliyah":{"Q":"Threaded Volley","W":"Seismic Shove","E":"Unraveled Earth","R":"Weaver's Wall"},"Sona":{"Q":"Hymn of Valor","W":"Aria of Perseverance","E":"Song of Celerity","R":"Crescendo"},"Gwen":{"Q":"Snip Snip!","W":"Hallowed Mist","E":"Skip 'n Slash","R":"Needlework"},"Gangplank":{"Q":"Parrrley","W":"Remove Scurvy","E":"Powder Keg","R":"Cannon Barrage"},"Sylas":{"Q":"Chain Lash","W":"Kingslayer","E":"Abscond / Abduct","R":"Hijack"},"Renekton":{"Q":"Cull the Meek","W":"Ruthless Predator","E":"Slice and Dice","R":"Dominus"},"Ambessa":{"Q":"Cunning Sweep / Sundering Slam","W":"Repudiation","E":"Lacerate","R":"Public Execution"},"Rakan":{"Q":"Gleaming Quill","W":"Grand Entrance","E":"Battle Dance","R":"The Quickness"},"Malphite":{"Q":"Seismic Shard","W":"Thunderclap","E":"Ground Slam","R":"Unstoppable Force"},"Draven":{"Q":"Spinning Axe","W":"Blood Rush","E":"Stand Aside","R":"Whirling Death"},"Olaf":{"Q":"Undertow","W":"Tough It Out","E":"Reckless Swing","R":"Ragnarok"},"Lulu":{"Q":"Glitterlance","W":"Whimsy","E":"Help, Pix!","R":"Wild Growth"},"Xerath":{"Q":"Arcanopulse","W":"Eye of Destruction","E":"Shocking Orb","R":"Rite of the Arcane"},"Braum":{"Q":"Winter's Bite","W":"Stand Behind Me","E":"Unbreakable","R":"Glacial Fissure"},"Galio":{"Q":"Winds of War","W":"Shield of Durand","E":"Justice Punch","R":"Hero's Entrance"},"JarvanIV":{"Q":"Dragon Strike","W":"Golden Aegis","E":"Demacian Standard","R":"Cataclysm"},"Talon":{"Q":"Noxian Diplomacy","W":"Rake","E":"Assassin's Path","R":"Shadow Assault"},"Janna":{"Q":"Howling Gale","W":"Zephyr","E":"Eye Of The Storm","R":"Monsoon"},"Corki":{"Q":"Phosphorus Bomb","W":"Valkyrie","E":"Gatling Gun","R":"Missile Barrage"},"Karthus":{"Q":"Lay Waste","W":"Wall of Pain","E":"Defile","R":"Requiem"},"Chogath":{"Q":"Rupture","W":"Feral Scream","E":"Vorpal Spikes","R":"Feast"},"Jhin":{"Q":"Dancing Grenade","W":"Deadly Flourish","E":"Captive Audience","R":"Curtain Call"},"Ryze":{"Q":"Overload","W":"Rune Prison","E":"Spell Flux","R":"Realm Warp"},"Tristana":{"Q":"Rapid Fire","W":"Rocket Jump","E":"Explosive Charge","R":"Buster Shot"},"Lucian":{"Q":"Piercing Light","W":"Ardent Blaze","E":"Relentless Pursuit","R":"The Culling"},"Seraphine":{"Q":"High Note","W":"Surround Sound","E":"Beat Drop","R":"Encore"},"Nautilus":{"Q":"Dredge Line","W":"Titan's Wrath","E":"Riptide","R":"Depth Charge"},"Jax":{"Q":"Leap Strike","W":"Empower","E":"Counter Strike","R":"Grandmaster-at-Arms"},"Vladimir":{"Q":"Transfusion","W":"Sanguine Pool","E":"Tides of Blood","R":"Hemoplague"},"Tryndamere":{"Q":"Bloodlust","W":"Mocking Shout","E":"Spinning Slash","R":"Undying Rage"},"Yasuo":{"Q":"Steel Tempest","W":"Wind Wall","E":"Sweeping Blade","R":"Last Breath"},"Gragas":{"Q":"Barrel Roll","W":"Drunken Rage","E":"Body Slam","R":"Explosive Cask"},"Fizz":{"Q":"Urchin Strike","W":"Seastone Trident","E":"Playful / Trickster","R":"Chum the Waters"},"Samira":{"Q":"Flair","W":"Blade Whirl","E":"Wild Rush","R":"Inferno Trigger"},"Leona":{"Q":"Shield of Daybreak","W":"Eclipse","E":"Zenith Blade","R":"Solar Flare"},"MonkeyKing":{"Q":"Crushing Blow","W":"Warrior Trickster","E":"Nimbus Strike","R":"Cyclone"},"Blitzcrank":{"Q":"Rocket Grab","W":"Overdrive","E":"Power Fist","R":"Static Field"},"Zed":{"Q":"Razor Shuriken","W":"Living Shadow","E":"Shadow Slash","R":"Death Mark"},"Karma":{"Q":"Inner Flame","W":"Focused Resolve","E":"Inspire","R":"Mantra"},"Fiora":{"Q":"Lunge","W":"Riposte","E":"Bladework","R":"Grand Challenge"},"Nasus":{"Q":"Siphoning Strike","W":"Wither","E":"Spirit Fire","R":"Fury of the Sands"},"Poppy":{"Q":"Hammer Shock","W":"Steadfast Presence","E":"Heroic Charge","R":"Keeper's Verdict"},"Khazix":{"Q":"Taste Their Fear","W":"Void Spike","E":"Leap","R":"Void Assault"},"Irelia":{"Q":"Bladesurge","W":"Defiant Dance","E":"Flawless Duet","R":"Vanguard's Edge"},"Shen":{"Q":"Twilight Assault","W":"Spirit's Refuge","E":"Shadow Dash","R":"Stand United"},"Zilean":{"Q":"Time Bomb","W":"Rewind","E":"Time Warp","R":"Chronoshift"},"Pyke":{"Q":"Bone Skewer","W":"Ghostwater Dive","E":"Phantom Undertow","R":"Death From Below"},"Anivia":{"Q":"Flash Frost","W":"Crystallize","E":"Frostbite","R":"Glacial Storm"},"Naafiri":{"Q":"Darkin Daggers","W":"The Call of the Pack","E":"Eviscerate","R":"Hounds' Pursuit"},"Cassiopeia":{"Q":"Noxious Blast","W":"Miasma","E":"Twin Fang","R":"Petrifying Gaze"},"Ahri":{"Q":"Orb of Deception","W":"Fox-Fire","E":"Charm","R":"Spirit Rush"},"Veigar":{"Q":"Baleful Strike","W":"Dark Matter","E":"Event Horizon","R":"Primordial Burst"},"Rell":{"Q":"Shattering Strike","W":"Ferromancy: Crash Down","E":"Full Tilt","R":"Magnet Storm"},"Alistar":{"Q":"Pulverize","W":"Headbutt","E":"Trample","R":"Unbreakable Will"},"Sion":{"Q":"Decimating Smash","W":"Soul Furnace","E":"Roar of the Slayer","R":"Unstoppable Onslaught"},"Darius":{"Q":"Decimate","W":"Crippling Strike","E":"Apprehend","R":"Noxian Guillotine"},"Lissandra":{"Q":"Ice Shard","W":"Ring of Frost","E":"Glacial Path","R":"Frozen Tomb"},"Qiyana":{"Q":"Elemental Wrath / Edge of Ixtal","W":"Terrashape","E":"Audacity","R":"Supreme Display of Talent"},"Jinx":{"Q":"Switcheroo!","W":"Zap!","E":"Flame Chompers!","R":"Super Mega Death Rocket!"},"Camille":{"Q":"Precision Protocol","W":"Tactical Sweep","E":"Hookshot","R":"The Hextech Ultimatum"},"Varus":{"Q":"Piercing Arrow","W":"Blighted Quiver","E":"Hail of Arrows","R":"Chain of Corruption"},"LeeSin":{"Q":"Sonic Wave / Resonating Strike","W":"Safeguard / Iron Will","E":"Tempest / Cripple","R":"Dragon's Rage"},"Pantheon":{"Q":"Comet Spear","W":"Shield Vault","E":"Aegis Assault","R":"Grand Starfall"},"DrMundo":{"Q":"Infected Bonesaw","W":"Heart Zapper","E":"Blunt Force Trauma","R":"Maximum Dosage"},"Sivir":{"Q":"Boomerang Blade","W":"Ricochet","E":"Spell Shield","R":"On The Hunt"},"Ezreal":{"Q":"Mystic Shot","W":"Essence Flux","E":"Arcane Shift","R":"Trueshot Barrage"},"Nami":{"Q":"Aqua Prison","W":"Ebb and Flow","E":"Tidecaller's Blessing","R":"Tidal Wave"},"Lux":{"Q":"Light Binding","W":"Prismatic Barrier","E":"Lucent Singularity","R":"Final Spark"},"Zeri":{"Q":"Burst Fire","W":"Ultrashock Laser","E":"Spark Surge","R":"Lightning Crash"}},"igold":{"2501":3300,"2503":2800,"2510":3100,"2512":2650,"2517":3100,"2520":3000,"2522":2800,"2523":2800,"3004":2900,"3026":3200,"3031":3500,"3032":3000,"3033":3000,"3036":3300,"3046":2650,"3071":3000,"3072":3400,"3073":3000,"3074":3300,"3078":3333,"3085":2650,"3087":3000,"3089":3500,"3091":2800,"3094":2650,"3095":3200,"3100":2900,"3102":3000,"3115":2900,"3116":2600,"3118":2700,"3124":3000,"3135":3000,"3137":3000,"3139":3200,"3142":2800,"3146":3000,"3152":2650,"3153":3200,"3156":3100,"3157":3250,"3161":3100,"3181":3000,"3302":3000,"3508":3050,"3748":3300,"3814":3000,"4628":2700,"4629":3000,"4633":3100,"4645":3200,"4646":2800,"6333":3300,"6610":3100,"6631":3300,"6653":3000,"6655":2750,"6657":2600,"6672":3000,"6673":3000,"6675":2650,"6676":3000,"6692":2900,"6694":3000,"6695":2500,"6696":2750,"6698":2850,"6699":3000,"8010":2900}};
+const PAGE = {"patch":"16.19.1","items":{"1001":"Boots","1054":"Doran's Shield","1055":"Doran's Blade","1056":"Doran's Ring","2065":"Shurelya's Battlesong","2501":"Overlord's Bloodmail","2502":"Unending Despair","2503":"Blackfire Torch","2504":"Kaenic Rookern","2510":"Dusk and Dawn","2512":"Fiendhunter Bolts","2517":"Endless Hunger","2520":"Bastionbreaker","2522":"Actualizer","2523":"Hexoptics C44","2524":"Bandlepipes","2525":"Protoplasm Harness","3003":"Archangel's Staff","3004":"Manamune","3006":"Berserker's Greaves","3008":"Gluttonous Greaves","3009":"Boots of Swiftness","3020":"Sorcerer's Shoes","3026":"Guardian Angel","3031":"Infinity Edge","3032":"Yun Tal Wildarrows","3033":"Mortal Reminder","3036":"Lord Dominik's Regards","3046":"Phantom Dancer","3047":"Plated Steelcaps","3050":"Zeke's Convergence","3053":"Sterak's Gage","3065":"Spirit Visage","3068":"Sunfire Aegis","3071":"Black Cleaver","3072":"Bloodthirster","3073":"Experimental Hexplate","3074":"Ravenous Hydra","3075":"Thornmail","3078":"Trinity Force","3083":"Warmog's Armor","3084":"Heartsteel","3085":"Runaan's Hurricane","3087":"Statikk Shiv","3089":"Rabadon's Deathcap","3091":"Wit's End","3094":"Rapid Firecannon","3095":"Stormrazor","3100":"Lich Bane","3102":"Banshee's Veil","3107":"Redemption","3109":"Knight's Vow","3110":"Frozen Heart","3111":"Mercury's Treads","3115":"Nashor's Tooth","3116":"Rylai's Crystal Scepter","3118":"Malignance","3119":"Winter's Approach","3124":"Guinsoo's Rageblade","3135":"Void Staff","3137":"Cryptbloom","3139":"Mercurial Scimitar","3142":"Youmuu's Ghostblade","3143":"Randuin's Omen","3146":"Hextech Gunblade","3152":"Hextech Rocketbelt","3153":"Blade of The Ruined King","3156":"Maw of Malmortius","3157":"Zhonya's Hourglass","3158":"Ionian Boots of Lucidity","3161":"Spear of Shojin","3165":"Morellonomicon","3168":"Immortal Path","3170":"Swiftmarch","3171":"Crimson Lucidity","3172":"Gunmetal Greaves","3173":"Chainlaced Crushers","3174":"Armored Advance","3175":"Spellslinger's Shoes","3181":"Hullbreaker","3190":"Locket of the Iron Solari","3222":"Mikael's Blessing","3302":"Terminus","3504":"Ardent Censer","3508":"Essence Reaver","3742":"Dead Man's Plate","3748":"Titanic Hydra","3814":"Edge of Night","4005":"Imperial Mandate","4401":"Force of Nature","4628":"Horizon Focus","4629":"Cosmic Drive","4633":"Riftmaker","4645":"Shadowflame","4646":"Stormsurge","6333":"Death's Dance","6609":"Chempunk Chainsword","6610":"Sundered Sky","6616":"Staff of Flowing Water","6617":"Moonstone Renewer","6620":"Echoes of Helia","6621":"Dawncore","6631":"Stridebreaker","6653":"Liandry's Torment","6655":"Luden's Echo","6657":"Rod of Ages","6662":"Iceborn Gauntlet","6664":"Hollow Radiance","6665":"Jak'Sho, The Protean","6672":"Kraken Slayer","6673":"Immortal Shieldbow","6675":"Navori Flickerblade","6676":"The Collector","6692":"Eclipse","6694":"Serylda's Grudge","6695":"Serpent's Fang","6696":"Axiom Arc","6698":"Profane Hydra","6699":"Voltaic Cyclosword","8010":"Bloodletter's Curse","8020":"Abyssal Mask"},"names":{"Hecarim":"Hecarim","Renekton":"Renekton","Gwen":"Gwen","Chogath":"Cho'Gath","Pyke":"Pyke","Yone":"Yone","Pantheon":"Pantheon","Lissandra":"Lissandra","Ambessa":"Ambessa","Caitlyn":"Caitlyn","Tryndamere":"Tryndamere","Veigar":"Veigar","Rell":"Rell","Sivir":"Sivir","Sylas":"Sylas","Ryze":"Ryze","Vladimir":"Vladimir","DrMundo":"Dr. Mundo","Karma":"Karma","Camille":"Camille","Lulu":"Lulu","Ahri":"Ahri","Gragas":"Gragas","TwistedFate":"Twisted Fate","Nasus":"Nasus","Akali":"Akali","Taliyah":"Taliyah","Xerath":"Xerath","Lucian":"Lucian","Alistar":"Alistar","Cassiopeia":"Cassiopeia","Ekko":"Ekko","Poppy":"Poppy","Aatrox":"Aatrox","MonkeyKing":"Wukong","LeeSin":"Lee Sin","Khazix":"Kha'Zix","Qiyana":"Qiyana","Fiora":"Fiora","Nautilus":"Nautilus","Samira":"Samira","Leblanc":"LeBlanc","Jhin":"Jhin","Naafiri":"Naafiri","Zed":"Zed","Varus":"Varus","Janna":"Janna","Corki":"Corki","Malphite":"Malphite","Fizz":"Fizz","Rakan":"Rakan","Xayah":"Xayah","Darius":"Darius","Ezreal":"Ezreal","Jax":"Jax","Jinx":"Jinx","Shen":"Shen","Thresh":"Thresh","Braum":"Braum","Irelia":"Irelia","JarvanIV":"Jarvan IV","Zilean":"Zilean","Olaf":"Olaf","Vi":"Vi","Yasuo":"Yasuo","Lux":"Lux","Blitzcrank":"Blitzcrank","Gangplank":"Gangplank","Ashe":"Ashe","Seraphine":"Seraphine","Tristana":"Tristana","Talon":"Talon","Draven":"Draven","Zeri":"Zeri","Sion":"Sion","Nami":"Nami","Karthus":"Karthus","Sona":"Sona","Leona":"Leona","Anivia":"Anivia","Galio":"Galio","Akshan":"Akshan","Amumu":"Amumu","Annie":"Annie","AurelionSol":"Aurelion Sol","Aurora":"Aurora","Azir":"Azir","Bard":"Bard","Belveth":"Bel'Veth","Brand":"Brand","Briar":"Briar","Diana":"Diana","Evelynn":"Evelynn","Fiddlesticks":"Fiddlesticks","Garen":"Garen","Heimerdinger":"Heimerdinger","Illaoi":"Illaoi","Ivern":"Ivern","Kassadin":"Kassadin","Kayle":"Kayle","Kennen":"Kennen","Kindred":"Kindred","Kled":"Kled","KogMaw":"Kog'Maw","Lillia":"Lillia","Malzahar":"Malzahar","Maokai":"Maokai","MasterYi":"Master Yi","MissFortune":"Miss Fortune","Mordekaiser":"Mordekaiser","Morgana":"Morgana","Neeko":"Neeko","Nilah":"Nilah","Nocturne":"Nocturne","Ornn":"Ornn","Quinn":"Quinn","Rammus":"Rammus","RekSai":"Rek'Sai","Renata":"Renata Glasc","Riven":"Riven","Rumble":"Rumble","Sejuani":"Sejuani","Sett":"Sett","Shyvana":"Shyvana","Singed":"Singed","Skarner":"Skarner","Soraka":"Soraka","Swain":"Swain","TahmKench":"Tahm Kench","Taric":"Taric","Teemo":"Teemo","Trundle":"Trundle","Twitch":"Twitch","Urgot":"Urgot","Vayne":"Vayne","Velkoz":"Vel'Koz","Vex":"Vex","Volibear":"Volibear","Warwick":"Warwick","XinZhao":"Xin Zhao","Yorick":"Yorick","Yuumi":"Yuumi","Zaahen":"Zaahen","Zac":"Zac","Ziggs":"Ziggs","Nunu":"Nunu & Willump"},"abil":{"Yone":{"Q":"Mortal Steel","W":"Spirit Cleave","E":"Soul Unbound","R":"Fate Sealed"},"JarvanIV":{"Q":"Dragon Strike","W":"Golden Aegis","E":"Demacian Standard","R":"Cataclysm"},"Draven":{"Q":"Spinning Axe","W":"Blood Rush","E":"Stand Aside","R":"Whirling Death"},"Irelia":{"Q":"Bladesurge","W":"Defiant Dance","E":"Flawless Duet","R":"Vanguard's Edge"},"Sion":{"Q":"Decimating Smash","W":"Soul Furnace","E":"Roar of the Slayer","R":"Unstoppable Onslaught"},"Varus":{"Q":"Piercing Arrow","W":"Blighted Quiver","E":"Hail of Arrows","R":"Chain of Corruption"},"Ekko":{"Q":"Timewinder","W":"Parallel Convergence","E":"Phase Dive","R":"Chronobreak"},"Renekton":{"Q":"Cull the Meek","W":"Ruthless Predator","E":"Slice and Dice","R":"Dominus"},"Janna":{"Q":"Howling Gale","W":"Zephyr","E":"Eye Of The Storm","R":"Monsoon"},"Poppy":{"Q":"Hammer Shock","W":"Steadfast Presence","E":"Heroic Charge","R":"Keeper's Verdict"},"Pantheon":{"Q":"Comet Spear","W":"Shield Vault","E":"Aegis Assault","R":"Grand Starfall"},"Rakan":{"Q":"Gleaming Quill","W":"Grand Entrance","E":"Battle Dance","R":"The Quickness"},"Tristana":{"Q":"Rapid Fire","W":"Rocket Jump","E":"Explosive Charge","R":"Buster Shot"},"Tryndamere":{"Q":"Bloodlust","W":"Mocking Shout","E":"Spinning Slash","R":"Undying Rage"},"Jhin":{"Q":"Dancing Grenade","W":"Deadly Flourish","E":"Captive Audience","R":"Curtain Call"},"Jax":{"Q":"Leap Strike","W":"Empower","E":"Counter Strike","R":"Grandmaster-at-Arms"},"Khazix":{"Q":"Taste Their Fear","W":"Void Spike","E":"Leap","R":"Void Assault"},"Akali":{"Q":"Five Point Strike","W":"Twilight Shroud","E":"Shuriken Flip","R":"Perfect Execution"},"Zed":{"Q":"Razor Shuriken","W":"Living Shadow","E":"Shadow Slash","R":"Death Mark"},"Aatrox":{"Q":"The Darkin Blade","W":"Infernal Chains","E":"Umbral Dash","R":"World Ender"},"Gwen":{"Q":"Snip Snip!","W":"Hallowed Mist","E":"Skip 'n Slash","R":"Needlework"},"Talon":{"Q":"Noxian Diplomacy","W":"Rake","E":"Assassin's Path","R":"Shadow Assault"},"Pyke":{"Q":"Bone Skewer","W":"Ghostwater Dive","E":"Phantom Undertow","R":"Death From Below"},"Leona":{"Q":"Shield of Daybreak","W":"Eclipse","E":"Zenith Blade","R":"Solar Flare"},"Olaf":{"Q":"Undertow","W":"Tough It Out","E":"Reckless Swing","R":"Ragnarok"},"Lulu":{"Q":"Glitterlance","W":"Whimsy","E":"Help, Pix!","R":"Wild Growth"},"LeeSin":{"Q":"Sonic Wave / Resonating Strike","W":"Safeguard / Iron Will","E":"Tempest / Cripple","R":"Dragon's Rage"},"Lux":{"Q":"Light Binding","W":"Prismatic Barrier","E":"Lucent Singularity","R":"Final Spark"},"Hecarim":{"Q":"Rampage","W":"Spirit of Dread","E":"Devastating Charge","R":"Onslaught of Shadows"},"Jinx":{"Q":"Switcheroo!","W":"Zap!","E":"Flame Chompers!","R":"Super Mega Death Rocket!"},"Zeri":{"Q":"Burst Fire","W":"Ultrashock Laser","E":"Spark Surge","R":"Lightning Crash"},"Braum":{"Q":"Winter's Bite","W":"Stand Behind Me","E":"Unbreakable","R":"Glacial Fissure"},"Qiyana":{"Q":"Elemental Wrath / Edge of Ixtal","W":"Terrashape","E":"Audacity","R":"Supreme Display of Talent"},"Ryze":{"Q":"Overload","W":"Rune Prison","E":"Spell Flux","R":"Realm Warp"},"Alistar":{"Q":"Pulverize","W":"Headbutt","E":"Trample","R":"Unbreakable Will"},"Leblanc":{"Q":"Sigil of Malice","W":"Distortion","E":"Ethereal Chains","R":"Mimic"},"Taliyah":{"Q":"Threaded Volley","W":"Seismic Shove","E":"Unraveled Earth","R":"Weaver's Wall"},"Chogath":{"Q":"Rupture","W":"Feral Scream","E":"Vorpal Spikes","R":"Feast"},"Ezreal":{"Q":"Mystic Shot","W":"Essence Flux","E":"Arcane Shift","R":"Trueshot Barrage"},"Gangplank":{"Q":"Parrrley","W":"Remove Scurvy","E":"Powder Keg","R":"Cannon Barrage"},"Nami":{"Q":"Aqua Prison","W":"Ebb and Flow","E":"Tidecaller's Blessing","R":"Tidal Wave"},"Malphite":{"Q":"Seismic Shard","W":"Thunderclap","E":"Ground Slam","R":"Unstoppable Force"},"Xerath":{"Q":"Arcanopulse","W":"Eye of Destruction","E":"Shocking Orb","R":"Rite of the Arcane"},"Sona":{"Q":"Hymn of Valor","W":"Aria of Perseverance","E":"Song of Celerity","R":"Crescendo"},"Nasus":{"Q":"Siphoning Strike","W":"Wither","E":"Spirit Fire","R":"Fury of the Sands"},"Corki":{"Q":"Phosphorus Bomb","W":"Valkyrie","E":"Gatling Gun","R":"Missile Barrage"},"Vladimir":{"Q":"Transfusion","W":"Sanguine Pool","E":"Tides of Blood","R":"Hemoplague"},"Rell":{"Q":"Shattering Strike","W":"Ferromancy: Crash Down","E":"Full Tilt","R":"Magnet Storm"},"Karthus":{"Q":"Lay Waste","W":"Wall of Pain","E":"Defile","R":"Requiem"},"Ambessa":{"Q":"Cunning Sweep / Sundering Slam","W":"Repudiation","E":"Lacerate","R":"Public Execution"},"DrMundo":{"Q":"Infected Bonesaw","W":"Heart Zapper","E":"Blunt Force Trauma","R":"Maximum Dosage"},"Nautilus":{"Q":"Dredge Line","W":"Titan's Wrath","E":"Riptide","R":"Depth Charge"},"Karma":{"Q":"Inner Flame","W":"Focused Resolve","E":"Inspire","R":"Mantra"},"Sylas":{"Q":"Chain Lash","W":"Kingslayer","E":"Abscond / Abduct","R":"Hijack"},"Gragas":{"Q":"Barrel Roll","W":"Drunken Rage","E":"Body Slam","R":"Explosive Cask"},"MonkeyKing":{"Q":"Crushing Blow","W":"Warrior Trickster","E":"Nimbus Strike","R":"Cyclone"},"Camille":{"Q":"Precision Protocol","W":"Tactical Sweep","E":"Hookshot","R":"The Hextech Ultimatum"},"Veigar":{"Q":"Baleful Strike","W":"Dark Matter","E":"Event Horizon","R":"Primordial Burst"},"Blitzcrank":{"Q":"Rocket Grab","W":"Overdrive","E":"Power Fist","R":"Static Field"},"Ahri":{"Q":"Orb of Deception","W":"Fox-Fire","E":"Charm","R":"Spirit Rush"},"Yasuo":{"Q":"Steel Tempest","W":"Wind Wall","E":"Sweeping Blade","R":"Last Breath"},"Lucian":{"Q":"Piercing Light","W":"Ardent Blaze","E":"Relentless Pursuit","R":"The Culling"},"Zilean":{"Q":"Time Bomb","W":"Rewind","E":"Time Warp","R":"Chronoshift"},"Galio":{"Q":"Winds of War","W":"Shield of Durand","E":"Justice Punch","R":"Hero's Entrance"},"Samira":{"Q":"Flair","W":"Blade Whirl","E":"Wild Rush","R":"Inferno Trigger"},"Naafiri":{"Q":"Darkin Daggers","W":"The Call of the Pack","E":"Eviscerate","R":"Hounds' Pursuit"},"Fiora":{"Q":"Lunge","W":"Riposte","E":"Bladework","R":"Grand Challenge"},"Fizz":{"Q":"Urchin Strike","W":"Seastone Trident","E":"Playful / Trickster","R":"Chum the Waters"},"Xayah":{"Q":"Double Daggers","W":"Deadly Plumage","E":"Bladecaller","R":"Featherstorm"},"Seraphine":{"Q":"High Note","W":"Surround Sound","E":"Beat Drop","R":"Encore"},"Cassiopeia":{"Q":"Noxious Blast","W":"Miasma","E":"Twin Fang","R":"Petrifying Gaze"},"Darius":{"Q":"Decimate","W":"Crippling Strike","E":"Apprehend","R":"Noxian Guillotine"},"Sivir":{"Q":"Boomerang Blade","W":"Ricochet","E":"Spell Shield","R":"On The Hunt"},"Shen":{"Q":"Twilight Assault","W":"Spirit's Refuge","E":"Shadow Dash","R":"Stand United"},"Thresh":{"Q":"Death Sentence","W":"Dark Passage","E":"Flay","R":"The Box"},"Lissandra":{"Q":"Ice Shard","W":"Ring of Frost","E":"Glacial Path","R":"Frozen Tomb"},"Anivia":{"Q":"Flash Frost","W":"Crystallize","E":"Frostbite","R":"Glacial Storm"}}};
 const $ = id => document.getElementById(id);
 function h(tag, attrs, ...kids){
   const e = document.createElement(tag);
@@ -932,12 +928,17 @@ function h(tag, attrs, ...kids){
 const grp = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const store = {get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (_) { return d; } },
                set(k, v){ try { localStorage.setItem(k, v); } catch (_) {} }};
-const LIMIT = {kill: 14, mc: 16, hilo: 12, haste: 16, stat: 15, item: 16}, SLACK = 1.5, LIVES = 3;
-// speed bonus as the server scores it (play-api.js): the full 50 within the first 20% of the limit, then down to 0
-const speedBonus = (el, lim) => Math.round(50 * Math.min(1, Math.max(0, (lim - el) / (0.8 * lim))));
+// untimed; 100 points a right answer (the server's rules v2, play-api.js)
+const LIVES = 3, POINTS = 100;
 // modes: the question kinds and their weights (the server's play-api.js has the same table)
-const MODES = {all: {kill: 40, mc: 16, hilo: 12, haste: 8, stat: 12, item: 12}, kill: {kill: 1}, num: {mc: 30, hilo: 25, haste: 20, stat: 25}, item: {item: 1}};
-const MODE_LABEL = {all: "All", kill: "Kill or no kill", num: "Numbers", item: "Items"};
+const MODES = {all: {kill: 40, mc: 26, hilo: 8, stat: 12, item: 14}, kill: {kill: 1}, abil: {mc: 80, hilo: 20}, item: {item: 1}};
+const MODE_LABEL = {all: "All", kill: "Kill or no kill", abil: "Abilities", item: "Items"};
+// what an ability / item question asks
+const RATIO_LABEL = {"AP": "AP", "AD": "AD", "bonus AD": "bonus AD", "bonus health": "bonus health", "maximum health": "max health"};
+const ITEM_LABEL = {cost: "Total cost", ap: "Ability power", ad: "Attack damage", as: "Attack speed", crit: "Critical strike chance", armor: "Armor",
+  mr: "Magic resist", hp: "Health", haste: "Ability haste", mana: "Mana", lethality: "Lethality", magicpen: "Magic penetration",
+  magicpenpct: "Magic penetration", armorpenpct: "Armor penetration", ms: "Move speed", mspct: "Move speed", lifesteal: "Life steal",
+  omnivamp: "Omnivamp", healpower: "Heal and shield power"};
 let MODE = MODES[store.get("riftlogic.play.mode", "all")] ? store.get("riftlogic.play.mode", "all") : "all";
 const STAT_LABEL = {hp: "health", armor: "armor", ad: "attack damage", mr: "magic resist", range: "attack range"};
 
@@ -967,7 +968,7 @@ const abilName = (c, s) => ((PAGE.abil || {})[c] || {})[s] || s;
 
 /* ---------- state ---------- */
 const S = {mode: "idle", server: false, run: null, q: null, n: 0, lives: LIVES, score: 0, streak: 0, answered: 0, right: 0, bestStreak: 0,
-           t0: 0, timer: 0, busy: false, pool: null, seen: new Set(), last: null, rank: null, submitted: false};
+           busy: false, pool: null, seen: new Set(), last: null, rank: null, submitted: false};
 let best = +store.get("riftlogic.play.best", "0") || 0;
 function hud(){
   const L = $("lives"); L.textContent = "";
@@ -982,22 +983,6 @@ function svgHeart(gone){
   const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", "M10 17.3 3.3 10.9A4.1 4.1 0 0 1 10 5.2a4.1 4.1 0 0 1 6.7 5.7Z"); s.append(p); return s;
 }
 const fx = on => { try { if (window.RLFX && window.RLFX.hold) window.RLFX.hold(on); } catch (_) {} };
-
-/* ---------- timer ---------- */
-function timerStart(sec){
-  const t = $("tbar"), i = t.firstElementChild;
-  t.classList.remove("low"); i.style.transition = "none"; i.style.transform = "scaleX(1)"; void i.offsetWidth;
-  i.style.transition = `transform ${sec}s linear`; i.style.transform = "scaleX(0)";
-  S.t0 = performance.now(); clearTimeout(S.timer); clearTimeout(S.lowT);
-  S.lowT = setTimeout(() => t.classList.add("low"), sec * 700);
-  S.timer = setTimeout(() => answer(null), sec * 1000);
-}
-function timerStop(){
-  clearTimeout(S.timer); clearTimeout(S.lowT);
-  const i = $("tbar").firstElementChild, cs = getComputedStyle(i).transform;
-  i.style.transition = "none"; i.style.transform = cs && cs !== "none" ? cs : "scaleX(0)";
-}
-function timerReset(){ const i = $("tbar").firstElementChild; i.style.transition = "none"; i.style.transform = "scaleX(0)"; $("tbar").classList.remove("low"); }
 
 /* ---------- server API, with a local practice fallback ---------- */
 async function api(path, body){
@@ -1020,25 +1005,22 @@ function localIssue(){
   q = q || list[Math.floor(Math.random() * list.length)]; S.seen.add(q.id);
   S.localQ = q;
   const v = kind === "kill" ? {id: q.id, kind, a: q.a, t: q.t}
-    : kind === "mc" ? {id: q.id, kind: "mc", c: q.c, s: q.s, name: q.name, type: q.kind, r: q.r, stat: q.stat || null, label: q.label || null, opts: q.opts, unit: q.unit}
-    : kind === "hilo" ? {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, stat: q.stat || null, v: q.v}
-    : kind === "haste" ? {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, ah: q.ah, opts: q.opts, unit: q.unit}
+    : kind === "mc" ? {id: q.id, kind: "mc", c: q.c, s: q.s, name: q.name, type: q.kind, r: q.r, rs: q.rs || null, opts: q.opts, unit: q.unit}
+    : kind === "hilo" ? {id: q.id, kind, c: q.c, s: q.s, name: q.name, r: q.r, v: q.v}
     : kind === "stat" ? {id: q.id, kind, st: q.st, l: q.l, opts: q.opts}
-    : {id: q.id, kind, a: q.a, t: q.t, opts: q.opts};
-  return {q: v, n: ++S.n, limit: LIMIT[kind]};
+    : {id: q.id, kind, i: q.i, st: q.st, opts: q.opts, unit: q.unit};
+  return {q: v, n: ++S.n};
 }
-function localAnswer(choice, el){
-  const q = S.localQ, kind = S.q.kind, lim = LIMIT[kind] * 1000;
-  const correct = el <= lim + SLACK * 1000 && choice !== null && choice === q.ans;
-  const points = correct ? 100 + speedBonus(el, lim) : 0;
+function localAnswer(choice){
+  const q = S.localQ, correct = choice !== null && choice === q.ans, points = correct ? POINTS : 0;
   S.answered++; if (correct){ S.right++; S.score += points; S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak); } else { S.lives--; S.streak = 0; }
-  return {correct, timedOut: el > lim + SLACK * 1000, answer: q.ans, x: q.x, points, score: S.score, lives: S.lives, streak: S.streak, over: S.lives <= 0};
+  return {correct, answer: q.ans, x: q.x, points, score: S.score, lives: S.lives, streak: S.streak, over: S.lives <= 0};
 }
 
 /* ---------- screens ---------- */
 function screen(...kids){ const s = $("screen"); s.textContent = ""; s.append(...kids); }
 function startScreen(){
-  S.mode = "idle"; timerReset(); hud();
+  S.mode = "idle"; hud();
   const go = h("button", {type: "button", class: "btn pri pl-go", id: "go", onclick: start}, "Play ", h("kbd", {}, "Enter"));
   const chips = h("div", {class: "modes", role: "group", "aria-label": "Mode"}, Object.keys(MODES).map(m =>
     h("button", {type: "button", "data-m": m, "aria-pressed": String(m === MODE), onclick: () => setMode(m)}, MODE_LABEL[m])));
@@ -1046,7 +1028,7 @@ function startScreen(){
     h("h1", {class: "hero"}, "Kill or ", h("span", {}, "no kill?")),
     chips,
     go,
-    h("p", {class: "sub"}, "3 lives · 12–16 s per question")));
+    h("p", {class: "sub"}, "3 lives · no timer")));
 }
 function setMode(m){
   if (!MODES[m] || S.mode === "play") return;
@@ -1070,17 +1052,15 @@ async function start(){
 function toast(msg){ const m = document.querySelector("#screen .sub"); if (m) { m.textContent = msg; m.classList.add("err"); } }
 
 function show(d){
-  S.q = d.q; S.limit = d.limit; S.answeredQ = false;
+  S.q = d.q; S.answeredQ = false;
   const q = d.q;
   const verdict = h("div", {class: "verdict", id: "verdict", "aria-live": "polite"});
   const next = h("div", {class: "nextrow", id: "nextrow"});
   if (q.kind === "kill") screen(killView(q), killButtons(), verdict, next);
   else if (q.kind === "mc") screen(mcView(q), mcButtons(q), verdict, next);
   else if (q.kind === "hilo") screen(hiloView(q), optButtons([["More", "more"], ["Less", "less"]]), verdict, next);
-  else if (q.kind === "haste") screen(hasteView(q), mcButtons(q), verdict, next);
   else if (q.kind === "stat") screen(statView(q), optButtons(q.opts.map(c => [cname(c), "", portrait(c)])), verdict, next);
-  else screen(itemView(q), optButtons(q.opts.map(id => [(PAGE.items || {})[id] || "Item", "", itemPic(id), grp((PAGE.igold || {})[id] || 0) + " g"])), verdict, next);
-  timerStart(d.limit);
+  else screen(itemView(q), mcButtons(q), verdict, next);
 }
 function killView(q){
   const A = q.a, T = q.t;
@@ -1103,20 +1083,17 @@ function killButtons(){
     h("button", {type: "button", class: "kill", "data-v": "1", onclick: () => answer(true)}, "Kill ", h("kbd", {}, "←")),
     h("button", {type: "button", class: "alive", "data-v": "0", onclick: () => answer(false)}, "No kill ", h("kbd", {}, "→")));
 }
+// one number each: cooldown / base damage / a ratio / a cost, "at rank N" only when it changes with rank
 function mcView(q){
-  const big = ICONS["a:" + q.c + q.s];
-  const ic = h("span", {class: "ic"}, big ? h("img", {src: big, alt: q.name, width: 60, height: 60}) : h("span", {class: "pt", "data-ic": "a:" + q.c + q.s, style: "width:60px;height:60px"}, q.s),
-    portrait(q.c, "pt mini"));
-  const ask = q.type === "cd"
-    ? h("p", {class: "mcq"}, "Cooldown at rank ", h("em", {}, q.r))
-    : h("p", {class: "mcq"}, "Damage at rank ", h("em", {}, q.r), q.stat ? [" with ", h("em", {}, q.stat[1] + " " + q.stat[0])] : "");
-  return h("div", {class: "q"},
-    h("div", {class: "abil"}, ic, h("div", {}, h("div", {class: "t1"}, cname(q.c) + " " + q.s + " · " + q.name), h("div", {class: "t2"}, q.type === "cd" ? "No ability haste" : "Before resistances"))),
-    ask);
+  const at = q.r ? [" at rank ", h("em", {}, q.r)] : "";
+  const ask = q.type === "cd" ? ["Cooldown", at] : q.type === "base" ? ["Base damage", at]
+    : q.type === "cost" ? [q.rs === "energy" ? "Energy cost" : "Mana cost", at] : [h("em", {}, "% " + (RATIO_LABEL[q.rs] || q.rs)), " ratio", at];
+  return h("div", {class: "q"}, abilHead(q, q.type === "cd" ? "No ability haste" : q.type === "base" ? "Flat part only" : q.type === "ratio" ? "Per stat point" : "Per cast"),
+    h("p", {class: "mcq"}, ask));
 }
 function mcButtons(q){
   return h("div", {class: "ans four", id: "ans"}, q.opts.map((o, i) =>
-    h("button", {type: "button", class: "four", "data-v": String(i), onclick: () => answer(i)}, h("kbd", {}, i + 1), o + (q.unit || ""))));
+    h("button", {type: "button", class: "four", "data-v": String(i), onclick: () => answer(i)}, h("kbd", {}, i + 1), (q.unit === " g" ? grp(+o) : o) + (q.unit || ""))));
 }
 
 function abilHead(q, t2){
@@ -1126,33 +1103,20 @@ function abilHead(q, t2){
   return h("div", {class: "abil"}, ic, h("div", {}, h("div", {class: "t1"}, cname(q.c) + " " + q.s + " · " + q.name), h("div", {class: "t2"}, t2)));
 }
 function hiloView(q){
-  return h("div", {class: "q"}, abilHead(q, "Damage before resistances"),
-    h("p", {class: "mcq"}, "Rank ", h("em", {}, q.r), q.stat ? [" with ", h("em", {}, q.stat[1] + " " + q.stat[0])] : "", ": more or less than"),
+  return h("div", {class: "q"}, abilHead(q, "Flat part only"),
+    h("p", {class: "mcq"}, "Base damage", q.r ? [" at rank ", h("em", {}, q.r)] : "", ": more or less than"),
     h("div", {class: "hl"}, h("span", {class: "big2 num", id: "hlv"}, grp(q.v))));
-}
-function hasteView(q){
-  return h("div", {class: "q"}, abilHead(q, "Cooldown · one decimal"),
-    h("p", {class: "mcq"}, "Rank ", h("em", {}, q.r), " with ", h("em", {}, q.ah + " ability haste")));
 }
 function statView(q){
   const what = STAT_LABEL[q.st];
   return h("div", {class: "q"}, h("p", {class: "mcq"}, q.st === "range" ? ["Longest ", h("em", {}, "attack range"), "?"] : ["Most ", h("em", {}, what), " at level ", h("em", {}, q.l), "?"]),
     h("p", {class: "sub"}, "Base stats · no items, no runes"));
 }
-function itemPic(id){ const u = ICONS["i:" + id], nm = (PAGE.items || {})[id] || "Item"; return u ? h("img", {src: u, alt: "", width: 36, height: 36}) : h("span", {class: "pt"}, nm.replace(/[^A-Z]/g, "").slice(0, 3)); }
 function itemView(q){
-  const A = q.a, T = q.t;
-  const side = (x, cls, extra, slot) => h("div", {class: "side " + cls},
-    h("div", {class: "who"}, portrait(x.c), h("div", {class: "nm"}, h("b", {}, cname(x.c)), h("span", {}, "Level " + x.l))),
-    h("div", {class: "items"}, x.it.map(itemIcon), slot ? h("span", {class: "slot", title: "The item in question"}, "?") : null), extra);
-  const combo = h("div", {class: "combo", "aria-label": "Combo " + A.combo.join(" ")}, A.combo.map(s => s === "AA"
-    ? h("span", {class: "key aa", title: "Basic attack"}, "AA")
-    : h("span", {class: "key", title: s + " · " + abilName(A.c, s)}, abilityIcon(A.c, s), s)));
-  const hp = h("div", {class: "hp"}, h("div", {class: "num"}, grp(T.hp)), h("div", {class: "bar"}, h("i", {style: "width:100%"})),
-    h("div", {class: "res"}, h("span", {}, "Armor ", h("b", {}, T.ar)), h("span", {}, "MR ", h("b", {}, T.mr))));
-  return h("div", {class: "q"},
-    h("div", {class: "vs"}, side(A, "a", combo, true), h("span", {class: "mid"}, "VS"), side(T, "t", hp)),
-    h("div", {}, h("p", {class: "prompt"}, "Which item deals more?"), h("p", {class: "sub"}, "Same combo · target stands still")));
+  const u = ICONS["i:" + q.i], nm = (PAGE.items || {})[q.i] || "Item";
+  const ic = u ? h("img", {src: u, alt: nm, width: 60, height: 60, class: "iic"}) : h("span", {class: "pt iic", "data-ic": "i:" + q.i, style: "width:60px;height:60px"}, nm.replace(/[^A-Z]/g, "").slice(0, 3));
+  return h("div", {class: "q"}, h("div", {class: "abil"}, h("span", {class: "ic"}, ic), h("div", {}, h("div", {class: "t1"}, nm), h("div", {class: "t2"}, "Summoner's Rift"))),
+    h("p", {class: "mcq"}, h("em", {}, ITEM_LABEL[q.st] || q.st), "?"));
 }
 // two or four answer buttons with a label, an optional picture and a small second line; ←/→ for two, 1–4 always
 function optButtons(opts){
@@ -1164,8 +1128,7 @@ function optButtons(opts){
 
 async function answer(choice){
   if (S.mode !== "play" || S.answeredQ || !S.q) return;
-  S.answeredQ = true; timerStop();
-  const el = performance.now() - S.t0;
+  S.answeredQ = true;
   document.querySelectorAll("#ans button").forEach(b => b.disabled = true);
   let r;
   if (S.server){
@@ -1173,7 +1136,7 @@ async function answer(choice){
     catch (e) { return lost(e); }
     Object.assign(S, {score: r.score, lives: r.lives, streak: r.streak});
     S.answered++; if (r.correct){ S.right++; S.bestStreak = Math.max(S.bestStreak, r.streak); }
-  } else r = localAnswer(choice, el);
+  } else r = localAnswer(choice);
   reveal(choice, r);
 }
 function reveal(choice, r){
@@ -1184,10 +1147,10 @@ function reveal(choice, r){
   hud();
   const vd = $("verdict"); vd.textContent = "";
   const said = q.kind === "kill" ? (r.answer ? " · Kill" : " · No kill") : "";
-  const head = h("div", {class: "v " + (r.correct ? "ok" : "no")}, (r.correct ? "Correct" : r.timedOut || choice === null ? "Time's up" : "Wrong") + said,
+  const head = h("div", {class: "v " + (r.correct ? "ok" : "no")}, (r.correct ? "Correct" : "Wrong") + said,
     r.correct ? h("span", {class: "pts"}, "+" + r.points) : null);
   vd.append(head, ...(q.kind === "kill" ? killExplain(q, r) : q.kind === "mc" ? mcExplain(q, r) : q.kind === "hilo" ? hiloExplain(q, r)
-    : q.kind === "haste" ? hasteExplain(q, r) : q.kind === "stat" ? statExplain(q, r) : itemExplain(q, r)));
+    : q.kind === "stat" ? statExplain(q, r) : itemExplain(q, r)));
   const nr = $("nextrow"); nr.textContent = "";
   // no auto-advance: the explanation stays until the player moves on (Next, Space or Enter); the next clock starts then
   const nb = h("button", {type: "button", class: "btn pri", id: "next", onclick: advance}, r.over ? "Results " : "Next ", h("kbd", {}, "Space ↵"));
@@ -1210,15 +1173,10 @@ function mcExplain(q, r){
   return [h("div", {class: "line"}, `${r.x.val}${q.unit || ""} · ${r.x.line}`)];
 }
 function hiloExplain(q, r){ return [h("div", {class: "line"}, `${r.x.val} ${+r.x.val > q.v ? ">" : "<"} ${q.v} · ${r.x.line}`)]; }
-function hasteExplain(q, r){ return [h("div", {class: "line"}, `${r.x.val} s · ${r.x.line}`)]; }
 function statExplain(q, r){
   return [h("div", {class: "line"}, q.opts.map((c, i) => `${cname(c)} ${r.x.vals[i]}`).join(" · "))];
 }
-function itemExplain(q, r){
-  const nm = id => (PAGE.items || {})[id] || "Item", w = r.answer, l = 1 - w;
-  const one = i => `${nm(q.opts[i])} ${grp(r.x.d[i])}` + ((r.x.later || [])[i] > 0 ? ` (${grp(r.x.later[i])} later)` : "");
-  return [h("div", {class: "line"}, `${one(w)} vs ${one(l)} · +${r.x.pct}%`)];
-}
+function itemExplain(q, r){ return [h("div", {class: "line"}, r.x.src)]; }
 async function advance(){
   if (S.mode !== "play" || !S.answeredQ || S.busy) return;
   if (S.lastR && S.lastR.over) return over(S.lastR);
@@ -1229,12 +1187,12 @@ async function advance(){
   S.busy = false; show(d);
 }
 function lost(e){
-  S.mode = "over"; fx(false); timerReset();
+  S.mode = "over"; fx(false);
   screen(h("div", {class: "center"}, h("p", {class: "hero"}, "Connection lost"), h("p", {class: "sub"}, String(e && e.message || "")),
     h("button", {type: "button", class: "btn pri pl-go", id: "again", onclick: start}, "Play again ", h("kbd", {}, "Enter"))));
 }
 function over(r){
-  S.mode = "over"; fx(false); timerReset(); hud();
+  S.mode = "over"; fx(false); hud();
   const name = h("input", {id: "name", type: "text", maxlength: "16", autocomplete: "nickname", placeholder: "Name", "aria-label": "Name for the leaderboard", value: store.get("riftlogic.play.name", "")});
   const msg = h("p", {class: "msg", id: "msg"});
   const sub = h("button", {type: "button", class: "btn pri", id: "submit", onclick: () => submit(name, sub, msg)}, "Submit");
