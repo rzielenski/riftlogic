@@ -62,7 +62,9 @@ const live = require("./live-api.js")({ROOT, send, clientIp, env: {...process.en
 // a redeploy or restart (SIGTERM): save the live games' timelines first (live-api.js, FRAMES_DIR)
 for (const sig of ["SIGTERM", "SIGINT"]) process.once(sig, () => { try { live.flush(); } catch (e) {} process.exit(0); });
 // the player lookup (lookup-api.js): /api/lookup/* and the /lookup page routes; 404 everywhere unless LOOKUP_ENABLED=1 + RIOT_API_KEY
-const lookup = require("./lookup-api.js")({ROOT, send, clientIp, readBody});
+// guarded: the lookup module may not be deployed yet; without it every lookup route is a 404
+const lookup = (() => { try { return require("./lookup-api.js")({ROOT, send, clientIp, readBody}); }
+  catch (e) { if (e.code !== "MODULE_NOT_FOUND") throw e; const f = (req, res) => send(res, 404, {error: "Not found"}); f.route = () => null; return f; } })();
 async function api(req, res, url){
   if (url.pathname.startsWith("/api/lookup/")) return lookup(req, res, url);
   if (url.pathname === "/api/live" || url.pathname.startsWith("/api/live/")) return live(req, res, url);
