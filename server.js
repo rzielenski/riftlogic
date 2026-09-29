@@ -62,9 +62,9 @@ const live = require("./live-api.js")({ROOT, send, clientIp, env: {...process.en
 // a redeploy or restart (SIGTERM): save the live games' timelines first (live-api.js, FRAMES_DIR)
 for (const sig of ["SIGTERM", "SIGINT"]) process.once(sig, () => { try { live.flush(); } catch (e) {} process.exit(0); });
 // the player lookup (lookup-api.js): /api/lookup/* and the /lookup page routes; 404 everywhere unless LOOKUP_ENABLED=1 + RIOT_API_KEY
-// guarded: the lookup module may not be deployed yet; without it every lookup route is a 404
+// guarded: the lookup module may not be deployed yet; without it every lookup route (API and page) is a 404
 const lookup = (() => { try { return require("./lookup-api.js")({ROOT, send, clientIp, readBody}); }
-  catch (e) { if (e.code !== "MODULE_NOT_FOUND") throw e; const f = (req, res) => send(res, 404, {error: "Not found"}); f.route = () => null; return f; } })();
+  catch (e) { if (e.code !== "MODULE_NOT_FOUND") throw e; const f = (req, res) => send(res, 404, {error: "Not found"}); f.route = url => /^\/lookup(\.html)?(\/.*)?$/.test(url.pathname) ? {notFound: true} : null; return f; } })();
 async function api(req, res, url){
   if (url.pathname.startsWith("/api/lookup/")) return lookup(req, res, url);
   if (url.pathname === "/api/live" || url.pathname.startsWith("/api/live/")) return live(req, res, url);
@@ -105,7 +105,7 @@ async function api(req, res, url){
 // serve-handler still does routing, headers (serve.json: CSP, nosniff, …), ETag/304, Range and HEAD; we swap in the
 // compressed bytes through its createReadStream hook and fix the headers in writeHead. Range requests get identity bytes.
 const COMPRESSIBLE = /\.(html|js|json|css|svg|txt|xml|webmanifest|ico)$/i, MIN_SIZE = 1024;
-const SKIP = /(^|\/)(\.|node_modules(\/|$)|reasoning(\/|$))|\.template(\.html)?$|^(package(-lock)?|railway|serve|links|play-pool|lookup-model)\.json$|^(server|play-api|lookup-api|lookup-analysis)\.js$/;
+const SKIP = /(^|\/)(\.|node_modules(\/|$)|reasoning(\/|$))|\.template(\.html)?$|^(package(-lock)?|railway|serve|links|play-pool|lookup-model|lookup-demo)\.json$|^(server|play-api|lookup-api|lookup-analysis)\.js$/;
 const packs = new Map();   // absolute path → {key, gz: Promise<Buffer>, br: Buffer|null, brJob: Promise|null}
 const brOpts = size => ({params: {[zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: size}});
 const pz = (fn, buf, opts) => new Promise((ok, fail) => fn(buf, opts, (e, out) => e ? fail(e) : ok(out)));
@@ -231,5 +231,6 @@ http.createServer((req, res) => {
   if (lk && lk.notFound){ req.url = "/__not_found__"; return serveStatic(req, res, new URL(req.url, "http://x")); }
   if (lk && lk.redirect){ res.writeHead(302, {Location: lk.redirect, "cache-control": "no-store"}); return res.end(); }
   if (lk && lk.headers) for (const [k, v] of Object.entries(lk.headers)) res.setHeader(k, v);
+  if (lk && lk.rewrite){ req.url = lk.rewrite; return serveStatic(req, res, new URL(req.url, "http://x")); }   // /lookup/demo → the lookup page
   return serveStatic(req, res, url);
 }).listen(PORT, () => { console.log(`Rift Logic on :${PORT} · reports → ${REPORT_DIR} · play scores → ${PLAY_DIR}`); if (process.env.RL_NO_WARM !== "1") warm(); });
