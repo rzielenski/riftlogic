@@ -1195,6 +1195,14 @@ const sgInt = x => (Math.round(x) > 0 ? "+" : Math.round(x) < 0 ? MINUS : "±") 
 const sig = z => 1 / (1 + Math.exp(-z));
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
 const clsCI = (lo, hi, ref) => lo > ref ? "up" : hi < ref ? "dn" : "";
+/* solo queue: the newest patches holding 95%+ of the games (a crawl of players' recent histories: a few games from old patches
+   stretch the date range back months), e.g. "98% on patches 16.16–16.19"; "" when one patch or no patch counts */
+const patchMix = D => {
+  const ps = Object.entries(D.patchGames || {}).sort(([a], [b]) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); return y[0] - x[0] || y[1] - x[1]; });
+  let n = 0, k = 0;
+  while (k < ps.length && n < 0.95 * D.games) n += ps[k++][1];
+  return k > 0 && ps.length > 1 ? `${Math.floor(100 * n / D.games)}% on patch${k > 1 ? `es ${ps[k - 1][0]}–${ps[0][0]}` : " " + ps[0][0]}` : "";
+};
 let stT = 0;
 function status(msg){ const e = $("status"); e.textContent = msg; clearTimeout(stT); stT = setTimeout(() => { e.textContent = ""; }, 6000); }
 
@@ -1534,7 +1542,7 @@ function drawChrome(r, c){
       mins.map(m => h("option", {value: m, selected: m === min ? true : null}, `Min ${grp(m)} games`))));
   }
   drawCrumbs(r, c, S, cur, curRole);
-  $("foot").textContent = `${c.mode === "pro" ? "Pro play" : "Ranked solo queue"}: ${D.label}, ${grp(D.games)} games, ${D.dates[0]} to ${D.dates[1]}. Rates and means from fewer than ${D.min} games are shown as too little data. Pro and solo queue are never mixed.`;
+  $("foot").textContent = `${c.mode === "pro" ? "Pro play" : "Ranked solo queue"}: ${D.label}, ${grp(D.games)} games, ${D.dates[0]} to ${D.dates[1]}${c.mode !== "pro" && patchMix(D) ? " (" + patchMix(D) + ")" : ""}. Rates and means from fewer than ${D.min} games are shown as too little data. Pro and solo queue are never mixed.`;
 }
 function drawCrumbs(r, c, S, cur, role){
   const el = $("crumbs"); el.textContent = "";
@@ -1652,7 +1660,7 @@ function viewTier(r, c){
   }
   const N = patch ? D.patchGames[patch] : league ? D.leagueGames[league] : D.games;
   main.append(h("div", {class: "sec"},
-    h("div", {class: "head"}, h("h1", {}, c.mode === "pro" ? "Pro tier list" : "Solo queue tier list"), h("span", {class: "sub"}, `${S.name}${role != null ? " · " + ROLE_L[role] : ""} · ${grp(N)} games${patch ? " on " + patch : ""}${league ? " in " + league : ""} · ${D.dates[0]} to ${D.dates[1]}`)),
+    h("div", {class: "head"}, h("h1", {}, c.mode === "pro" ? "Pro tier list" : "Solo queue tier list"), h("span", {class: "sub"}, `${S.name}${role != null ? " · " + ROLE_L[role] : ""} · ${grp(N)} games${patch ? " on " + patch : ""}${league ? " in " + league : ""} · ${D.dates[0]} to ${D.dates[1]}${!S.pro && !patch && patchMix(D) ? " (" + patchMix(D) + ")" : ""}`)),
     holder));
 }
 
@@ -2711,7 +2719,7 @@ function viewAbout(r, c){
   const src = ST.sources || {};
   const items = [h("h1", {}, "Methods and data")];
   items.push(h("h2", {}, "Data sources"), dl([["Dataset", "Games", "Dates", "Minimum sample"],
-    ["Ranked solo queue 16.x", grp(S.games), `${S.dates[0]} to ${S.dates[1]}`, `${S.min} games`],
+    ["Ranked solo queue 16.x", grp(S.games), `${S.dates[0]} to ${S.dates[1]}${patchMix(S) ? " (" + patchMix(S) + ")" : ""}`, `${S.min} games`],
     ...Object.entries(P).map(([k, d]) => [`Pro ${k}`, grp(d.games), `${d.dates[0]} to ${d.dates[1]}`, `${d.min} games`])]),
     h("ul", {}, h("li", {}, `Solo queue: ${src.solo || "Riot match data"}. Games of 15+ minutes, no remakes; roles are Riot's team positions.`),
       h("li", {}, `Pro: ${src.pro || "Oracle's Elixir"}. Every league in the file (${Object.keys(P[ST.proDefault].leagueGames || {}).length} in ${ST.proDefault}), LCK to minor regions, pooled.`),
