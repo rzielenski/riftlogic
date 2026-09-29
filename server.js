@@ -6,7 +6,8 @@
 // Env: PORT, REPORT_DIR (a Railway volume, e.g. /data/reports), REPORT_TOKEN (≥ 24 chars; reading is off without it),
 //      PLAY_DIR (default: "play" next to REPORT_DIR when that is set, so it shares its volume; else .play here, hidden),
 //      PLAY_SALT (optional: the salt for hashed IPs; else one is made once and kept in PLAY_DIR/.salt),
-//      FRAMES_DIR (the live games' saved timelines, live-api.js; default "live-frames" next to REPORT_DIR, else .live-frames here).
+//      FRAMES_DIR (the live games' saved timelines, live-api.js; default "live-frames" next to REPORT_DIR, else .live-frames here),
+//      LOOKUP_ENABLED=1 + RIOT_API_KEY (the player lookup, lookup-api.js: OFF without both; LOOKUP_DIR, LOOKUP_MAX_MB for its cache).
 "use strict";
 const http = require("http"), fs = require("fs"), path = require("path"), crypto = require("crypto"), zlib = require("zlib");
 const {Readable} = require("stream");
@@ -55,10 +56,15 @@ const clientIp = req => String(req.headers["x-forwarded-for"] || req.socket.remo
 let play = null;   // the Play quiz API (play-api.js), created on first use
 // live tier-1 pro games (live-api.js): /api/live, /api/live/stream. Started now, not on first use, so finished series are
 // seen even when nobody is on the page; LIVE_OFF=1 turns its polling off (the tests set it)
-const live = require("./live-api.js")({ROOT, send, clientIp});
+// OFF unless LIVE_ENABLED=1: its source is lolesports.com's undocumented endpoints, which Riot's developer policy doesn't
+// allow; kept switched off while the production API key application is reviewed (user, 2026-09-29)
+const live = require("./live-api.js")({ROOT, send, clientIp, env: {...process.env, LIVE_OFF: process.env.LIVE_ENABLED === "1" ? (process.env.LIVE_OFF || "") : "1"}});
 // a redeploy or restart (SIGTERM): save the live games' timelines first (live-api.js, FRAMES_DIR)
 for (const sig of ["SIGTERM", "SIGINT"]) process.once(sig, () => { try { live.flush(); } catch (e) {} process.exit(0); });
+// the player lookup (lookup-api.js): /api/lookup/* and the /lookup page routes; 404 everywhere unless LOOKUP_ENABLED=1 + RIOT_API_KEY
+const lookup = require("./lookup-api.js")({ROOT, send, clientIp, readBody});
 async function api(req, res, url){
+  if (url.pathname.startsWith("/api/lookup/")) return lookup(req, res, url);
   if (url.pathname === "/api/live" || url.pathname.startsWith("/api/live/")) return live(req, res, url);
   if (url.pathname.startsWith("/api/play/")){
     if (!play) play = require("./play-api.js")({ROOT, PLAY_DIR, TOKEN, send, readBody, clientIp});
@@ -97,7 +103,7 @@ async function api(req, res, url){
 // serve-handler still does routing, headers (serve.json: CSP, nosniff, …), ETag/304, Range and HEAD; we swap in the
 // compressed bytes through its createReadStream hook and fix the headers in writeHead. Range requests get identity bytes.
 const COMPRESSIBLE = /\.(html|js|json|css|svg|txt|xml|webmanifest|ico)$/i, MIN_SIZE = 1024;
-const SKIP = /(^|\/)(\.|node_modules(\/|$)|reasoning(\/|$))|\.template(\.html)?$|^(package(-lock)?|railway|serve|links|play-pool)\.json$|^(server|play-api)\.js$/;
+const SKIP = /(^|\/)(\.|node_modules(\/|$)|reasoning(\/|$))|\.template(\.html)?$|^(package(-lock)?|railway|serve|links|play-pool|lookup-model)\.json$|^(server|play-api|lookup-api|lookup-analysis)\.js$/;
 const packs = new Map();   // absolute path → {key, gz: Promise<Buffer>, br: Buffer|null, brJob: Promise|null}
 const brOpts = size => ({params: {[zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: size}});
 const pz = (fn, buf, opts) => new Promise((ok, fail) => fn(buf, opts, (e, out) => e ? fail(e) : ok(out)));
@@ -219,5 +225,9 @@ function serveStatic(req, res, url){
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname.startsWith("/api/")) return api(req, res, url).catch(e => send(res, 500, {error: "Server error"}));
+  const lk = lookup.route(url);
+  if (lk && lk.notFound){ req.url = "/__not_found__"; return serveStatic(req, res, new URL(req.url, "http://x")); }
+  if (lk && lk.redirect){ res.writeHead(302, {Location: lk.redirect, "cache-control": "no-store"}); return res.end(); }
+  if (lk && lk.headers) for (const [k, v] of Object.entries(lk.headers)) res.setHeader(k, v);
   return serveStatic(req, res, url);
 }).listen(PORT, () => { console.log(`Rift Logic on :${PORT} · reports → ${REPORT_DIR} · play scores → ${PLAY_DIR}`); if (process.env.RL_NO_WARM !== "1") warm(); });
